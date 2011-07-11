@@ -19,7 +19,7 @@ exports.get_description=function(searchquery, callback, query){
    }
    
    return exports.query_freebase(query,  {extended:true}, function(response){
-     if(response.result[0] && response.result[0]['/common/topic/article'][0] && response.result[0]['/common/topic/article'][0].text.chars){
+     if(response.result && response.result[0] && response.result[0]['/common/topic/article'][0] && response.result[0]['/common/topic/article'][0].text.chars){
        callback(response.result[0]['/common/topic/article'][0].text.chars);
      }
    });
@@ -41,7 +41,7 @@ exports.get_image=function(searchquery, callback, query, options){
    }
    
    return exports.query_freebase(query,  {extended:true}, function(response){
-     if(response.result && response.result[0] && response.result[0]['/common/topic/image'] && response.result[0]['/common/topic/image'][0] ){
+     if(response && response.result && response.result[0] && response.result[0]['/common/topic/image'] && response.result[0]['/common/topic/image'][0] ){
      var id=response.result[0]['/common/topic/image'][0].id;
      var image='http://www.freebase.com/api/trans/image_thumb'+id+'?errorid=/m/0djw4wd'
      if(options){
@@ -84,7 +84,6 @@ exports.query_freebase=function(query, envelope, callback) {
     var results=[];    
     if(!envelope){envelope={"cursor":true};}    
     if(query[0] && query[0].limit==null){query[0].limit=100;} 
-    console.log(query)
     envelope.query=query;
     var query=JSON.stringify(envelope);
     var fburl = 'http://www.freebase.com/api/service/mqlread?query='+encodeURI(query);
@@ -93,6 +92,7 @@ exports.query_freebase=function(query, envelope, callback) {
     }, function(error, response, body) {    
         if (!error && response.statusCode == 200 ) {
             var fb = JSON.parse(body);  
+            console.log(body)
             if(fb && fb.result && fb.result[0]){
               if( fb.cursor){
                envelope.cursor=fb.cursor;
@@ -101,13 +101,12 @@ exports.query_freebase=function(query, envelope, callback) {
                exports.query_freebase(envelope.query, envelope, callback);
             }
             else{ //cursor is finished  
-              results.push(fb.result); 
-              return callback(results);
+              return callback(fb.result);
             }
           }
           else{
            console.log('error');
-           return callback(results);
+           return callback(fb.result);
           }            
         }
         else {
@@ -117,8 +116,8 @@ exports.query_freebase=function(query, envelope, callback) {
 }
 
 //tests
-exports.query_freebase([{"type":"/event/disaster","id":null}], false, console.log);
-//exports.get_description("john",  console.log);
-//exports.get_image("tom hanks",  console.log);
-//exports.get_wikipedia("tom hanks",  console.log);
-//exports.get_image("tom hanks",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null}}], {width:200} );
+//exports.query_freebase([{"type":"/event/disaster","id":null}], false, console.log);
+exports.get_description("toronto",  console.log);
+exports.get_image("tom hanks",  console.log);
+exports.get_wikipedia("capital of england",  console.log);
+exports.get_image("london",  console.log, [{"/location/location/contained_by":[{"id":"/en/ontario"}]}], {width:200} );

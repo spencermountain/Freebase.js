@@ -1,0 +1,18 @@
+Freebase.com is a large human-curated database
+
+nodejs is the most efficient software platform in the world.
+
+this is a library to make the two sing along 
+
+
+exports.get_description("toronto",  console.log);
+ - Toronto is a city in southern Ontario, Canada .....
+
+exports.get_image("tom hanks",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null}}], {width:200} );
+
+
+exports.get_wikipedia("tom hanks",  console.log);
+
+
+exports.query_freebase([{"type":"/event/disaster","id":null}], false, console.log);
+  -accepts an MQL query and handles the cursor for large, repetitive reads 
