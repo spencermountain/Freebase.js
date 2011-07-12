@@ -93,6 +93,28 @@ exports.get_wikipedia=function(q, callback, query){
 }
 
 
+exports.get_weblinks=function(q, callback, query){
+    var add=[{
+       "/common/topic/weblink":[{"url":null}],
+       "name": null,
+       "id":null,
+       "limit": 1
+    }];    
+    add=queryterm(q, add);   
+   if(!query){query=[{}];}
+   for(var i in add[0]){
+     query[0][i]=add[0][i];   
+   }   
+   return exports.query_freebase(query, function(response){
+     if(response.result && response.result[0] && response.result[0]["/common/topic/weblink"] ){
+     var weblinks=response.result[0]["/common/topic/weblink"];
+     return callback(weblinks);
+     }
+     else{return callback=null;}
+   }, {extended:true});
+}
+
+
 //automatically do mql pagination to complete the query
 exports.paginate=function(query, callback, envelope, results) {
     if (!results){results=[];}
@@ -138,10 +160,14 @@ exports.query_freebase=function(query, callback, envelope) {
 
 //tests
 //exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
+
+
+exports.get_weblinks("david bowie",  console.log);
+
 //exports.paginate([{"type":"/event/disaster","id":null}], console.log);
 //exports.get_description("toronto",  console.log);
 //exports.get_description("/authority/imdb/title/tt0099892",  console.log);
 //exports.get_image("tom hanks",  console.log);
-exports.get_wikipedia("tom hanks",  console.log);
+//exports.get_wikipedia("tom hanks",  console.log);
 //exports.get_image("mike myers",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null, "optional":"required"}}], {width:200} );
 
