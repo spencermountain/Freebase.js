@@ -159,8 +159,7 @@ exports.query_freebase=function(query, callback, envelope) {
 }
 
 //tests
-exports.get_description("london",  console.log, [{"type":"/film/film"}]);
-
+//exports.get_description("london",  console.log, [{"type":"/film/film"}]);
 //exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
 //exports.get_weblinks("david bowie",  console.log);
 //exports.paginate([{"type":"/event/disaster","id":null}], console.log);
