@@ -55,7 +55,12 @@ exports.get_image=function(q, callback, query, options){
      var id=response.result[0]['/common/topic/image'][0].id;
      var image='http://www.freebase.com/api/trans/image_thumb'+id+'?errorid=/m/0djw4wd'
      if(options){
-       image+='&maxheight='+options.height+'&maxwidth='+options.width;
+     if(options.height){
+       image+='&maxheight='+options.height;
+       } 
+       if(options.width){
+       image+='&maxwidth='+options.width;
+       }
      }
      callback(image);
      }
@@ -137,5 +142,6 @@ exports.query_freebase=function(query, callback, envelope) {
 //exports.get_description("toronto",  console.log);
 //exports.get_description("/authority/imdb/title/tt0099892",  console.log);
 //exports.get_image("tom hanks",  console.log);
-//exports.get_wikipedia("capital of england",  console.log);
-exports.get_image("london",  console.log, [{"/location/location/containedby":[{"id":"/en/ontario"}]}], {width:200} );
+exports.get_wikipedia("tom hanks",  console.log);
+//exports.get_image("mike myers",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null, "optional":"required"}}], {width:200} );
+
