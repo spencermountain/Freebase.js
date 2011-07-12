@@ -46,9 +46,7 @@ then make a file with:
 
       *queries freebase using an [MQL Query](http://wiki.freebase.com/wiki/Mql)*
       
-       *{ code: '/api/status/ok',  
-        result:   
-         [ { name: 'Earth', type: '/astronomy/planet' },  
+       *[ { name: 'Earth', type: '/astronomy/planet' },  
            { name: 'Venus', type: '/astronomy/planet' },  
            { name: 'Mars', type: '/astronomy/planet' },  
            { name: 'Mercury', type: '/astronomy/planet' },  
