@@ -1,0 +1,20 @@
+{
+  "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
+  "name": "freebase",
+  "description": "a nice way to work with data from freebase.com",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/spencermountain/Freebase-nodejs.git"
+  },
+  "main": "freebase.js",
+  "engines" : ["node >= 0.3.6"],
+  "dependencies": {
+    "request": "1.9.5"
+  },
+  "devDependencies": {
+    "request": "1.9.5"
+  }
+}
+
+

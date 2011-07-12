@@ -8,37 +8,37 @@ this is a library to make the two sing along
 
 ## Installation
 
-$ npm install freebase
+    $ npm install freebase
+
+then make a file with:
+
+   var freebase=require('freebase');
+   freebase.get_description('tom cruise', console.log)
 
 ## Showing off
 
 * `freebase.get_description("toronto",  console.log);`
    
-     //Toronto ( /tˈrɑnoʊ/ or /-ɒn-/) is the provincial capital of Ontario and the largest city.....
+     *Toronto ( /tˈrɑnoʊ/ or /-ɒn-/) is the provincial capital of Ontario and the largest city.....*
 
 * `freebase.get_image("mike myers",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null, "optional":"required"}}], {width:200} );`
     
-     //http://www.freebase.com/api/trans/image_thumb/m/02dy0pn?errorid=/m/0djw4wd&maxwidth=200
+     *http://www.freebase.com/api/trans/image_thumb/m/02dy0pn?errorid=/m/0djw4wd&maxwidth=200*
 
 * `freebase.get_weblinks("david bowie",  console.log);`
 
-      [{ url: 'http://en.wikipedia.org/wiki/David_Bowie' },
+      `[{ url: 'http://en.wikipedia.org/wiki/David_Bowie' },
       { url: 'http://www.velvetgoldmine.it/' },
       { url: 'http://musicmoz.org/Bands_and_Artists/B/Bowie,_David/' },
       { url: 'http://www.bowiewonderworld.com/' },
       { url: 'http://www.davidbowie.com/' },
       { url: 'http://gighit.com/artists/david-bowie/' }, 
-      ...
+      ...`
 
-* `freebase.get_wikipedia("tom hanks",  console.log);`
-
-    //http://en.wikipedia.org/wiki/index.html?curid=43568
+* `freebase.get_wikipedia("tom hanks",  console.log);
+    //http://en.wikipedia.org/wiki/index.html?curid=43568`
  
 ## Very masculine parts
-
-* `freebase.paginate([{"type":"/event/disaster","id":null}], null, console.log);`
- 
-    // automatically do [mql pagination](http://wiki.freebase.com/wiki/Cursor) to complete the query. gets a list of all disasters. 
 
 * `freebase.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);`
 
