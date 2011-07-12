@@ -1,46 +1,56 @@
 var request = require('request');
     
-    
+  
+  ////disambiguates query term
+  function queryterm(term, query){
+    if(term.match(/\/.{2,5}\/.{4}/)){//looks like an id
+      query[0].id=term;
+    }
+    else{
+    query[0].id=null;
+    query[0].search={"query": term, "id": null, "score": null};
+    }
+    return query;
+  }
 
 
-exports.get_description=function(searchquery, callback, query){
+exports.get_description=function(q, callback, query){
     var add=[{
-       "search": {"query": searchquery, "id": null, "score": null},
-       "/common/topic/article": [{"text": {"chars": null, "maxlength": 500},
-                                  }],
+       "/common/topic/article": [{"text": {"chars": null, "maxlength": 500}}],
        "name": null,
        "id":null,
        "limit": 1
     }];
+    add=queryterm(q, add);
    
    if(!query){query=[{}];}
    for(var i in add[0]){
      query[0][i]=add[0][i];   
    }
    
-   return exports.query_freebase(query,  {extended:true}, function(response){
+   return exports.query_freebase(query, function(response){
      if(response.result && response.result[0] && response.result[0]['/common/topic/article'][0] && response.result[0]['/common/topic/article'][0].text.chars){
        callback(response.result[0]['/common/topic/article'][0].text.chars);
      }
-   });
+   }, {extended:true});
 }
 
 
-exports.get_image=function(searchquery, callback, query, options){
+exports.get_image=function(q, callback, query, options){
     var add=[{
-       "search": {"query": searchquery, "id": null, "score": null},
-       "/common/topic/image": [{"id":null }],
+       "/common/topic/image": [{"id":null , "optional": "required"}],
        "name": null,
        "id":null,
        "limit": 1
-    }];
-   
+    }];   
+    add=queryterm(q, add);
+    
    if(!query){query=[{}];}
    for(var i in add[0]){
      query[0][i]=add[0][i];   
    }
    
-   return exports.query_freebase(query,  {extended:true}, function(response){
+   return exports.query_freebase(query, function(response){
      if(response && response.result && response.result[0] && response.result[0]['/common/topic/image'] && response.result[0]['/common/topic/image'][0] ){
      var id=response.result[0]['/common/topic/image'][0].id;
      var image='http://www.freebase.com/api/trans/image_thumb'+id+'?errorid=/m/0djw4wd'
@@ -49,75 +59,83 @@ exports.get_image=function(searchquery, callback, query, options){
      }
      callback(image);
      }
-   });
+   }, {extended:true});
 }
 
 
 
-exports.get_wikipedia=function(searchquery, callback, query){
+exports.get_wikipedia=function(q, callback, query){
     var add=[{
-       "search": {"query": searchquery, "id": null, "score": null},
        "key":{"namespace":"/wikipedia/en_id", "value":null},
        "name": null,
        "id":null,
        "limit": 1
-    }];
+    }];    
+    add=queryterm(q, add);
    
    if(!query){query=[{}];}
    for(var i in add[0]){
      query[0][i]=add[0][i];   
    }
    
-   return exports.query_freebase(query,  {extended:true}, function(response){
+   return exports.query_freebase(query, function(response){
      if(response.result && response.result[0] && response.result[0].key ){
      var id=response.result[0].key.value;
      var image='http://en.wikipedia.org/wiki/index.html?curid='+id;
      callback(image);
      }
-   });
+   }, {extended:true});
 }
 
 
-
-
-exports.query_freebase=function(query, envelope, callback) {
-    var results=[];    
-    if(!envelope){envelope={"cursor":true};}    
+//automatically do mql pagination to complete the query
+exports.paginate=function(query, callback, envelope, results) {
+    if (!results){results=[];}
+    if(!envelope){envelope={"cursor":true};}   
     if(query[0] && query[0].limit==null){query[0].limit=100;} 
+    exports.query_freebase(query,  function(response){//returned the query      
+        if(response.cursor){//do it again
+          envelope.cursor=response.cursor;
+          for(var i in response.result){
+            results.push(response.result[i]);
+          }
+          return exports.paginate(query, callback, envelope, results);//recursive
+        }
+        else{//alldone
+          return callback(results);        
+        }
+
+  }, envelope);
+
+}
+
+
+exports.query_freebase=function(query, callback, envelope) {
+    var results=[];   
+     if(!envelope){envelope={};} 
     envelope.query=query;
     var query=JSON.stringify(envelope);
     var fburl = 'http://www.freebase.com/api/service/mqlread?query='+encodeURI(query);
     request({
         uri: fburl
-    }, function(error, response, body) {    
+    }, function(error, response, body) {        
         if (!error && response.statusCode == 200 ) {
-            var fb = JSON.parse(body);  
-            console.log(body)
-            if(fb && fb.result && fb.result[0]){
-              if( fb.cursor){
-               envelope.cursor=fb.cursor;
-               results.push(fb.result);       
-               console.log(results)       
-               exports.query_freebase(envelope.query, envelope, callback);
-            }
-            else{ //cursor is finished  
-              return callback(fb.result);
-            }
-          }
+            var fb = JSON.parse(body); 
+              return callback(fb);
+              }
           else{
-           console.log('error');
-           return callback(fb.result);
-          }            
-        }
-        else {
-            return callback(null);
-        }
+           console.log('----error----');
+           console.log(body);
+           return callback(null);
+          }          
     });
 }
 
 //tests
-//exports.query_freebase([{"type":"/event/disaster","id":null}], false, console.log);
-exports.get_description("toronto",  console.log);
-exports.get_image("tom hanks",  console.log);
-exports.get_wikipedia("capital of england",  console.log);
-exports.get_image("london",  console.log, [{"/location/location/contained_by":[{"id":"/en/ontario"}]}], {width:200} );
+//exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
+//exports.paginate([{"type":"/event/disaster","id":null}], console.log);
+//exports.get_description("toronto",  console.log);
+//exports.get_description("/authority/imdb/title/tt0099892",  console.log);
+//exports.get_image("tom hanks",  console.log);
+//exports.get_wikipedia("capital of england",  console.log);
+exports.get_image("london",  console.log, [{"/location/location/containedby":[{"id":"/en/ontario"}]}], {width:200} );
