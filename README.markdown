@@ -12,8 +12,8 @@ this is a library to make the two sing along
 
 then make a file with:
 
-   var freebase=require('freebase');
-   freebase.get_description('tom cruise', console.log)
+   `var freebase=require('freebase');`  
+   `freebase.get_description('tom cruise', console.log)`
 
 ## Showing off
 
@@ -21,7 +21,8 @@ then make a file with:
    
      *Toronto ( /tˈrɑnoʊ/ or /-ɒn-/) is the provincial capital of Ontario and the largest city.....*
 
-* `freebase.get_image("mike myers",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null, "optional":"required"}}], {width:200} );`
+
+* `freebase.get_image("london",  console.log, [], {width:200} );`
     
      *http://www.freebase.com/api/trans/image_thumb/m/02dy0pn?errorid=/m/0djw4wd&maxwidth=200*
 
