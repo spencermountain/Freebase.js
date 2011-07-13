@@ -120,12 +120,13 @@ exports.paginate=function(query, callback, envelope, results) {
     if (!results){results=[];}
     if(!envelope){envelope={"cursor":true};}   
     if(query[0] && query[0].limit==null){query[0].limit=100;} 
-    exports.query_freebase(query,  function(response){//returned the query      
-        if(response.cursor){//do it again
-          envelope.cursor=response.cursor;
+    exports.query_freebase(query,  function(response){//returned the query    
+          //get results
           for(var i in response.result){
             results.push(response.result[i]);
-          }
+          }  
+        if(response.cursor){//do it again
+          envelope.cursor=response.cursor;
           return exports.paginate(query, callback, envelope, results);//recursive
         }
         else{//alldone
@@ -159,6 +160,14 @@ exports.query_freebase=function(query, callback, envelope) {
 }
 
 //tests
+
+var query=[{"/people/person/profession":{"mid":"/m/02h65p0"},
+"name":null,
+ "mid":null
+ }]
+
+exports.paginate(query, console.log);
+
 //exports.get_description("london",  console.log, [{"type":"/film/film"}]);
 //exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
 //exports.get_weblinks("david bowie",  console.log);
