@@ -160,14 +160,6 @@ exports.query_freebase=function(query, callback, envelope) {
 }
 
 //tests
-
-var query=[{"/people/person/profession":{"mid":"/m/02h65p0"},
-"name":null,
- "mid":null
- }]
-
-exports.paginate(query, console.log);
-
 //exports.get_description("london",  console.log, [{"type":"/film/film"}]);
 //exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
 //exports.get_weblinks("david bowie",  console.log);
