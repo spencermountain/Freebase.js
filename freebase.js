@@ -214,7 +214,7 @@ exports.query_freebase=function(query, callback, envelope) {
 //exports.get_description("london",  console.log, [{"type":"/film/film"}]);
 //exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
 //exports.get_weblinks("david bowie",  console.log);
-exports.search("meatloaf",  console.log);
+//exports.search("meatloaf",  console.log);
 //exports.get_geolocation("cheddar",  console.log);
 //exports.paginate([{"type":"/event/disaster","id":null}], console.log);
 //exports.get_description("toronto",  console.log);
