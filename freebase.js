@@ -14,6 +14,31 @@ var request = require('request');
   }
 
 
+exports.search=function(q, callback, query){
+    var add=[{
+       "search":{"query": q, "score": null},
+       "name": null,
+       "id":null,
+       "limit": 10,
+       "sort": "-search.score"
+    }];
+   
+   if(!query){query=[{}];}
+   for(var i in add[0]){
+     query[0][i]=add[0][i];   
+   }
+   
+   return exports.query_freebase(query, function(response){
+     if(response.result && response.result[0]){
+       callback(response.result);
+     }
+   }, {extended:true});
+}
+
+
+
+
+
 exports.get_description=function(q, callback, query){
     var add=[{
        "/common/topic/article": [{"text": {"chars": null, "maxlength": 500}}],
@@ -68,6 +93,32 @@ exports.get_image=function(q, callback, query, options){
 }
 
 
+
+exports.get_geolocation=function(q, callback, query){
+    var add=[{
+       "name": null,
+       "id":null,
+       "/location/location/geolocation": [{
+        "/location/geocode/latitude":null,
+        "/location/geocode/longitude":null
+        }],
+       "type":"/location/location",
+       "limit": 1
+    }];    
+    add=queryterm(q, add);
+   
+   if(!query){query=[{}];}
+   for(var i in add[0]){
+     query[0][i]=add[0][i];   
+   }
+   
+   return exports.query_freebase(query, function(response){
+     if(response.result && response.result[0] && response.result[0] ){
+     var geo=response.result[0]["/location/location/geolocation"];
+     callback(geo);
+     }
+   }, {extended:true});
+}
 
 exports.get_wikipedia=function(q, callback, query){
     var add=[{
@@ -163,6 +214,8 @@ exports.query_freebase=function(query, callback, envelope) {
 //exports.get_description("london",  console.log, [{"type":"/film/film"}]);
 //exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
 //exports.get_weblinks("david bowie",  console.log);
+exports.search("meatloaf",  console.log);
+//exports.get_geolocation("cheddar",  console.log);
 //exports.paginate([{"type":"/event/disaster","id":null}], console.log);
 //exports.get_description("toronto",  console.log);
 //exports.get_description("/authority/imdb/title/tt0099892",  console.log);

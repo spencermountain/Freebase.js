@@ -36,9 +36,25 @@ then make a file with:
       { url: 'http://gighit.com/artists/david-bowie/' },   
       ...*
 
+* `freebase.get_geolocation("cheddar",  console.log);`
+
+    *[ { '/location/geocode/latitude': 51.2785,
+        '/location/geocode/longitude': -2.7777 } ]*
+            
+
 * `freebase.get_wikipedia("tom hanks",  console.log);`
 
     *http://en.wikipedia.org/wiki/index.html?curid=43568*
+    
+
+* `freebase.search("meatloaf",  console.log);`
+    *[ { id: '/en/meatloaf',
+    name: 'Meatloaf',
+    search: { query: 'meatloaf', score: 83.35985 } },
+  { id: '/m/0k_sqd',
+    name: 'Stoney &amp; Meatloaf',
+    search: { query: 'meatloaf', score: 77.45284 } },
+    ...*
  
 ## Very masculine parts
 
@@ -74,10 +90,12 @@ all methods may be filtered using an mql query:
 
 ## Methods
 
+* **search**( [ id or string ] , [callback] , [ MQLfilter ]  ) 
 * **paginate**( [ [MQL Query](http://wiki.freebase.com/wiki/Mql)] , [callback] , [ [envelope](http://wiki.freebase.com/wiki/MQL_Manual/mqlread#Envelope_Parameters) (optional) ]  ) 
 * **query_freebase**( [ [MQL Query](http://wiki.freebase.com/wiki/Mql)] , [callback] , [ [envelope](http://wiki.freebase.com/wiki/MQL_Manual/mqlread#Envelope_Parameters) (optional) ]  ) 
 * **get_description**( [ id or string ] , [callback] , [ MQLfilter ]  ) 
 * **get_wikipedia**( [ id or string ] , [callback] , [ MQLfilter ]  ) 
+* **get_geolocation**( [ id or string ] , [callback] , [ MQLfilter ]  ) 
 * **get_weblinks**( [ id or string ] , [callback] , [ MQLfilter ]  ) 
 * **get_image**( [ id or string ] , [callback] , [ MQLfilter ] , [options] ) 
 *    *options:
