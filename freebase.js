@@ -161,7 +161,7 @@ exports.get_weblinks=function(q, callback, query){
      var weblinks=response.result[0]["/common/topic/weblink"];
      return callback(weblinks);
      }
-     else{return callback=null;}
+     else{return callback(null)}
    }, {extended:true});
 }
 
