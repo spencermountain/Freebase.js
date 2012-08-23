@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/spencermountain/Freebase-nodejs.png)](http://travis-ci.org/spencermountain/Freebase-nodejs)
 #Freebase
 [Freebase](http://freebase.com/) is a large human-curated database
 
