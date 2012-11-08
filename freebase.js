@@ -1,225 +1,205 @@
 var request = require('request');
-    
-  
-  ////disambiguates query term
-  function queryterm(term, query){
-    if(term.match(/\/.{2,5}\/.{4}/)){//looks like an id
-      query[0].id=term;
+var API_KEY='';//this is needed for heavy stuff
+
+
+//interface to freebase's mql api
+exports.mqlread=function(query, options, callback){
+  if(!query){return callback({})}
+  options=options||{}
+  options.uniqueness_failure=options.uniqueness_failure||"soft"
+  options.cursor=options.cursor||""
+  var params=set_params(options)
+  var url='https://www.googleapis.com/freebase/v1/mqlread?query='+encodeURIComponent(JSON.stringify(query))+'&'+params;
+  http(url, function(result){
+    callback(result)
+  })
+}
+
+//topic api
+exports.topic=function(q, filter, callback){
+  var url='https://www.googleapis.com/freebase/v1/topic'+q+'?filter='+encodeURIComponent(filter);
+  http(url, function(result){
+    callback(result)
+  })
+}
+
+//turn a string into a confident topic id
+exports.lookup=function(q, options, callback){
+  options=options||{}
+  options.type=options.type||"/common/topic";
+  var url='https://www.googleapis.com/freebase/v1/search?limit=2&lang=en&type='+options.type+'&filter='
+  var filter=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'")')
+  http(url+filter, function(result){
+    //filter-out shit results
+    result=result.result||[]
+    result[0]=result[0]||{}
+    result[1]=result[1]||{}
+    //kill low-relevance
+    if( !result[0].score && result[0].score<30){
+      console.log("is ambiguous at " + ((result[0].score||0) * 0.7))
+      return callback({})
+    }
+    //kill if 2nd result is also notable
+    if(! ((result[0].score||0) * 0.7) > (result[1].score||0) ){
+      console.log("is ambiguous at " + ((result[0].score||0) * 0.7))
+      return callback({})
+    }
+    //kill if types are crap
+    var kill=["/music/track", "/tv/tv_episode", "/music/recording", "/music/composition"]
+    if(result[0].notable && isin( result[0].notable.id, kill)){
+      console.log("ugly type")
+      return callback({})
+    }
+    return callback(result[0])
+  })
+}
+
+
+//turns a url into a freebase topic and list its same:as links
+exports.same_as_links=function(q, callback){
+  if(!q){return callback({})}
+  var url='https://www.googleapis.com/freebase/v1/search?type=/common/topic&limit=1&query='+encodeURIComponent(q)
+  http(url, function(result){
+    if(!result || !result.result || !result.result[0]){
+      return callback({})
+    }
+    exports.topic(result.result[0].mid , "/common/topic", function(data){
+      var links=[];
+      //same-asy ones
+      if(data.property['/common/topic/topic_equivalent_webpage']){
+       links=data.property['/common/topic/topic_equivalent_webpage'].values.map(function(v){
+          return {href:v.value, title:parseurl(v.value).authority}
+        })
+      }
+      if(data.property['/common/topic/topical_webpage']){
+       links=links.concat(data.property['/common/topic/topical_webpage'].values.map(function(v){
+          var host=parseurl(v.value).authority || ''
+          return {href:v.value, title:host.replace(/^www\./,'')}
+        }))
+      }
+      var obj={topic:result.result[0], links:links}
+      console.log(JSON.stringify(obj, null, 2))
+    })
+  })
+}
+
+
+
+
+//return specific language title for a topic
+exports.translate=function(q, lang, callback){
+
+}
+
+//
+exports.wikipedia_link=function(query, options, callback){
+
+}
+
+
+///////////////////////////helper functions
+
+//slightly different lookup when its a url
+function url_lookup(q, callback){
+  var url='https://www.googleapis.com/freebase/v1/search?type=/common/topic&limit=1&query='+encodeURIComponent(q)
+  http(url, function(result){
+    callback(result)
+  })
+}
+
+//flexible handling of queries like ids, terms, or urls
+function get_id(q, options, callback){
+  //is an id
+  if(!q || (q.match(/\/.{1,5}\/.{3}/) !=null)){return callback(q)}
+  //is a url
+  if(q.match(/^(https?:\/\/|www\.)/)){
+      return url_lookup(q, function(result){
+        if(result && result.result && result.result[0]){
+          return callback(result.result[0].mid)
+        }
+        return callback(null)
+      })
     }
     else{
-    query[0].id=null;
-    query[0].search={"query": term, "id": null, "score": null};
-    }
-    return query;
+      //is a normal search
+      exports.lookup(q, options, function(result){
+        if(result && result.mid){
+          return callback(result.mid)
+        }
+        return callback(null)
+      })
   }
+}
 
-
-exports.search=function(q, callback, query){
-    var add=[{
-       "search":{"query": q, "score": null},
-       "name": null,
-       "id":null,
-       "limit": 10,
-       "sort": "-search.score"
-    }];
-   
-   if(!query){query=[{}];}
-   for(var i in add[0]){
-     query[0][i]=add[0][i];   
-   }
-   
-   return exports.query_freebase(query, function(response){
-     if(response.result && response.result[0]){
-       callback(response.result);
-     }
-   }, {extended:true});
+function isin(word,arr){
+  return arr.some(function(v){return v==word})
 }
 
 
+function parseurl (str) {
+  var  o   = {
+      strictMode: false,
+      key: ["source","protocol","authority","userInfo","user","password","host","port","relative","path","directory","file","query","anchor"],
+      q:   {
+        name:   "queryKey",
+        parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+      },
+      parser: {
+        strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
+        loose:  /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+      }
+    },
+    m   = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
+    uri = {},
+    i   = 14;
+  while (i--) uri[o.key[i]] = m[i] || "";
+  uri[o.q.name] = {};
+  uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
+    if ($1) uri[o.q.name][$1] = $2;
+  });
+  return uri;
+};
 
-
-
-exports.get_description=function(q, callback, query){
-    var add=[{
-       "/common/topic/article": [{"text": {"chars": null, "maxlength": 500}}],
-       "name": null,
-       "id":null,
-       "limit": 1
-    }];
-    add=queryterm(q, add);
-   
-   if(!query){query=[{}];}
-   for(var i in add[0]){
-     query[0][i]=add[0][i];   
-   }
-   
-   return exports.query_freebase(query, function(response){
-     if(response.result && response.result[0] && response.result[0]['/common/topic/article'][0] && response.result[0]['/common/topic/article'][0].text.chars){
-       callback(response.result[0]['/common/topic/article'][0].text.chars);
-     }
-   }, {extended:true});
-}
-
-
-exports.get_image=function(q, callback, query, options){
-    var add=[{
-       "/common/topic/image": [{"id":null , "optional": "required"}],
-       "name": null,
-       "id":null,
-       "limit": 1
-    }];   
-    add=queryterm(q, add);
-    
-   if(!query){query=[{}];}
-   for(var i in add[0]){
-     query[0][i]=add[0][i];   
-   }
-   
-   return exports.query_freebase(query, function(response){
-     if(response && response.result && response.result[0] && response.result[0]['/common/topic/image'] && response.result[0]['/common/topic/image'][0] ){
-     var id=response.result[0]['/common/topic/image'][0].id;
-     var image='http://www.freebase.com/api/trans/image_thumb'+id+'?errorid=/m/0djw4wd'
-     if(options){
-     if(options.height){
-       image+='&maxheight='+options.height;
-       } 
-       if(options.width){
-       image+='&maxwidth='+options.width;
-       }
-     }
-     callback(image);
-     }
-   }, {extended:true});
-}
-
-
-
-exports.get_geolocation=function(q, callback, query){
-    var add=[{
-       "name": null,
-       "id":null,
-       "/location/location/geolocation": [{
-        "/location/geocode/latitude":null,
-        "/location/geocode/longitude":null
-        }],
-       "type":"/location/location",
-       "limit": 1
-    }];    
-    add=queryterm(q, add);
-   
-   if(!query){query=[{}];}
-   for(var i in add[0]){
-     query[0][i]=add[0][i];   
-   }
-   
-   return exports.query_freebase(query, function(response){
-     if(response.result && response.result[0] && response.result[0] ){
-     var geo=response.result[0]["/location/location/geolocation"];
-     callback(geo);
-     }
-   }, {extended:true});
-}
-
-exports.get_wikipedia=function(q, callback, query){
-    var add=[{
-       "key":{"namespace":"/wikipedia/en_id", "value":null},
-       "name": null,
-       "id":null,
-       "limit": 1
-    }];    
-    add=queryterm(q, add);
-   
-   if(!query){query=[{}];}
-   for(var i in add[0]){
-     query[0][i]=add[0][i];   
-   }
-   
-   return exports.query_freebase(query, function(response){
-     if(response.result && response.result[0] && response.result[0].key ){
-     var id=response.result[0].key.value;
-     var image='http://en.wikipedia.org/wiki/index.html?curid='+id;
-     callback(image);
-     }
-   }, {extended:true});
-}
-
-
-exports.get_weblinks=function(q, callback, query){
-    var add=[{
-       "/common/topic/weblink":[{"url":null}],
-       "name": null,
-       "id":null,
-       "limit": 1
-    }];    
-    add=queryterm(q, add);   
-   if(!query){query=[{}];}
-   for(var i in add[0]){
-     query[0][i]=add[0][i];   
-   }   
-   return exports.query_freebase(query, function(response){
-     if(response.result && response.result[0] && response.result[0]["/common/topic/weblink"] ){
-     var weblinks=response.result[0]["/common/topic/weblink"];
-     return callback(weblinks);
-     }
-     else{return callback(null)}
-   }, {extended:true});
-}
-
-
-//automatically do mql pagination to complete the query
-exports.paginate=function(query, callback, envelope, results) {
-    if (!results){results=[];}
-    if(!envelope){envelope={"cursor":true};}   
-    if(query[0] && query[0].limit==null){query[0].limit=100;} 
-    exports.query_freebase(query,  function(response){//returned the query    
-          //get results
-          for(var i in response.result){
-            results.push(response.result[i]);
-          }  
-        if(response.cursor){//do it again
-          envelope.cursor=response.cursor;
-          return exports.paginate(query, callback, envelope, results);//recursive
-        }
-        else{//alldone
-          return callback(results);        
-        }
-
-  }, envelope);
-
-}
-
-
-exports.query_freebase=function(query, callback, envelope) {
-    var results=[];   
-     if(!envelope){envelope={};} 
-    envelope.query=query;
-    var query=JSON.stringify(envelope);
-    var fburl = 'http://www.freebase.com/api/service/mqlread?query='+encodeURI(query);
-    request({
-        uri: fburl
-    }, function(error, response, body) {        
-        if (!error && response.statusCode == 200 ) {
-            var fb = JSON.parse(body); 
-              return callback(fb);
+function http(url, callback){
+   request({
+        uri: url
+    }, function(error, response, body) {
+        try{
+          body=JSON.parse(body)
+        }catch(e){console.log(e)}
+        if (error || response.statusCode != 200 ) {
+              console.log('----error----');
+              console.log(body);
+              return callback([])
               }
-          else{
-           console.log('----error----');
-           console.log(body);
-           return callback(null);
-          }          
-    });
+        return callback(body);
+    })
 }
 
-//tests
-//exports.get_description("london",  console.log, [{"type":"/film/film"}]);
-//exports.query_freebase([{'name': null, 'type': '/astronomy/planet'}], console.log);
-//exports.get_weblinks("david bowie",  console.log);
-//exports.search("meatloaf",  console.log);
-//exports.get_geolocation("cheddar",  console.log);
-//exports.paginate([{"type":"/event/disaster","id":null}], console.log);
-//exports.get_description("toronto",  console.log);
-//exports.get_description("/authority/imdb/title/tt0099892",  console.log);
-//exports.get_image("tom hanks",  console.log);
-//exports.get_wikipedia("tom hanks",  console.log);
-//exports.get_image("mike myers",  console.log, [{"key":{"namespace":"/wikipedia/en_title", "value":null, "optional":"required"}}], {width:200} );
+//turn options object into get paramaters
+function set_params(options){
+  if(!options){return ''}
+  return Object.keys(options).map(function(v){return v+'='+options[v]}).join('&')
+}
 
+//get_id("thom yorke", {}, console.log)   // /m/01p0w_
+//get_id('http://toronto.ca', {}, console.log)
+
+
+// exports.lookup("tom green", {},
+//          function(r){console.log(JSON.stringify(r, null, 2));}  ///m/017yxq
+//        )
+
+
+// exports.same_as_links("toronto", console.log)
+// exports.same_as_links("http://www.geonames.org/6167865/", console.log)
+// exports.same_as_links("/m/0h7h6", console.log)
+
+
+// exports.lookup("http://myspace.com/u2", {},
+//          function(r){console.log(JSON.stringify(r, null, 2));}  ///m/017yxq
+//        )
+
+
+// query=[{ "type": "/music/album", "id": "/en/keep_it_turned_on", "artist" : null}]
+// exports.mqlread(query,{},console.log)
