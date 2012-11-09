@@ -102,8 +102,11 @@ Translated names for topics:
 
 The most accurate, or notable type for a topic:
 
-     freebase.notable("canada", {}, console.log)
-     freebase.wikipedia_link("tony hawk", {}, function(r){r=="http://en.wikipedia.org/wiki/Tony_Hawk"})
+     freebase.notable("canada", {}, console.log) // {id:"/location/country", name:"Country"}
+
+Get the wikipedia link for a topic
+
+     freebase.wikipedia_link("tony hawk", {}, console.log) //http://en.wikipedia/wiki/Tony_Hawk
 
 Encode a string for inclusion in a freebase id/key/whatever
 
