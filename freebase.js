@@ -1,12 +1,12 @@
 var API_KEY='';//this is needed for heavy stuff
-var async_max=2;//the hardest we will concurrently hit freebase
+var async_max=2;//the hardest we will ever concurrently hit freebase
 var host='https://www.googleapis.com/freebase/v1/';
 
 var request = require('request');
+var async = require('async');
+var _ =require('underscore');
 var singularize=require('./singularize').singularize;
 var sentence=require('./sentence').sentenceparser;
-var async = require('async');
-var _=require('underscore');
 
 //main methods to freebase apis
 
@@ -51,8 +51,12 @@ exports.topic=function(q, options, callback){
 //regular search api
 exports.search=function(q, options, callback){
       callback=callback||console.log;
-      if(!q){return callback({})}
+      if(!q){return callback([])}
       options=options||{};
+       //is it an array of sub-tasks?
+      if(_.isArray(q) && q.length>1){
+        return doit_async(q, exports.search, options, callback)
+      }
       options.query=q;
       var params=set_params(options)
       var url= host+'search/?'+params;
@@ -61,13 +65,17 @@ exports.search=function(q, options, callback){
         callback(result.result)
     })
 }
-
+//exports.search(["toronto","suddenly susan"],{limit:1},function(r){console.log(r)})
 
 //turn a string into a confident topic id
 exports.lookup=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.lookup, options, callback)
+  }
   options.type=options.type||"/common/topic";
   var url= host+'search?limit=2&lang=en&type='+options.type+'&filter='
   var filter=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'")')
@@ -97,12 +105,18 @@ exports.lookup=function(q, options, callback){
   })
 }
 
+
 //get all of the results to your query
 exports.paginate=function(query, options, callback){
   callback=callback||console.log;
   if(!query){return callback({})}
   options=options||{};
-  //query[0].limit=query[0].limit||170  //force a safe but efficient lookup
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.paginate, options, callback)
+  }
+  if(_.isObject(query)){query=[query]}
+  query[0].limit=query[0].limit||170  //force a safe but efficient lookup
   var data=[];
   //recursive mqlread until cursor is false
   iterate('')
@@ -130,7 +144,10 @@ exports.same_as_links=function(q, options, callback){
   if(!q){return callback({})}
   options=options||{};
   options.filter=options.filter||"/common/topic"
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.same_as_links, options, callback)
+  }
   var url= host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q)
   http(url, function(result){
     if(!result || !result.result || !result.result[0]){
@@ -163,7 +180,10 @@ exports.translate=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.translate, options, callback)
+  }
   if(!options.lang){options.lang="/lang/fr"}//defaulting to french is better than an error..?
   if(!options.lang.match(/\/lang\//)){
     options.lang='/lang/'+options.lang
@@ -193,7 +213,10 @@ exports.wikipedia_link=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.wikipedia_link, options, callback)
+  }
    get_id(q, options, function(id){
      if(!id){return callback("")}
      var query=[{
@@ -211,12 +234,49 @@ exports.wikipedia_link=function(q, options, callback){
   })
 }
 
+//get a url for image href of on this topic
+exports.image=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  options.maxheight=options.maxheight||250;
+  options.maxwidth=options.maxwidth||250;
+  options.errorid=options.errorid||"/m/0djw4wd"
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.image, options, callback)
+  }
+   get_id(q, options, function(id){
+     if(!id){return callback("")}
+     var query=[{
+        "id":   id,
+        "name": null,
+        "/common/topic/image": [{
+          "id":     null
+        }]
+      }]
+    exports.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0] || !result.result[0]["/common/topic/image"][0] ){
+        return callback('')
+      }
+      var url='http://www.freebase.com/api/trans/image_thumb'+result.result[0]["/common/topic/image"][0].id;
+      var params=set_params(options);
+      url+='?'+params;
+      return callback(url)
+    })
+  })
+}
+
+
 //get a text blurb from freebase
 exports.description=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.description, options, callback)
+  }
  get_id(q, options, function(id){
   if(!id){return callback("")}
   var url= host+'text/'+id;
@@ -232,7 +292,10 @@ exports.notable=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.notable, options, callback)
+  }
  exports.topic(q, {filter:"/common/topic/notable_for"}, function(result){
   if(!result || !result.property || !result.property['/common/topic/notable_for']){return callback({})}
   var notable=result.property['/common/topic/notable_for'] || {values:[]};
@@ -245,7 +308,10 @@ exports.sentence=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.sentence, options, callback)
+  }
   exports.description(q, options, function(desc){
     if(!desc){return callback("")}
     desc=sentence(desc)||[]
@@ -262,7 +328,10 @@ exports.list=function(q, options, callback){
   if(!q){return callback({})}
   options=options||{};
   options.max=options.max || 500;
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.list, options, callback)
+  }
   //singularize it if it's a search query
   if(!q.match(/\/.{1,12}\/.{3}/)){
     q=singularize(q);
@@ -281,7 +350,10 @@ exports.incoming=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.incoming, options, callback)
+  }
   get_id(q, options, function(id){
     if(!id){return callback([])}
     var query=[{
@@ -309,7 +381,10 @@ exports.outgoing=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.outgoing, options, callback)
+  }
   exports.topic(q, {}, function(result){
     var out=[];
       //get rid of permissions and stuff..
@@ -336,15 +411,33 @@ exports.outgoing=function(q, options, callback){
       }
     })
     out=out.map(function(o){return {name:o.text, id:o.id, property:o.property }})
-    out=out.map(function(v){
-      return v.name;
-    });
     callback(out)
   })
 }
 
 
-
+//return all outgoing and incoming links for a topic
+exports.graph=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.graph, options, callback)
+  }
+  get_id(q, options, function(id){
+      if(!id){return callback({})}
+      var all={incoming:null, outgoing:null, id:id}
+      exports.incoming(id, options, function(result){
+        all.incoming=result;
+        if(all.incoming&&all.outgoing){return callback(all)}
+      })
+      exports.outgoing(id, options, function(result){
+        all.outgoing=result;
+        if(all.incoming&&all.outgoing){return callback(all)}
+      })
+  })
+}
 
 
 
@@ -361,6 +454,10 @@ function url_lookup(q, callback){
 
 //flexible handling of queries like ids, terms, or urls
 function get_id(q, options, callback){
+  //if its a freebase-type object
+  if(_.isObject(q)){
+    q=q.id||q.mid||q.name;
+   }
   //is an id
   if(!q || (q.match(/\/.{1,12}\/.{3}/) !=null)){return callback(q)}
   //is a url
@@ -372,7 +469,6 @@ function get_id(q, options, callback){
         return callback(null)
       })
     }
-    else{
       //is a normal search
       exports.lookup(q, options, function(result){
         if(result && result.mid){
@@ -381,7 +477,6 @@ function get_id(q, options, callback){
         }
         return callback(null)
       })
-  }
 }
 
 
@@ -477,6 +572,31 @@ function set_params(options){
     return all
     }
 
+
+//  quote a unicode string to turn it into a valid mql /type/key/value
+exports.mql_encode=function(s) {
+        if(!s){return ''}
+        s=s.replace(/  /,' ');
+        s=s.replace(/^\s+|\s+$/, '');
+        s=s.replace(/ /g,'_');
+        var mqlkey_start = 'A-Za-z0-9';
+        var mqlkey_char = 'A-Za-z0-9_-';
+        var MQLKEY_VALID = new RegExp('^[' + mqlkey_start + '][' + mqlkey_char + ']*$');
+        var MQLKEY_CHAR_MUSTQUOTE = new RegExp('([^' + mqlkey_char + '])', 'g');
+        if (MQLKEY_VALID.exec(s)) // fastpath
+        return s;
+        var convert = function(a, b) {
+                var hex = b.charCodeAt(0).toString(16).toUpperCase();
+                if (hex.length == 2) hex = '00' + hex;
+                if (hex.length == 3) hex = '0' + hex;
+                return '$' + hex;
+            };
+        x = s.replace(MQLKEY_CHAR_MUSTQUOTE, convert);
+        if (x.charAt(0) == '-' || x.charAt(0) == '_') {
+            x = convert(x, x.charAt(0)) + x.substr(1);
+        }
+        return x;
+    }
 
 //handle rate-limited asynchronous freebase calls with a ending callback
 function doit_async(arr, fn, options, done){
