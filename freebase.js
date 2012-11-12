@@ -7,6 +7,10 @@ var async = require('async');
 var _ =require('underscore');
 var singularize=require('./singularize').singularize;
 var sentence=require('./sentence').sentenceparser;
+var plural_types=require('./plurals').plurals;
+var related_properties=require('./related_properties').related;
+var properties=require('./properties').properties;
+var metaschema=require('./metaschema').metaschema;
 
 //main methods to freebase apis
 
@@ -46,18 +50,18 @@ exports.topic=function(q, options, callback){
       })
     })
 }
-//exports.topic("marvin gaye",{},console.log)
 
 //regular search api
 exports.search=function(q, options, callback){
       callback=callback||console.log;
-      if(!q){return callback([])}
+      if(!q && !options.filter){return callback([])}
       options=options||{};
        //is it an array of sub-tasks?
       if(_.isArray(q) && q.length>1){
         return doit_async(q, exports.search, options, callback)
       }
-      options.query=q;
+      options.query=q || '';
+      options.filter=encodeURIComponent(options.filter)
       var params=set_params(options)
       var url= host+'search/?'+params;
       http(url, function(result){
@@ -65,7 +69,6 @@ exports.search=function(q, options, callback){
         callback(result.result)
     })
 }
-//exports.search(["toronto","suddenly susan"],{limit:1},function(r){console.log(r)})
 
 //turn a string into a confident topic id
 exports.lookup=function(q, options, callback){
@@ -96,7 +99,7 @@ exports.lookup=function(q, options, callback){
       return callback({})
     }
     //kill if types are crap
-    var kill=["/music/track", "/tv/tv_episode", "/music/recording", "/music/composition"]
+    var kill=["/music/track","/music/release_track", "/tv/tv_episode", "/music/recording", "/music/composition", "/book/book_edition"]
     if(result[0].notable && isin( result[0].notable.id, kill)){
       console.log("ugly type")
       return callback({})
@@ -112,8 +115,8 @@ exports.paginate=function(query, options, callback){
   if(!query){return callback({})}
   options=options||{};
   //is it an array of sub-tasks?
-  if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.paginate, options, callback)
+  if(_.isArray(query) && query.length>1){
+    return doit_async(query, exports.paginate, options, callback)
   }
   if(_.isObject(query)){query=[query]}
   query[0].limit=query[0].limit||170  //force a safe but efficient lookup
@@ -136,6 +139,63 @@ exports.paginate=function(query, options, callback){
 
 
 ///////////////////////////sugar methods
+
+//get the proper pronoun to use for a topic eg. he/she/they/it
+exports.pronoun=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.pronoun, options, callback)
+  }
+   get_id(q, options, function(id){
+     if(!id){return callback("")}
+     var query=[{
+        "id":   id,
+        "name": null,
+        "type": [],
+        "/people/person/gender": [{
+          "id":       null,
+          "optional": true
+        }],
+        "/fictional_universe/fictional_character/gender": [{
+          "id":       null,
+          "optional": true
+        }]
+      }]
+    exports.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0]){return callback('')}
+      result=result.result[0];
+    console.log(result)
+      //he/she
+      var gender=result["/people/person/gender"][0];
+      if(gender && gender.id=="/en/male"){
+        return callback("he")
+      }
+      if(gender && gender.id=="/en/female"){
+        return callback("she")
+      }
+      //fictional gender
+      var gender=result["/fictional_universe/fictional_character/gender"][0];
+      if(gender && gender.id=="/en/male"){
+        return callback("he")
+      }
+      if(gender && gender.id=="/en/female"){
+        return callback("she")
+      }
+      //no gender person
+      if(isin('/people/person',result.type )){
+        return callback("they")
+      }
+      //plural group, they
+      if(_.intersection(plural_types, result.type).length >0){
+        return callback("they")
+      }
+      return callback("it");
+    })
+  })
+}
 
 
 //turns a url into a freebase topic and list its same:as links
@@ -296,9 +356,9 @@ exports.notable=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.notable, options, callback)
   }
- exports.topic(q, {filter:"/common/topic/notable_for"}, function(result){
-  if(!result || !result.property || !result.property['/common/topic/notable_for']){return callback({})}
-  var notable=result.property['/common/topic/notable_for'] || {values:[]};
+ exports.topic(q, {filter:"/common/topic/notable_types"}, function(result){
+  if(!result || !result.property || !result.property['/common/topic/notable_types']){return callback({})}
+  var notable=result.property['/common/topic/notable_types'] || {values:[]};
   return callback(notable.values[0])
  });
 }
@@ -339,11 +399,10 @@ exports.list=function(q, options, callback){
   //get its id
   get_id(q, {type:"/type/type"}, function(id){
     if(!id){return callback([])}
-    query=[{"type":id,"name":null, "id":null}]
-    exports.paginate(query, options, callback)
+    query=[{"type":id,"name":null, "id":null, limit:100}]
+    exports.mqlread(query, options, callback)
    })
 }
-
 
 //get any incoming data to this topic, //ignoring cvt types
 exports.incoming=function(q, options, callback){
@@ -440,9 +499,111 @@ exports.graph=function(q, options, callback){
 }
 
 
+//get similar topics to a topic
+exports.related=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  options.max=options.max||25;
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.related, options, callback)
+  }
+  var all=[];
+  //pluck relevant connected topics from outgoing links
+  exports.outgoing(q, {}, function(result){
+    all=result.filter(function(v){
+      return isin(v.property, related_properties)
+    })
+    //randomize the results
+    all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
+    all=json_unique(all, "id")
+    if(all.length >= options.max){
+      return callback(all)
+    }
+    //else, append topics that share the notable type
+    exports.notable(q, {}, function(result){
+      if(result && result.id){
+        exports.list(result.id, {limit:options.max}, function(r){
+          all=all.concat(r.result)
+          all=json_unique(all, "id")
+          all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
+          return callback(all)
+        })
+      }
+      return callback(all)
+    })
+  })
+}
+
+
+exports.question=function(q, property, options, callback){
+  callback=callback||console.log;
+  if(!q || !property){return callback([])}
+  options=options||{};
+  options.max=options.max||25;
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.question, options, callback)
+  }
+  var candidate_metaschema=metaschema_lookup(property);
+  if(candidate_metaschema){
+    options.filter='(all '+candidate_metaschema+':"'+q+'")'
+    exports.search('', options, function(result){
+      return callback(result)
+    })
+  }else{
+    var candidate_properties=property_lookup(property);
+    if(candidate_properties.length==0){return callback([])}
+     //look for these properties in the topic api
+    exports.topic(q, options, function(result){
+      var all=[];
+      candidate_properties.forEach(function(p){
+        if(result.property[p.id]){
+         all=all.concat(result.property[p.id].values)
+        }
+      })
+      all=json_unique(all, "id")
+      return callback(all)
+    })
+  }
+}
+// exports.question("keanu reeves", "children")
+// exports.question("keanu reeves", "acted by")
+
 
 ///////////////////////////helper functions
 /////////////////////////
+
+
+//lookup property matches offline..
+function property_lookup(property){
+  property=property.toLowerCase();
+  property=property.replace(/  /,' ');
+  property=property.replace(/^\s+|\s+$/, '');
+  var property_singular=singularize(property);
+  var candidate_properties=properties.filter(function(v){
+    return v.id==property || v.name==property || v.name==property_singular
+  })
+  return candidate_properties;
+}
+
+//lookup metaschema predicate matches offline..
+function metaschema_lookup(property){
+  property=property.toLowerCase();
+  property=property.replace(/\W(is|was|are|will be|has been)\W/,' ')
+  property=property.replace(/  /g,' ');
+  //property=property.replace(/_/g,' ');
+  property=property.replace(/^\s+|\s+$/, '');
+  var candidate_properties=metaschema.filter(function(v){
+    v.aliases=v.aliases||[]
+    return v.id==property || v.name.toLowerCase()==property || isin(property, v.aliases) || v.search_filter_operand.replace(/_/g,' ')==property
+  })[0]
+  candidate_properties=candidate_properties||{}
+  return candidate_properties.search_filter_operand;
+}
+//console.log(metaschema_lookup('built with'))
+
 
 //slightly different lookup when its a url
 function url_lookup(q, callback){
@@ -597,6 +758,21 @@ exports.mql_encode=function(s) {
         }
         return x;
     }
+
+
+ //remove objects with a duplicate field from json
+ function json_unique(x, field) {
+   var newArray=new Array();
+    label:for(var i=0; i<x.length;i++ ){
+      for(var j=0; j<newArray.length;j++ ){
+          if(newArray[j][field]==x[i][field])
+          continue label;
+        }
+        newArray[newArray.length] = x[i];
+      }
+    return newArray;
+  }
+
 
 //handle rate-limited asynchronous freebase calls with a ending callback
 function doit_async(arr, fn, options, done){

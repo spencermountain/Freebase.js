@@ -67,6 +67,28 @@ Hockey players named 'doug'
 
 ### Sugar
 
+Which pronoun to use for this topic
+
+    freebase.pronoun("banana", {}, console.log)
+       -> "they"
+    freebase.pronoun(["prince harry", "miranda july"], {}, console.log)
+       -> ["he", "she"]
+    freebase.pronoun("washing machine", {}, console.log)
+       -> "they"
+    freebase.pronoun("cheddar", {type:"/food/food"}, console.log)
+       -> "it"
+
+Similar topics to this topic
+
+    freebase.related("toronto", {}, function(r){
+        r.forEach(function(v){return console.log(v.name)})
+      })
+     ->   Toronto FC
+          Toronto Maple Leafs
+          Toronto Argonauts
+          North York
+          Toronto Marlies
+
 A common-sense search that only matches when confident:
 
     freebase.lookup("tom green", {}, console.log)
