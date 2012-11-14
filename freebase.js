@@ -446,9 +446,9 @@ exports.outgoing=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.outgoing, options, callback)
   }
-  exports.lookup(q, {}, function(topic){
+  exports.lookup(q, options, function(topic){
     if(!topic || !topic.mid){return callback([])}
-      exports.topic(topic.mid, {}, function(result){
+      exports.topic(topic.mid, options, function(result){
         var out=[];
           //get rid of permissions and stuff..
         result.property=kill_boring(result.property)
@@ -481,7 +481,7 @@ exports.outgoing=function(q, options, callback){
             property=o.property.join('');
           }
           var grammar=grammars.filter(function(v){return v.property==property})[0]||{}
-          if(grammar["sentence form"]){
+          if(grammar["sentence form"] && topic.name && o.name){
             o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
           }
           return o
@@ -489,8 +489,8 @@ exports.outgoing=function(q, options, callback){
         callback(out)
       })
     })
-
 }
+
 
 //return all outgoing and incoming links for a topic
 exports.graph=function(q, options, callback){
@@ -528,7 +528,7 @@ exports.related=function(q, options, callback){
   }
   var all=[];
   //pluck relevant connected topics from outgoing links
-  exports.outgoing(q, {}, function(result){
+  exports.outgoing(q, options, function(result){
     all=result.filter(function(v){
       return isin(v.property, related_properties)
     })
@@ -539,7 +539,7 @@ exports.related=function(q, options, callback){
       return callback(all)
     }
     //else, append topics that share the notable type
-    exports.notable(q, {}, function(result){
+    exports.notable(q, options, function(result){
       if(result && result.id){
         exports.list(result.id, {limit:options.max}, function(r){
           all=all.concat(r.result)

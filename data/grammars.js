@@ -42,7 +42,7 @@ exports.grammars=[
     },
     {
       "property" : "/award/award_winner/awards_won/award/award_honor/award_winner",
-      "sentence form" : "obj was an award winner"
+      "sentence form" : "obj won an award for subj"
     },
     {
       "property" : "/celebrities/celebrity/celebrity_friends/celebrities/friendship/friend",
@@ -186,7 +186,7 @@ exports.grammars=[
     },
     {
       "property" : "/book/written_work/subjects",
-      "sentence form" : "subject books are about obj"
+      "sentence form" : "subj books are about obj"
     },
     {
       "property" : "/film/film_subject/films",
@@ -242,7 +242,7 @@ exports.grammars=[
     },
     {
       "property" : "/film/film_location/featured_in_films",
-      "sentence form" : "subj featured in obj"
+      "sentence form" : "subj was featured in obj"
     },
     {
       "property" : "/location/location/contains",
@@ -278,7 +278,7 @@ exports.grammars=[
     },
     {
       "property" : "/organization/organization_scope/organizations_with_this_scope",
-      "sentence form" : "object is an organisation in subj"
+      "sentence form" : "obj is an organisation in subj"
     },
     {
       "property" : "/periodicals/newspaper_circulation_area/newspapers",
@@ -418,7 +418,7 @@ exports.grammars=[
     },
     {
       "property" : "/film/film/edited_by",
-      "sentence form" : "subj was edited by subj"
+      "sentence form" : "subj was edited by obj"
     },
     {
       "property" : "/film/film/executive_produced_by",
@@ -470,7 +470,7 @@ exports.grammars=[
     },
     {
       "property" : "/film/film/rating",
-      "sentence form" : "subj was rated obj"
+      "sentence form" : "subj is rated obj"
     },
     {
       "property" : "/film/film/release_date_s/film/film_regional_release_date/film_regional_debut_venue",
@@ -798,7 +798,7 @@ exports.grammars=[
     },
     {
       "property" : "/government/governmental_jurisdiction/governing_officials/government/government_position_held/office_holder",
-      "sentence form" : "subj is the monarch of subj"
+      "sentence form" : "subj is the monarch of obj"
     },
     {
       "property" : "/government/governmental_jurisdiction/governing_officials/government/government_position_held/office_position_or_title",
@@ -1411,502 +1411,502 @@ exports.grammars=[
 
 
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/book/book_edition/dewey_decimal_number",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/bottled_water/water_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/rail/locomotive_class/uic_classification",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/galactic_interaction/interaction_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/celebrities/romantic_relationship/relationship_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/cvg/game_performance/performance_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/film/film_cut/type_of_film_cut",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/film/performance/special_performance_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/film/personal_film_appearance/type_of_appearance",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/interests/collection/category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/military/casualties/type_of_casualties",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/people/marriage/type_of_union",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/spaceflight/satellite_orbit_asynchronous/orbit_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/spaceflight/satellite_orbit_synchronous/orbit_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/tennis/tennis_match/match_format",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/tv/regular_tv_appearance/special_performance_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/tv/tv_guest_role/special_performance_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/tv/tv_segment_performance/special_performance_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/tv/tv_segment_personal_appearance/appearance_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/tv/video/video_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/amusement_parks/ride/ride_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/amusement_parks/roller_coaster/propulsion",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/amusement_parks/roller_coaster/train_configuration",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/architecture/building/building_function",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/architecture/museum/type_of_museum",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/asteroid/spectral_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/celestial_object/category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/star/spectral_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/extraterrestrial_location/type_of_planetographic_feature",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/galaxy_classification_code/galaxy_shape",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/galaxy/galaxy_classification_hubble",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/near_earth_object/near_earth_object_classification",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/orbital_relationship/orbit_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/astronomy/telescope/type_of_telescope",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/automotive/model/automotive_class",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/automotive/transmission/classification",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/aviation/aircraft_model/aircraft_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/aviation/airliner_accident/accident_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/aviation/airport/airport_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/aviation/aviation_waypoint/waypoint_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/award/competition/type_of_competition",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/bicycles/bicycle_model/bicycle_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/biology/pedigreed_animal/breed",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/biology/fossil_specimen/organism",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/biology/gene_ontology_group/group_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/biology/organism_classification/rank",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/biology/organism/organism_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/biology/organism/sex",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/boats/ship_class/ship_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/boats/ship/ship_class",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/book/book_edition/binding",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/book/poem/verse_form",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/book/short_non_fiction/mode_of_writing",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/business/issue/type_of_issue",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/chemistry/chemical_compound/classifications",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/chemistry/chemical_element/periodic_table_block",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/chemistry/chemical_element/chemical_series",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/computer/computer_peripheral/peripheral_class",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/computer/file_format/genre",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/conferences/conference_series/type_of_conference",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/cricket/cricket_match/match_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/cvg/computer_videogame/gameplay_modes",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/digicams/digital_camera/format",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/distilled_spirits/blended_spirit/style",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/distilled_spirits/distilled_spirit/spirit_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/distilled_spirits/infused_spirit/infusion_style",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/education/educational_institution/school_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/education/fraternity_sorority/fraternity_sorority_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/battery_size/shape_format",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/battery/cell_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/battery/size",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/engine/category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/piston_engine/cooling_method",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/piston_engine/fuel_delivery_method",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/piston_engine/piston_configuration",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/piston_engine/valvetrain_configuration",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/engineering/power_plug_standard/plug_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/event/disaster/type_of_disaster",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/fashion/textile/weave",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/fictional_universe/fictional_setting/setting_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/film/film/film_format",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/beer_style/bjcp_style_category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/beer/beer_style",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/cheese/texture",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/drinking_establishment/drinking_establishment_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/tea/tea_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/food/dish/type_of_dish1",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/wine/wine/wine_style",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/geography/geographical_feature/category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/geography/glacier/glacier_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/geography/lake/lake_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/geography/mountain/listings",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/geography/mountain/mountain_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/geography/waterfall/waterfall_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/interests/collectable_item/collection_category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/internet/top_level_domain/domain_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/language/conlang/conlang_type",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/language/language_writing_system/type_of_writing",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/law/us_patent/international_classification",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   },
   {
-    "sentence form": "subj is a type of",
+    "sentence form": "subj is a type of obj",
     "property": "/law/us_patent/us_classification_category",
     "metaschema": "/base/fbontology/metaschema/predicate_id/hascategory"
   }
