@@ -5,12 +5,14 @@ var host='https://www.googleapis.com/freebase/v1/';
 var request = require('request');
 var async = require('async');
 var _ =require('underscore');
-var singularize=require('./singularize').singularize;
-var sentence=require('./sentence').sentenceparser;
-var plural_types=require('./plurals').plurals;
-var related_properties=require('./related_properties').related;
-var properties=require('./properties').properties;
-var metaschema=require('./metaschema').metaschema;
+var singularize=require('./lib/inflector').singularize;
+var sentence=require('./lib/sentence_tokenizer').sentenceparser;
+
+var grammars=require('./data/grammars').grammars;
+var plural_types=require('./data/plurals').plurals;
+var related_properties=require('./data/related_properties').related;
+var properties=require('./data/properties').properties;
+var metaschema=require('./data/metaschema').metaschema;
 
 //main methods to freebase apis
 
@@ -444,36 +446,51 @@ exports.outgoing=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.outgoing, options, callback)
   }
-  exports.topic(q, {}, function(result){
-    var out=[];
-      //get rid of permissions and stuff..
-    result.property=kill_boring(result.property)
-    Object.keys(result.property).forEach(function(key){
-      var v=result.property[key];
+  exports.lookup(q, {}, function(topic){
+    if(!topic || !topic.mid){return callback([])}
+      exports.topic(topic.mid, {}, function(result){
+        var out=[];
+          //get rid of permissions and stuff..
+        result.property=kill_boring(result.property)
+        Object.keys(result.property).forEach(function(key){
+          var v=result.property[key];
 
-      //add topics
-      if(v.valuetype=="object"){
-        v.values=v.values.map(function(s){s.property=key; return s})
-        out=out.concat(v.values)
-      }
-      //add the topics from cvt values in the same manner
-      if(v.valuetype=="compound"){
-        v.values.forEach(function(c){
-          c.property=kill_boring(c.property);
-          Object.keys(c.property).forEach(function(key2){
-           if(c.property[key2].valuetype=="object"){
-            c.property[key2].values=c.property[key2].values.map(function(s){s.property=[key,key2]; return s})
-            out=out.concat(c.property[key2].values)
-           }
-          })
+          //add topics
+          if(v.valuetype=="object"){
+            v.values=v.values.map(function(s){s.property=key; return s})
+            out=out.concat(v.values)
+          }
+          //add the topics from cvt values in the same manner
+          if(v.valuetype=="compound"){
+            v.values.forEach(function(c){
+              c.property=kill_boring(c.property);
+              Object.keys(c.property).forEach(function(key2){
+               if(c.property[key2].valuetype=="object"){
+                c.property[key2].values=c.property[key2].values.map(function(s){s.property=[key,key2]; return s})
+                out=out.concat(c.property[key2].values)
+               }
+              })
+            })
+          }
         })
-      }
+        out=out.map(function(o){return {name:o.text, id:o.id, property:o.property }})
+        //add sentence-forms
+        out=out.map(function(o){
+          var property=o.property;
+          if(_.isArray(o.property)){
+            property=o.property.join('');
+          }
+          var grammar=grammars.filter(function(v){return v.property==property})[0]||{}
+          if(grammar["sentence form"]){
+            o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
+          }
+          return o
+        })
+        callback(out)
+      })
     })
-    out=out.map(function(o){return {name:o.text, id:o.id, property:o.property }})
-    callback(out)
-  })
-}
 
+}
 
 //return all outgoing and incoming links for a topic
 exports.graph=function(q, options, callback){
