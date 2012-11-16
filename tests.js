@@ -1,4 +1,4 @@
-var freebase=require('../freebase')
+var freebase=require('./freebase')
 
 //failing
 // freebase.lookup("http://toronto.ca", {}, function(r){console.log(r)})

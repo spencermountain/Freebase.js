@@ -114,16 +114,16 @@ exports.lookup=function(q, options, callback){
 //get all of the results to your query
 exports.paginate=function(query, options, callback){
   callback=callback||console.log;
-  if(!query){return callback({})}
+  if(!query){return callback([])}
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(query) && query.length>1){
     return doit_async(query, exports.paginate, options, callback)
   }
-  if(_.isObject(query)){query=[query]}
-  query[0].limit=query[0].limit||170  //force a safe but efficient lookup
+ // if(_.isObject(query)){query=[query]}
+  //query[0].limit=query[0].limit||170  //force a safe but efficient lookup
   var data=[];
-  //recursive mqlread until cursor is false
+  //recursive mqlread until cursor is false, or maximum reached
   iterate('')
   function iterate(cursor){
     options.cursor=cursor
@@ -389,7 +389,7 @@ exports.list=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-  options.max=options.max || 500;
+  options.max=options.max || 5000;
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.list, options, callback)
@@ -401,8 +401,8 @@ exports.list=function(q, options, callback){
   //get its id
   get_id(q, {type:"/type/type"}, function(id){
     if(!id){return callback([])}
-    query=[{"type":id,"name":null, "id":null, limit:100}]
-    exports.mqlread(query, options, callback)
+    query=[{"type":id,"name":null, "mid":null, limit:100}]
+    exports.paginate(query, options, callback)
    })
 }
 
@@ -588,6 +588,17 @@ exports.question=function(q, property, options, callback){
 // exports.question("keanu reeves", "children")
 // exports.question("keanu reeves", "acted by")
 
+//
+exports.gallery=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.gallery, options, callback)
+  }
+
+}
 
 ///////////////////////////helper functions
 /////////////////////////
