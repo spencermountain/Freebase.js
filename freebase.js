@@ -142,23 +142,6 @@ exports.paginate=function(query, options, callback){
     })
   }
 }
-var natural = require('natural'),
-nounInflector = new natural.NounInflector();
-
-var q=[{
-  type:'/medicine/drug_class',
-  mid:null,
-  name:null
-}]
-exports.paginate(q,{},function(r){
-  r.map(function(v){
-    if(!v.name.match(/s$/) && !v.name.match(/[0-9]/)){
-      var plural=nounInflector.pluralize(v.name);
-      var id=v.id||v.mid;
-      console.log(id+"\t"+v.name+"\t"+plural)
-    }
-  })
-})
 
 
 ///////////////////////////sugar methods
