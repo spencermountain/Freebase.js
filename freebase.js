@@ -1,4 +1,3 @@
-var API_KEY='';//this is needed for heavy stuff
 var async_max=2;//the hardest we will ever concurrently hit freebase
 var host='https://www.googleapis.com/freebase/v1/';
 
@@ -15,6 +14,8 @@ var properties=require('./data/properties').properties;
 var metaschema=require('./data/metaschema').metaschema;
 
 //main methods to freebase apis
+
+//AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI
 
 //interface to freebase's mql api
 exports.mqlread=function(query, options, callback){
@@ -45,8 +46,9 @@ exports.topic=function(q, options, callback){
     }
     get_id(q, options, function(id){
       if(!id){return callback({})}
-      var url= host+'topic'+id;
-      if(options.filter){url+='?filter='+encodeURIComponent(options.filter)}
+      var url= host+'topic'+id+'?';
+      if(options.filter){url+='&filter='+encodeURIComponent(options.filter)}
+      if(options.key){url+='&key='+options.key}
       http(url, function(result){
         callback(result)
       })
@@ -82,9 +84,12 @@ exports.lookup=function(q, options, callback){
     return doit_async(q, exports.lookup, options, callback)
   }
   options.type=options.type||"/common/topic";
-  var url= host+'search?limit=2&lang=en&type='+options.type+'&filter='
-  var filter=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'")')
-  http(url+filter, function(result){
+  var url= host+'search?limit=2&lang=en&type='+options.type+'&filter=';
+  url+=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'")');
+  if(options.key){
+    url+='&key='+options.key;
+  }
+  http(url, function(result){
     if(!result || !result.result || !result.result[0] ){return callback([])}
     //filter-out shit results
     result=result.result||[]
@@ -137,7 +142,23 @@ exports.paginate=function(query, options, callback){
     })
   }
 }
+var natural = require('natural'),
+nounInflector = new natural.NounInflector();
 
+var q=[{
+  type:'/medicine/drug_class',
+  mid:null,
+  name:null
+}]
+exports.paginate(q,{},function(r){
+  r.map(function(v){
+    if(!v.name.match(/s$/) && !v.name.match(/[0-9]/)){
+      var plural=nounInflector.pluralize(v.name);
+      var id=v.id||v.mid;
+      console.log(id+"\t"+v.name+"\t"+plural)
+    }
+  })
+})
 
 
 ///////////////////////////sugar methods
@@ -210,7 +231,10 @@ exports.same_as_links=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.same_as_links, options, callback)
   }
-  var url= host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q)
+  var url= host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q);
+  if(options.key){
+    url+='&key='+options.key;
+  }
   http(url, function(result){
     if(!result || !result.result || !result.result[0]){
       return callback({})
@@ -342,6 +366,9 @@ exports.description=function(q, options, callback){
  get_id(q, options, function(id){
   if(!id){return callback("")}
   var url= host+'text/'+id;
+  if(options.key){
+    url+='?key='+options.key;
+  }
   http(url,function(result){
     if(!result.result){return callback('')}
     callback(result.result)
@@ -634,8 +661,11 @@ function metaschema_lookup(property){
 
 
 //slightly different lookup when its a url
-function url_lookup(q, callback){
-  var url= host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q)
+function url_lookup(q, options, callback){
+  var url= host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q);
+  if(options.key){
+    url+='&key='+options.key;
+  }
   http(url, function(result){
     callback(result)
   })
@@ -651,7 +681,7 @@ function get_id(q, options, callback){
   if(!q || (q.match(/\/.{1,12}\/.{3}/) !=null)){return callback(q)}
   //is a url
   if(q.match(/^(https?:\/\/|www\.)/)){
-      return url_lookup(q, function(result){
+      return url_lookup(q, options, function(result){
         if(result && result.result && result.result[0]){
           return callback(result.result[0].mid)
         }

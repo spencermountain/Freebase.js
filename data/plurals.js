@@ -73,5 +73,6 @@ exports.plurals=[
 '/sports/professional_sports_team',
 '/base/events/event_presenting_organisation',
 '/film/film_genre',
-'/music/compositional_form'
+'/music/compositional_form',
+'/medicine/drug_class'
 ]
