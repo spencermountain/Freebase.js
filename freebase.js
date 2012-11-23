@@ -68,6 +68,7 @@ exports.search=function(q, options, callback){
       options.filter=encodeURIComponent(options.filter)
       var params=set_params(options)
       var url= host+'search/?'+params;
+      console.log(url)
       http(url, function(result){
         if(!result || !result.result || !result.result[0] ){return callback([])}
         callback(result.result)
@@ -607,9 +608,91 @@ exports.gallery=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.gallery, options, callback)
   }
-
 }
 
+//do a transitive-query, like all rivers in canada, using freebase metaschema
+exports.transitive=function(q, property, options, callback){
+  callback=callback||console.log;
+  if(!q || !property){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, property, exports.transitive, options, callback)
+  }
+ var candidate_metaschema=metaschema_lookup(property);
+  if(candidate_metaschema){
+    options.filter='(all '+candidate_metaschema+':"'+q+'")'
+    exports.search('', options, function(result){
+      return callback(result)
+    })
+  }else{
+    return callback([])
+  }
+}
+
+//list of topics nearby a location
+exports.nearby=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.nearby, options, callback)
+  }
+  get_id(q, {}, function(id){
+    if(!id){return callback({})}
+    var query=[{
+      "id":id,
+      "name":null,
+      "/location/location/geolocation": [{
+          "latitude": null,
+          "longitude": null,
+          "type": "/location/geocode",
+          "optional": true
+        }]
+      }]
+      exports.mqlread(query, options, function(result){
+        if(result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]){
+          var lng= result.result[0]['/location/location/geolocation'][0].longitude;
+          var lat= result.result[0]['/location/location/geolocation'][0].latitude;
+          if(!lat || !lng){return callback([])}
+         //use the *old* freebase api for this, as there's no alternative in the new one
+          var location='{"coordinates":['+lng+','+lat+'],"type":"Point"}'
+          options.within=options.within||5;
+          options.type=options.type||"/location/location";
+          var url='http://api.freebase.com/api/service/geosearch?location='+encodeURIComponent(location)+'&order_by=distance&type='+options.type+'&within='+options.within+'&limit=200&format=json'
+          http(url, function(r){
+            return callback(r.result.features)
+          })
+        }
+      })
+  })
+}
+//exports.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+
+
+//list of topics inside a location
+exports.inside=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.inside, options, callback)
+  }
+  options.mql_output=[{
+    "name": null,
+    "id": null,
+    "/location/location/geolocation": [{
+      "latitude": null,
+      "longitude": null,
+      "type": "/location/geocode",
+      "optional": true
+    }]
+  }]
+  exports.transitive(q, "part_of", options, console.log)
+}
+//exports.inside('barrie')
 ///////////////////////////helper functions
 /////////////////////////
 
@@ -631,7 +714,7 @@ function metaschema_lookup(property){
   property=property.toLowerCase();
   property=property.replace(/\W(is|was|are|will be|has been)\W/,' ')
   property=property.replace(/  /g,' ');
-  //property=property.replace(/_/g,' ');
+  property=property.replace(/_/g,' ');
   property=property.replace(/^\s+|\s+$/, '');
   var candidate_properties=metaschema.filter(function(v){
     v.aliases=v.aliases||[]
@@ -758,7 +841,12 @@ function http(url, callback){
 //turn options object into get paramaters
 function set_params(options){
   if(!options){return ''}
-  return Object.keys(options).map(function(v){return v+'='+options[v]}).join('&')
+  return Object.keys(options).map(function(v){
+    if(_.isArray(options[v]) || _.isObject(options[v])){
+     options[v]=encodeURIComponent(JSON.stringify(options[v]));
+    }
+    return v+'='+options[v]
+  }).join('&')
 }
 
 //turn an array into smaller groups of arrays

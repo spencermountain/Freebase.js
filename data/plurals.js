@@ -74,5 +74,6 @@ exports.plurals=[
 '/base/events/event_presenting_organisation',
 '/film/film_genre',
 '/music/compositional_form',
-'/medicine/drug_class'
+'/medicine/drug_class',
+'/geography/lake_type'
 ]

@@ -10,6 +10,10 @@ var freebase=require('./freebase')
 
 //passing
 
+//exports.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+//exports.inside('barrie')
+//exports.transitive(q, "part_of", options, console.log)
+
 //freebase.lookup(["toronto","suddenly susan"],{},function(r){console.log(r.length==2)})
 //freebase.translate(["toronto","suddenly susan"],{},function(r){console.log(r[0]=='Toronto')})
 //freebase.sentence(["toronto","suddenly susan"],{},function(r){console.log(r.length==2)})
