@@ -1,5 +1,6 @@
 var async_max=2;//the hardest we will ever concurrently hit freebase
 var host='https://www.googleapis.com/freebase/v1/';
+var image_host="https://usercontent.googleapis.com/freebase/v1/image";
 
 var request = require('request');
 var async = require('async');
@@ -7,9 +8,10 @@ var _ =require('underscore');
 var singularize=require('./lib/inflector').singularize;
 var sentence=require('./lib/sentence_tokenizer').sentenceparser;
 
-var grammars=require('./data/grammars').grammars;
+var sentence_grammars=require('./data/sentence_grammars').sentence_grammars;
 var plural_types=require('./data/plurals').plurals;
 var related_properties=require('./data/related_properties').related;
+var definate_articles=require('./data/definate_articles').definate_articles;
 var properties=require('./data/properties').properties;
 var metaschema=require('./data/metaschema').metaschema;
 
@@ -68,7 +70,6 @@ exports.search=function(q, options, callback){
       options.filter=encodeURIComponent(options.filter)
       var params=set_params(options)
       var url= host+'search/?'+params;
-      console.log(url)
       http(url, function(result){
         if(!result || !result.result || !result.result[0] ){return callback([])}
         callback(result.result)
@@ -127,7 +128,6 @@ exports.paginate=function(query, options, callback){
     return doit_async(query, exports.paginate, options, callback)
   }
  // if(_.isObject(query)){query=[query]}
-  //query[0].limit=query[0].limit||170  //force a safe but efficient lookup
   var data=[];
   //recursive mqlread until cursor is false, or maximum reached
   iterate('')
@@ -148,7 +148,7 @@ exports.paginate=function(query, options, callback){
 ///////////////////////////sugar methods
 
 //get the proper pronoun to use for a topic eg. he/she/they/it
-exports.pronoun=function(q, options, callback){
+exports.grammar=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -174,36 +174,47 @@ exports.pronoun=function(q, options, callback){
     exports.mqlread(query, options, function(result){
       if(!result || !result.result || !result.result[0]){return callback('')}
       result=result.result[0];
-    console.log(result)
-      //he/she
-      var gender=result["/people/person/gender"][0];
-      if(gender && gender.id=="/en/male"){
-        return callback("he")
+      var grammar={
+        plural:false,
+        gender:null,
+        article:"a",
+        pronoun:"it",
+        copula:"is"
       }
-      if(gender && gender.id=="/en/female"){
-        return callback("she")
+      //people grammar
+      if(isin('/people/person', result.type) || isin('/fictional_universe/fictional_character', result.type) ){
+        var gender = result["/people/person/gender"][0] || result["/fictional_universe/fictional_character/gender"][0];
+        if(gender) {
+          if(gender.id == "/en/male") { //male
+            grammar.gender = "male";
+            grammar.pronoun = "he";
+          } else if(gender.id == "/en/female") { //female
+            grammar.gender = "female";
+            grammar.pronoun = "she";
+          }
+        } else { //no gender person
+          grammar.gender = "unknown";
+          grammar.pronoun = "they";
+        }
+      }else{ //not a person
+        //plural topics
+        if(_.intersection(plural_types, result.type).length >0){
+          grammar.plural=true;
+          grammar.pronoun="they";
+          grammar.copula="are"
+        }
+        //categories that need a 'the' instead of 'a'
+        if(_.intersection(definate_articles, result.type).length >0){
+          grammar.article="the";
+        }
       }
-      //fictional gender
-      var gender=result["/fictional_universe/fictional_character/gender"][0];
-      if(gender && gender.id=="/en/male"){
-        return callback("he")
-      }
-      if(gender && gender.id=="/en/female"){
-        return callback("she")
-      }
-      //no gender person
-      if(isin('/people/person',result.type )){
-        return callback("they")
-      }
-      //plural group, they
-      if(_.intersection(plural_types, result.type).length >0){
-        return callback("they")
-      }
-      return callback("it");
+      return callback(grammar);
     })
   })
 }
-
+//exports.grammar("toronto maple leafs")
+//exports.grammar("wayne gretzky")
+//exports.grammar("ron weasley")
 
 //turns a url into a freebase topic and list its same:as links
 exports.same_as_links=function(q, options, callback){
@@ -279,7 +290,7 @@ exports.translate=function(q, options, callback){
 
 
 //get a url for wikipedia based on this topic
-exports.wikipedia_link=function(q, options, callback){
+exports.wikipedia_page=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -299,7 +310,7 @@ exports.wikipedia_link=function(q, options, callback){
       }]
     exports.mqlread(query, options, function(result){
       if(!result || !result.result || !result.result[0]){return callback('')}
-      return callback('http://en.wikipedia.org/wiki/'+result.result[0].key.value)
+      return callback(result.result[0].key.value)//'http://en.wikipedia.org/wiki/'
     })
   })
 }
@@ -413,9 +424,15 @@ exports.list=function(q, options, callback){
   get_id(q, {type:"/type/type"}, function(id){
     if(!id){return callback([])}
     query=[{"type":id,"name":null, "mid":null, limit:100}]
+    if(options.extend){
+      for(var i in options.extend){
+        query[0][i]=options.extend[i]
+      }
+    }
     exports.paginate(query, options, callback)
    })
 }
+
 
 //get any incoming data to this topic, //ignoring cvt types
 exports.incoming=function(q, options, callback){
@@ -491,7 +508,7 @@ exports.outgoing=function(q, options, callback){
           if(_.isArray(o.property)){
             property=o.property.join('');
           }
-          var grammar=grammars.filter(function(v){return v.property==property})[0]||{}
+          var grammar=sentence_grammars.filter(function(v){return v.property==property})[0]||{}
           if(grammar["sentence form"] && topic.name && o.name){
             o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
           }
@@ -599,7 +616,7 @@ exports.question=function(q, property, options, callback){
 // exports.question("keanu reeves", "children")
 // exports.question("keanu reeves", "acted by")
 
-//
+//list of topics with images
 exports.gallery=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback([])}
@@ -608,7 +625,69 @@ exports.gallery=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.gallery, options, callback)
   }
+  options.extend = {
+  "/common/topic/image": [{
+    "id": null,
+    "optional": "required"
+    }]
+   }
+  exports.list(q, options, function(result){
+    result=result.map(function(obj){
+      obj.href=image_host+_.last(obj["/common/topic/image"]).id;
+      obj.thumbnail=image_host+_.last(obj["/common/topic/image"]).id
+      +'?mode=fillcropmid&maxwidth=150&maxheight=150&errorid=/m/0djw4wd';
+      obj.widget=widget({id:_.last(obj["/common/topic/image"]).id, name: obj.name})
+      return obj;
+    })
+    return callback(result)
+  })
 }
+// exports.gallery('hurricanes')
+
+
+//query wordnet via freebase
+exports.wordnet=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.wordnet, options, callback)
+  }
+  var query=[{
+    "id":            null,
+    "type":          "/base/wordnet/synset",
+    "gloss":         null,
+    "syntactic_category": null,
+    "sort": [
+      "syntactic_category",
+      "word.sense_number",
+      "a:word.word_number"
+    ],
+    "word": {
+      "sense_number": null,
+      "derivationally_related_forms": [{
+        "sense":{"name":null, "id":null},
+          "optional": true
+        }],
+        "word": {
+          "word": q
+        }
+      },
+      "a:word": [{
+        "word_number": null,
+        "word": {
+          "word": null
+        }
+      }]
+    }]
+    exports.paginate(query, options, function(r){
+      return callback(r)
+    })
+}
+// exports.wordnet(["bat","wood"])
+
+
 
 //do a transitive-query, like all rivers in canada, using freebase metaschema
 exports.transitive=function(q, property, options, callback){
@@ -619,19 +698,25 @@ exports.transitive=function(q, property, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, property, exports.transitive, options, callback)
   }
- var candidate_metaschema=metaschema_lookup(property);
-  if(candidate_metaschema){
-    options.filter='(all '+candidate_metaschema+':"'+q+'")'
-    exports.search('', options, function(result){
-      return callback(result)
+  get_id(q, options, function(id){
+    if(!id){return callback({})}
+     var candidate_metaschema=metaschema_lookup(property);
+      if(candidate_metaschema){
+        options.filter='(all '+candidate_metaschema+':"'+id+'")'
+        console.log(options)
+        exports.search('', options, function(result){
+          return callback(result)
+        })
+      }else{
+        return callback([])
+      }
+
     })
-  }else{
-    return callback([])
-  }
 }
 
-//list of topics nearby a location
-exports.nearby=function(q, options, callback){
+
+//lat/long for a topic
+exports.geolocation=function(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -639,7 +724,8 @@ exports.nearby=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.nearby, options, callback)
   }
-  get_id(q, {}, function(id){
+  options.type=options.type||"/location/location";
+  get_id(q, options, function(id){
     if(!id){return callback({})}
     var query=[{
       "id":id,
@@ -651,22 +737,39 @@ exports.nearby=function(q, options, callback){
           "optional": true
         }]
       }]
-      exports.mqlread(query, options, function(result){
-        if(result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]){
-          var lng= result.result[0]['/location/location/geolocation'][0].longitude;
-          var lat= result.result[0]['/location/location/geolocation'][0].latitude;
-          if(!lat || !lng){return callback([])}
+     exports.mqlread(query, options, function(result){
+          if(result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]){
+            var geo=result.result[0]['/location/location/geolocation'][0];
+            delete geo.type
+            delete geo.optional
+            return callback(geo)
+          }
+          return callback({})
+        })
+   })
+}
+//exports.geolocation("toronto")
+
+//list of topics nearby a location
+exports.nearby=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.nearby, options, callback)
+  }
+  exports.geolocation(q, options, function(geo){
+    if(!geo || !geo.latitude || !geo.longitude){return callback({})}
          //use the *old* freebase api for this, as there's no alternative in the new one
-          var location='{"coordinates":['+lng+','+lat+'],"type":"Point"}'
+          var location='{"coordinates":['+geo.longitude+','+geo.latitude+'],"type":"Point"}'
           options.within=options.within||5;
           options.type=options.type||"/location/location";
           var url='http://api.freebase.com/api/service/geosearch?location='+encodeURIComponent(location)+'&order_by=distance&type='+options.type+'&within='+options.within+'&limit=200&format=json'
           http(url, function(r){
             return callback(r.result.features)
           })
-        }
-      })
-  })
+    })
 }
 //exports.nearby("cn tower", {type:"/food/restaurant"}, console.log)
 
@@ -680,9 +783,11 @@ exports.inside=function(q, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.inside, options, callback)
   }
-  options.mql_output=[{
+  //handy to have their geocoordinates too
+  options.mql_output=options.mql_output || [{
     "name": null,
     "id": null,
+    "type":"/location/location",
     "/location/location/geolocation": [{
       "latitude": null,
       "longitude": null,
@@ -690,9 +795,21 @@ exports.inside=function(q, options, callback){
       "optional": true
     }]
   }]
-  exports.transitive(q, "part_of", options, console.log)
+  exports.transitive(q, "part_of", options, function(r){
+    return callback(r)
+  })
 }
-//exports.inside('barrie')
+
+
+
+
+
+
+
+
+
+
+
 ///////////////////////////helper functions
 /////////////////////////
 
@@ -754,14 +871,14 @@ function get_id(q, options, callback){
         return callback(null)
       })
     }
-      //is a normal search
-      exports.lookup(q, options, function(result){
-        if(result && result.mid){
-          var id=result.id || result.mid;
-          return callback(id)
-        }
-        return callback(null)
-      })
+  //is a normal search
+  exports.lookup(q, options, function(result){
+    if(result && result.mid){
+      var id=result.mid || result.id;
+      return callback(id)
+    }
+    return callback(null)
+  })
 }
 
 
@@ -922,3 +1039,17 @@ function doit_async(arr, fn, options, done){
   });
 }
 
+function widget(obj){
+  if(!obj || !obj.id){return ''}
+  var html='<a href="#" class="imagewrap" data-id="'+obj.id+'" style="position:relative; width:200px; height:200px;">'
+    +'<img style="border-radius:5px;" src="'+image_host
+    +obj.id
+    +'?maxwidth=200&maxheight=200&errorid=/m/0djw4wd"/>'
+      if(obj.name){
+      html+='<div class="caption" style="position:absolute; opacity:0.5; background:black; bottom:10px; color:white; left:10px; border-radius: 5px; min-width:100px; padding:5px;">'
+         +obj.name
+      +'</div>'
+    }
+  html+='</a>'
+  return html;
+}

@@ -9,10 +9,18 @@ var freebase=require('./freebase')
 //freebase.graph("paul ryan", {}, console.log)
 
 //passing
-
+//console.log(metaschema_lookup('built with'))
 //exports.nearby("cn tower", {type:"/food/restaurant"}, console.log)
 //exports.inside('barrie')
-//exports.transitive(q, "part_of", options, console.log)
+//freebase.transitive("barrie", "part_of", {}, console.log)
+//exports.grammar("toronto maple leafs")
+//exports.grammar("wayne gretzky")
+//exports.grammar("ron weasley")
+//exports.wordnet("wood")
+ exports.wordnet(["bat","wood"])
+//exports.geolocation("toronto")
+
+//freebase.gallery("hurricanes",{},function(r){console.log(r.length>20)})
 
 //freebase.lookup(["toronto","suddenly susan"],{},function(r){console.log(r.length==2)})
 //freebase.translate(["toronto","suddenly susan"],{},function(r){console.log(r[0]=='Toronto')})
@@ -55,7 +63,7 @@ var freebase=require('./freebase')
 
 // freebase.search("franklin",{},function(r){console.log(r.length>2)})
 // freebase.notable("canada",{},function(r){console.log(r.id=='/location/country')})
-// freebase.wikipedia_link("tony hawk", {}, function(r){r=="http://en.wikipedia.org/wiki/Tony_Hawk"})
+// freebase.wikipedia_page("tony hawk", {}, function(r){r=="http://en.wikipedia.org/wiki/Tony_Hawk"})
 
 //console.log(freebase.mql_encode("Aarno Yrjö-Koskinen")=="Aarno_Yrj$00F6-Koskinen")
 

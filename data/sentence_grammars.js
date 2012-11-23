@@ -1,5 +1,5 @@
 //simple sentences from freebase triples
-exports.grammars=[
+exports.sentence_grammars=[
     {
       "property" : "/book/book_subject/works",
       "sentence form" : "obj is about subj"
