@@ -1,6 +1,7 @@
 var async_max=2;//the hardest we will ever concurrently hit freebase
 var host='https://www.googleapis.com/freebase/v1/';
 var image_host="https://usercontent.googleapis.com/freebase/v1/image";
+var geosearch='http://api.freebase.com/api/service/geosearch'
 
 var request = require('request');
 var async = require('async');
@@ -10,6 +11,7 @@ var sentence=require('./lib/sentence_tokenizer').sentenceparser;
 
 var sentence_grammars=require('./data/sentence_grammars').sentence_grammars;
 var plural_types=require('./data/plurals').plurals;
+var category_like=require('./data/is_a').is_a;
 var related_properties=require('./data/related_properties').related;
 var definate_articles=require('./data/definate_articles').definate_articles;
 var properties=require('./data/properties').properties;
@@ -35,45 +37,6 @@ exports.mqlread=function(query, options, callback){
   http(url, function(result){
     callback(result)
   })
-}
-
-//topic api
-exports.topic=function(q, options, callback){
-    callback=callback||console.log;
-    if(!q){return callback({})}
-    options=options||{};
-     //is it an array of sub-tasks?
-    if(_.isArray(q) && q.length>1){
-      return doit_async(q, exports.topic, options, callback)
-    }
-    get_id(q, options, function(id){
-      if(!id){return callback({})}
-      var url= host+'topic'+id+'?';
-      if(options.filter){url+='&filter='+encodeURIComponent(options.filter)}
-      if(options.key){url+='&key='+options.key}
-      http(url, function(result){
-        callback(result)
-      })
-    })
-}
-
-//regular search api
-exports.search=function(q, options, callback){
-      callback=callback||console.log;
-      if(!q && !options.filter){return callback([])}
-      options=options||{};
-       //is it an array of sub-tasks?
-      if(_.isArray(q) && q.length>1){
-        return doit_async(q, exports.search, options, callback)
-      }
-      options.query=q || '';
-      options.filter=encodeURIComponent(options.filter)
-      var params=set_params(options)
-      var url= host+'search/?'+params;
-      http(url, function(result){
-        if(!result || !result.result || !result.result[0] ){return callback([])}
-        callback(result.result)
-    })
 }
 
 //turn a string into a confident topic id
@@ -117,6 +80,55 @@ exports.lookup=function(q, options, callback){
   })
 }
 
+
+
+//topic api
+exports.topic=function(q, options, callback){
+    callback=callback||console.log;
+    if(!q){return callback({})}
+    options=options||{};
+     //is it an array of sub-tasks?
+    if(_.isArray(q) && q.length>1){
+      return doit_async(q, exports.topic, options, callback)
+    }
+    get_id(q, options, function(id){
+      if(!id){return callback({})}
+      var url= host+'topic'+id+'?'+set_params(options)
+      // if(options.filter){url+='&filter='+encodeURIComponent(options.filter)}
+      // if(options.key){url+='&key='+options.key}
+      console.log(url)
+      http(url, function(result){
+        callback(result)
+      })
+    })
+}
+//exports.topic("toronto", {limit:1})
+
+
+
+//regular search api
+exports.search=function(q, options, callback){
+      callback=callback||console.log;
+      if(!q && !options.filter){return callback([])}
+      options=options||{};
+       //is it an array of sub-tasks?
+      if(_.isArray(q) && q.length>1){
+        return doit_async(q, exports.search, options, callback)
+      }
+      options.query=q || '';
+      if(options.filter){
+        options.filter=encodeURIComponent(options.filter)
+      }
+      options.query=encodeURIComponent(options.query);
+      var params=set_params(options)
+      var url= host+'search/?'+params;
+      console.log(url)
+      http(url, function(result){
+        if(!result || !result.result || !result.result[0] ){return callback([])}
+        callback(result.result)
+    })
+}
+//exports.search("bill murray")
 
 //get all of the results to your query
 exports.paginate=function(query, options, callback){
@@ -433,6 +445,133 @@ exports.list=function(q, options, callback){
    })
 }
 
+function list_category_like(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  q=singularize(q);
+  exports.topic(q, options, function(r){
+    if(!r || !r.property || !_.isObject(r.property) ){return callback([])}
+    var all=Object.keys(r.property).filter(function(v){
+      return isin(v, category_like)
+    }).map(function(p){
+      //add the property
+      r.property[p].values=r.property[p].values.map(function(v){
+        v.property=p;
+        return v;
+      })
+      return r.property[p].values
+    })
+    all=_.flatten(all);
+    console.log(all)
+  })
+}
+//list_category_like("ethiopians")
+
+
+//from a geo-coordinate, get the town, province, country, and timezone for it
+exports.place_data = function(geo, options, callback) {
+  callback = callback || console.log;
+  if(!geo) {
+    return callback({})
+  }
+  options = options || {};
+  //is it an array of sub-tasks?
+  if(_.isArray(geo) && geo.length > 1) {
+    return doit_async(q, exports.place_data, options, callback)
+  }
+  var location = {"coordinates":[ geo.lng , geo.lat ],"type":"Point"}
+  var out = [{
+    "mid": null,
+    "name": null,
+    "type": []
+  }]
+  var url = geosearch + '?location=' + encodeURIComponent(JSON.stringify(location)) + '&order_by=distance&limit=1&type=/location/citytown&within=15&format=json&mql_output=' + encodeURIComponent(JSON.stringify(out))
+  http(url, function(r) {
+    var all = {
+      city: null,
+      country: null,
+      province: null,
+      timezone: null
+    }
+    all.city = r.result.features[0].properties;
+    var query = [{
+      "name": null,
+      "id": r.result.features[0].properties.mid,
+      "/location/location/containedby": [{
+        "id": null,
+        "name": null,
+        "type": [],
+        "optional": true,
+        "/location/location/time_zones": [{
+          "/time/time_zone/offset_from_uct": null,
+          "id": null,
+          "name": null,
+          "optional": true,
+          "limit":1
+        }],
+        "/location/location/containedby": [{
+          "id": null,
+          "name": null,
+          "type": [],
+          "optional": true,
+          "/location/location/time_zones": [{
+            "/time/time_zone/offset_from_uct": null,
+            "id": null,
+            "name": null,
+            "optional": true,
+            "limit":1
+          }]
+        }]
+      }]
+    }]
+    exports.mqlread(query, {}, function(r) {
+      //hunt for the most appropriate topics in 2 layers
+      for(var i in r.result[0]['/location/location/containedby']){
+        var v=r.result[0]['/location/location/containedby'][i]
+        if(v.type.filter(function(t) {return t == "/location/country"})[0]) {
+          all.country = {
+            id: v.id,
+            name: v.name
+          }
+        } else if(v.type.filter(function(t) {return t == "/location/administrative_division"})[0]) {
+          all.province = {
+            id: v.id,
+            name: v.name
+          }
+        }
+        if(v["/location/location/time_zones"][0]) {
+          all.timezone = v["/location/location/time_zones"][0];
+        }
+        if(all.country) {
+          return callback(all)
+        }
+        //second layer looks good too
+        v['/location/location/containedby'].map(function(o) {
+          if(v.type.filter(function(t) {return t == "/location/country"})[0]) {
+            all.country = {
+              id: v.id,
+              name: v.name
+            }
+          } else if(v.type.filter(function(t) { return t == "/location/administrative_division"})[0]) {
+            all.province = {
+              id: v.id,
+              name: v.name
+            }
+          }
+          if(v["/location/location/time_zones"][0]) {
+            all.timezone = v["/location/location/time_zones"][0];
+          }
+        })
+      }
+      return callback(all)
+    })
+
+  })
+}
+//exports.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+//exports.place_data({lat:43.64806,lng:-79.40417})
+
 
 //get any incoming data to this topic, //ignoring cvt types
 exports.incoming=function(q, options, callback){
@@ -688,7 +827,6 @@ exports.wordnet=function(q, options, callback){
 // exports.wordnet(["bat","wood"])
 
 
-
 //do a transitive-query, like all rivers in canada, using freebase metaschema
 exports.transitive=function(q, property, options, callback){
   callback=callback||console.log;
@@ -703,7 +841,6 @@ exports.transitive=function(q, property, options, callback){
      var candidate_metaschema=metaschema_lookup(property);
       if(candidate_metaschema){
         options.filter='(all '+candidate_metaschema+':"'+id+'")'
-        console.log(options)
         exports.search('', options, function(result){
           return callback(result)
         })
@@ -765,7 +902,7 @@ exports.nearby=function(q, options, callback){
           var location='{"coordinates":['+geo.longitude+','+geo.latitude+'],"type":"Point"}'
           options.within=options.within||5;
           options.type=options.type||"/location/location";
-          var url='http://api.freebase.com/api/service/geosearch?location='+encodeURIComponent(location)+'&order_by=distance&type='+options.type+'&within='+options.within+'&limit=200&format=json'
+          var url=geosearch+'?location='+encodeURIComponent(location)+'&order_by=distance&type='+options.type+'&within='+options.within+'&limit=200&format=json'
           http(url, function(r){
             return callback(r.result.features)
           })
@@ -805,6 +942,33 @@ exports.inside=function(q, options, callback){
 
 
 
+
+//flexible handling of queries like ids, terms, or urls
+function get_id(q, options, callback){
+  //if its a freebase-type object
+  if(_.isObject(q)){
+    q=q.id||q.mid||q.name;
+   }
+  //is an id
+  if(!q || (q.match(/\/.{1,12}\/.{3}/) !=null)){return callback(q)}
+  //is a url
+  if(q.match(/^(https?:\/\/|www\.)/)){
+      return url_lookup(q, options, function(result){
+        if(result && result.result && result.result[0]){
+          return callback(result.result[0].mid)
+        }
+        return callback(null)
+      })
+    }
+  //is a normal search
+  exports.lookup(q, options, function(result){
+    if(result && result.mid){
+      var id=result.mid || result.id;
+      return callback(id)
+    }
+    return callback(null)
+  })
+}
 
 
 
@@ -851,33 +1015,6 @@ function url_lookup(q, options, callback){
   }
   http(url, function(result){
     callback(result)
-  })
-}
-
-//flexible handling of queries like ids, terms, or urls
-function get_id(q, options, callback){
-  //if its a freebase-type object
-  if(_.isObject(q)){
-    q=q.id||q.mid||q.name;
-   }
-  //is an id
-  if(!q || (q.match(/\/.{1,12}\/.{3}/) !=null)){return callback(q)}
-  //is a url
-  if(q.match(/^(https?:\/\/|www\.)/)){
-      return url_lookup(q, options, function(result){
-        if(result && result.result && result.result[0]){
-          return callback(result.result[0].mid)
-        }
-        return callback(null)
-      })
-    }
-  //is a normal search
-  exports.lookup(q, options, function(result){
-    if(result && result.mid){
-      var id=result.mid || result.id;
-      return callback(id)
-    }
-    return callback(null)
   })
 }
 

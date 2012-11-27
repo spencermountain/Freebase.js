@@ -75,5 +75,8 @@ exports.plurals=[
 '/film/film_genre',
 '/music/compositional_form',
 '/medicine/drug_class',
-'/geography/lake_type'
+'/geography/lake_type',
+'/user/akatenev/weapons/weapon',
+'/user/spencermountain/default_domain/stock_character',
+'/base/folklore/mythical_creature'
 ]

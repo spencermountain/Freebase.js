@@ -1,7 +1,7 @@
 var freebase=require('./freebase')
 
 //failing
-// freebase.lookup("http://toronto.ca", {}, function(r){console.log(r)})
+ //freebase.lookup("http://toronto.ca", {}, function(r){console.log(r)})
 // freebase.same_as_links("http://www.geonames.org/6167865/", function(r){console.log(r.links.length>3)})
 // freebase.image("toronto",{},function(r){console.log(r)})
 // freebase.lookup("australia",{type:"/film/film"}, function(r){console.log(r=="/m/026qnh6")})
@@ -10,15 +10,15 @@ var freebase=require('./freebase')
 
 //passing
 //console.log(metaschema_lookup('built with'))
-//exports.nearby("cn tower", {type:"/food/restaurant"}, console.log)
-//exports.inside('barrie')
+//freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+//freebase.inside('barrie')
 //freebase.transitive("barrie", "part_of", {}, console.log)
-//exports.grammar("toronto maple leafs")
-//exports.grammar("wayne gretzky")
-//exports.grammar("ron weasley")
-//exports.wordnet("wood")
- exports.wordnet(["bat","wood"])
-//exports.geolocation("toronto")
+//freebase.grammar("toronto maple leafs")
+//freebase.grammar("wayne gretzky")
+//freebase.grammar("ron weasley")
+//freebase.wordnet("wood")
+// freebase.wordnet(["bat","wood"])
+//freebase.geolocation("toronto")
 
 //freebase.gallery("hurricanes",{},function(r){console.log(r.length>20)})
 
@@ -67,4 +67,4 @@ var freebase=require('./freebase')
 
 //console.log(freebase.mql_encode("Aarno Yrjö-Koskinen")=="Aarno_Yrj$00F6-Koskinen")
 
-freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
+//freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
