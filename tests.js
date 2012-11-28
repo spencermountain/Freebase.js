@@ -1,24 +1,57 @@
 var freebase=require('./freebase')
+var _=require('underscore');
 
 //failing
- //freebase.lookup("http://toronto.ca", {}, function(r){console.log(r)})
-// freebase.same_as_links("http://www.geonames.org/6167865/", function(r){console.log(r.links.length>3)})
-// freebase.image("toronto",{},function(r){console.log(r)})
-// freebase.lookup("australia",{type:"/film/film"}, function(r){console.log(r=="/m/026qnh6")})
-// freebase.image("australia",{type:"/location/location"}, function(r){console.log(r=="//http://www.freebase.com/api/trans/image_thumb/wikipedia/images/commons_id/1346518")})
 //freebase.graph("paul ryan", {}, console.log)
+// freebase.wordnet(["bat","wood"])
+//freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+ //freebase.lookup("http://toronto.ca", {}, function(r){console.log(r)})
 
 //passing
-//console.log(metaschema_lookup('built with'))
-//freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
-//freebase.inside('barrie')
-//freebase.transitive("barrie", "part_of", {}, console.log)
-//freebase.grammar("toronto maple leafs")
-//freebase.grammar("wayne gretzky")
-//freebase.grammar("ron weasley")
-//freebase.wordnet("wood")
-// freebase.wordnet(["bat","wood"])
-//freebase.geolocation("toronto")
+//exports.wikipedia_external_links("/en/toronto", {}, console.log)
+//exports.wikipedia_links("Toronto", {}, console.log)
+
+
+ // freebase.lookup("australia",{type:"/film/film"}, function(r){console.log(r.mid=="/m/026qnh6")})
+ // freebase.same_as_links("http://www.geonames.org/6167865/", {}, function(r){console.log(r.links.length>3)})
+ // freebase.image("australia",{type:"/location/location"}, function(r){console.log(r.match(/maxheight/)!=null)})
+// freebase.inside('barrie',{}, function(r){
+// 	console.log(r.length>3)
+// })
+// freebase.transitive("barrie", "part_of", {}, function(r){
+// 	console.log(r.length>3)
+// })
+// freebase.grammar("toronto maple leafs",{},function(r){
+// 	console.log(_.isEqual(r, { plural: true,
+// 					  gender: null,
+// 					  article: 'a',
+// 					  pronoun: 'they',
+// 					  copula: 'are' }))
+// })
+
+// freebase.grammar("ron weasley",{},function(r){
+// 	console.log(_.isEqual(r, { plural: false,
+// 								  gender: 'male',
+// 								  article: 'a',
+// 								  pronoun: 'he',
+// 								  copula: 'is' }))
+// })
+
+// freebase.wordnet("wood",{}, function(r){
+// 	console.log(r.length==4)
+// })
+// freebase.geolocation("toronto", {}, function(r){
+// 	console.log(r.latitude!=null)
+// })
+// freebase.place_data({lat:43.64806,lng:-79.40417}, {}, function(r){
+// 	console.log(r.city.name=="Toronto")
+// })
+//  freebase.place_data({lat:52.05375719395869,lng:5.9511566162109375}, {}, function(r){
+// 	console.log(r.country.name=="Netherlands")
+// })
+// freebase.place_data({lat:47.9991410647952,lng:14.172706604003906}, {}, function(r){
+// 	console.log(r.country.name=="Austria")
+// })
 
 //freebase.gallery("hurricanes",{},function(r){console.log(r.length>20)})
 
@@ -63,8 +96,7 @@ var freebase=require('./freebase')
 
 // freebase.search("franklin",{},function(r){console.log(r.length>2)})
 // freebase.notable("canada",{},function(r){console.log(r.id=='/location/country')})
-// freebase.wikipedia_page("tony hawk", {}, function(r){r=="http://en.wikipedia.org/wiki/Tony_Hawk"})
+//freebase.wikipedia_page("tony hawk", {}, function(r){console.log(r=="Tony_Hawk")})
 
 //console.log(freebase.mql_encode("Aarno Yrjö-Koskinen")=="Aarno_Yrj$00F6-Koskinen")
-
-//freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
+// freebase.sentence("meatloaf", {type:"/food/food"}, function(r){console.log(r!=null)})

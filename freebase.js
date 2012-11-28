@@ -2,12 +2,14 @@ var async_max=2;//the hardest we will ever concurrently hit freebase
 var host='https://www.googleapis.com/freebase/v1/';
 var image_host="https://usercontent.googleapis.com/freebase/v1/image";
 var geosearch='http://api.freebase.com/api/service/geosearch'
+var wikipedia_host='http://en.wikipedia.org/w/api.php'
 
 var request = require('request');
 var async = require('async');
 var _ =require('underscore');
 var singularize=require('./lib/inflector').singularize;
 var sentence=require('./lib/sentence_tokenizer').sentenceparser;
+exports.wikipedia=require('./lib/wikipedia');
 
 var sentence_grammars=require('./data/sentence_grammars').sentence_grammars;
 var plural_types=require('./data/plurals').plurals;
@@ -122,7 +124,6 @@ exports.search=function(q, options, callback){
       options.query=encodeURIComponent(options.query);
       var params=set_params(options)
       var url= host+'search/?'+params;
-      console.log(url)
       http(url, function(result){
         if(!result || !result.result || !result.result[0] ){return callback([])}
         callback(result.result)
@@ -301,32 +302,6 @@ exports.translate=function(q, options, callback){
 
 
 
-//get a url for wikipedia based on this topic
-exports.wikipedia_page=function(q, options, callback){
-  callback=callback||console.log;
-  if(!q){return callback({})}
-  options=options||{};
-  //is it an array of sub-tasks?
-  if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.wikipedia_link, options, callback)
-  }
-   get_id(q, options, function(id){
-     if(!id){return callback("")}
-     var query=[{
-        "id":   id,
-        "name": null,
-        "key": {
-          "namespace": "/wikipedia/en_title",
-          "value":     null
-        }
-      }]
-    exports.mqlread(query, options, function(result){
-      if(!result || !result.result || !result.result[0]){return callback('')}
-      return callback(result.result[0].key.value)//'http://en.wikipedia.org/wiki/'
-    })
-  })
-}
-
 //get a url for image href of on this topic
 exports.image=function(q, options, callback){
   callback=callback||console.log;
@@ -435,7 +410,7 @@ exports.list=function(q, options, callback){
   //get its id
   get_id(q, {type:"/type/type"}, function(id){
     if(!id){return callback([])}
-    query=[{"type":id,"name":null, "mid":null, limit:100}]
+    var query=[{"type":id,"name":null, "mid":null, limit:100}]
     if(options.extend){
       for(var i in options.extend){
         query[0][i]=options.extend[i]
@@ -444,6 +419,7 @@ exports.list=function(q, options, callback){
     exports.paginate(query, options, callback)
    })
 }
+//exports.list("hurricanes")
 
 function list_category_like(q, options, callback){
   callback=callback||console.log;
@@ -507,8 +483,7 @@ exports.place_data = function(geo, options, callback) {
           "/time/time_zone/offset_from_uct": null,
           "id": null,
           "name": null,
-          "optional": true,
-          "limit":1
+          "optional": true
         }],
         "/location/location/containedby": [{
           "id": null,
@@ -519,8 +494,7 @@ exports.place_data = function(geo, options, callback) {
             "/time/time_zone/offset_from_uct": null,
             "id": null,
             "name": null,
-            "optional": true,
-            "limit":1
+            "optional": true
           }]
         }]
       }]
@@ -540,27 +514,28 @@ exports.place_data = function(geo, options, callback) {
             name: v.name
           }
         }
-        if(v["/location/location/time_zones"][0]) {
+        if(v["/location/location/time_zones"][0] && v["/location/location/time_zones"].length==1) {
           all.timezone = v["/location/location/time_zones"][0];
         }
         if(all.country) {
           return callback(all)
         }
+       // console.log(v['/location/location/containedby'])
         //second layer looks good too
         v['/location/location/containedby'].map(function(o) {
-          if(v.type.filter(function(t) {return t == "/location/country"})[0]) {
+          if(o.type.filter(function(t) {return t == "/location/country"})[0]) {
             all.country = {
-              id: v.id,
-              name: v.name
+              id: o.id,
+              name: o.name
             }
-          } else if(v.type.filter(function(t) { return t == "/location/administrative_division"})[0]) {
+          } else if(!all.province && o.type.filter(function(t) { return t == "/location/administrative_division"})[0]) {
             all.province = {
-              id: v.id,
-              name: v.name
+              id: o.id,
+              name: o.name
             }
           }
-          if(v["/location/location/time_zones"][0]) {
-            all.timezone = v["/location/location/time_zones"][0];
+          if(!all.timezone && o["/location/location/time_zones"][0] && o["/location/location/time_zones"].length==1) {
+            all.timezone = o["/location/location/time_zones"][0];
           }
         })
       }
@@ -569,8 +544,7 @@ exports.place_data = function(geo, options, callback) {
 
   })
 }
-//exports.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
-//exports.place_data({lat:43.64806,lng:-79.40417})
+// exports.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 
 //get any incoming data to this topic, //ignoring cvt types
@@ -701,6 +675,7 @@ exports.related=function(q, options, callback){
     })
     //randomize the results
     all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
+    console.log(all)
     all=json_unique(all, "id")
     if(all.length >= options.max){
       return callback(all)
@@ -719,7 +694,6 @@ exports.related=function(q, options, callback){
     })
   })
 }
-
 
 exports.question=function(q, property, options, callback){
   callback=callback||console.log;
@@ -775,7 +749,7 @@ exports.gallery=function(q, options, callback){
       obj.href=image_host+_.last(obj["/common/topic/image"]).id;
       obj.thumbnail=image_host+_.last(obj["/common/topic/image"]).id
       +'?mode=fillcropmid&maxwidth=150&maxheight=150&errorid=/m/0djw4wd';
-      obj.widget=widget({id:_.last(obj["/common/topic/image"]).id, name: obj.name})
+      obj=exports.add_widget(obj)
       return obj;
     })
     return callback(result)
@@ -939,6 +913,185 @@ exports.inside=function(q, options, callback){
 
 
 
+//get a url for dbpedia based on this topic
+exports.dbpedia_page=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.dbpedia_page, options, callback)
+  }
+   get_id(q, options, function(id){
+     if(!id){return callback("")}
+     var query=[{
+        "id":   id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    exports.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0] || !result.result[0].key.value){return callback('')}
+      return callback('http://dbpedia.org/resource/'+encodeURIComponent(result.result[0].key.value))
+    })
+  })
+}
+//exports.dbpedia_page("Köppen climate classification ")
+//http://dbpedia.org/resource/K%2400F6ppen_climate_classification
+
+
+//get all data from dbpedia for this topic
+exports.dbpedia_data=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.dbpedia_data, options, callback)
+  }
+   get_id(q, options, function(id){
+     if(!id){return callback("")}
+     var query=[{
+        "id":   id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    exports.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0] || !result.result[0].key.value){return callback('')}
+      var url='http://dbpedia.org/data/'+encodeURIComponent(exports.mqlkey_unencode(result.result[0].key.value))+'.json'
+      http(url, callback)
+    })
+  })
+}
+// exports.dbpedia_data("Köppen climate classification", function(result){
+//   var all=Object.keys(r).map(function(i){
+//     console.log(dbpedia_to_freebase(i))
+//   })
+// })
+//exports.dbpedia_data("Toronto", console.log)
+
+function dbpedia_to_freebase(url){
+  if(!url){return ''}
+  url=url.replace(/https?:\/\/dbpedia\.org\/(page|data|resource)\//i,'')
+  if(!url){return ''}
+  return "/wikipedia/en/"+exports.mql_encode(url.replace(/ /g,'_'));
+}
+
+//get a url for wikipedia based on this topic
+exports.wikipedia_page=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.wikipedia_page, options, callback)
+  }
+   get_id(q, options, function(id){
+     if(!id){return callback("")}
+     var query=[{
+        "id":   id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    exports.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0]){return callback('')}
+      return callback(exports.mqlkey_unencode(result.result[0].key.value))//'http://en.wikipedia.org/wiki/'
+    })
+  })
+}
+
+exports.wikipedia_categories=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.wikipedia_categories, options, callback)
+  }
+  //if its not a wikipedia title, reuse get-topic logic for searches/ids
+  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
+    return exports.wikipedia_page(q, options, function(r){
+      exports.wikipedia_external_links(r, options, callback)
+    })
+  }
+  var url=wikipedia_host+'?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles='+encodeURIComponent(q);
+  http(url, function(r){
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
+    var cats=r.query.pages[Object.keys(r.query.pages)[0]].categories ||[]
+    return callback(cats)
+    console.log()
+  })
+}
+//exports.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
+
+//outgoing links from this wikipedia page, converted to freebase ids
+exports.wikipedia_links=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.wikipedia_links, options, callback)
+  }
+  //if its not a wikipedia title, reuse get-topic logic for searches/ids
+  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
+    return exports.wikipedia_page(q, options, function(r){
+      exports.wikipedia_links(r, options, callback)
+    })
+  }
+  var url=wikipedia_host+'?action=query&prop=links&format=json&plnamespace=0&pllimit=500&titles='+encodeURIComponent(q);
+  http(url, function(r){
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
+    var links=r.query.pages[Object.keys(r.query.pages)[0]].links ||[]
+    //filter-out non-freebase topics
+    links=links.filter(function(v){return v.title.match(/^List of /i)==null})
+    links=links.map(function(o){
+      o.id="/wikipedia/en/"+exports.mql_encode(o.title.replace(/ /g,'_'));
+      o.name=o.title
+      delete o.title
+      return o
+    })
+    return callback(links)
+  })
+}
+//exports.wikipedia_links("Toronto", {}, console.log)
+
+//outgoing links from this wikipedia page, converted to freebase ids
+exports.wikipedia_external_links=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return doit_async(q, exports.wikipedia_external_links, options, callback)
+  }
+  //if its not a wikipedia title, reuse get-topic logic for searches/ids
+  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
+    return exports.wikipedia_page(q, options, function(r){
+      exports.wikipedia_external_links(r, options, callback)
+    })
+  }
+  var url=wikipedia_host+'?action=query&prop=extlinks&format=json&plnamespace=0&pllimit=500&titles='+encodeURIComponent(q);
+  http(url, function(r){
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
+    var links=r.query.pages[Object.keys(r.query.pages)[0]].extlinks ||[]
+    links=links.filter(function(v){return v["*"].match(/^http/)})
+    links=links.map(function(v){
+      var box=parseurl(v["*"]);
+      return {url:v["*"], domain:box.host}
+    })
+    return callback(links)
+  })
+}
+//exports.wikipedia_external_links("/en/toronto", {}, console.log)
 
 
 
@@ -962,7 +1115,10 @@ function get_id(q, options, callback){
     }
   //is a normal search
   exports.lookup(q, options, function(result){
-    if(result && result.mid){
+    if(options.type="/type/type"){
+      return callback(result.id)
+    }
+    else if(result && result.mid){
       var id=result.mid || result.id;
       return callback(id)
     }
@@ -1080,7 +1236,8 @@ function parseurl (str) {
 function http(url, callback){
    if(!url){return callback({error:"bad url"})}
    request({
-        uri: url
+        uri: url,
+        headers:{"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:10.0) Gecko/20100101 Firefox/10.0"}
     }, function(error, response, body) {
         try{
           body=JSON.parse(body)
@@ -1142,13 +1299,22 @@ exports.mql_encode=function(s) {
         return x;
     }
 
+//turn freebase's silly $00 encoding into unicode
+exports.mqlkey_unencode = function (x) {
+    x = x.replace(/\$([0-9A-Fa-f]{4})/g, function (a,b) {
+        return String.fromCharCode(parseInt(b, 16));
+    });
+    return x;
+}
+//console.log(exports.mqlkey_unencode("K$00F6ppen_climate_classification"))
+
 
  //remove objects with a duplicate field from json
  function json_unique(x, field) {
    var newArray=new Array();
     label:for(var i=0; i<x.length;i++ ){
       for(var j=0; j<newArray.length;j++ ){
-          if(newArray[j][field]==x[i][field])
+          if(newArray[j] && x[i] && newArray[j][field]==x[i][field])
           continue label;
         }
         newArray[newArray.length] = x[i];
@@ -1176,11 +1342,13 @@ function doit_async(arr, fn, options, done){
   });
 }
 
-function widget(obj){
-  if(!obj || !obj.id){return ''}
-  var html='<a href="#" class="imagewrap" data-id="'+obj.id+'" style="position:relative; width:200px; height:200px;">'
+
+exports.add_widget=function(obj){
+  var id=obj.mid|| obj.id;
+  if(!obj || !id){return obj}
+  var html='<a href="#" class="imagewrap" data-id="'+id+'" style="position:relative; width:200px; height:200px;">'
     +'<img style="border-radius:5px;" src="'+image_host
-    +obj.id
+    +id
     +'?maxwidth=200&maxheight=200&errorid=/m/0djw4wd"/>'
       if(obj.name){
       html+='<div class="caption" style="position:absolute; opacity:0.5; background:black; bottom:10px; color:white; left:10px; border-radius: 5px; min-width:100px; padding:5px;">'
@@ -1188,5 +1356,33 @@ function widget(obj){
       +'</div>'
     }
   html+='</a>'
-  return html;
+  obj.widget=html;
+  return obj;
 }
+
+//soften up the api so it will take these methods alternatively..
+var aliases={
+  mqlread:["query", "mql_read"],
+  topic:["topic_api","all_data","data","everything","get_data"],
+  paginate:["continue","all"],
+  same_as_links:["sameas","sameAs","sameaslinks","links","sameas_links","external_links","weblinks"],
+  translate:["translate_to","multilingual","i8n", "get_translation"],
+  image:["pic","photo","picture","get_image","image_url","image_src"],
+  description:["get_description","blurb","get_blurb","blurb_api","text","get_text"],
+  notable:["notable_type","notabletype","notable_for","notable_as","main_type","type"],
+  place_data:["city","country","province","place_info","location_info","location","whereis"],
+  incoming:["incoming_links", "incoming_nodes","inlinks"],
+  outgoing:["outgoing_links", "outgoing_nodes","outlinks"],
+  related:["related_topics","similar","related_to","get_related"],
+  gallery:["images","get_images"],
+  geolocation:["geo","geocoordinates","geo_location","lat_lng","location"],
+  nearby:["near", "close_to"],
+  inside:["inside_of","within","contained_by","contains"],
+  mql_encode:["encode","escape"]
+}
+for(var i in aliases){
+  aliases[i].map(function(v){
+    exports[v]=exports[i]
+  })
+}
+//console.log(Object.keys(exports))
