@@ -48050,6 +48050,48 @@ exports.properties=[
       "name" : "denomination",
       "kind" : "alias"
     },
+
+    {
+      "id" : "/people/person/date_of_birth",
+      "cvt" : false,
+      "name" : "birthday",
+      "kind" : "alias"
+    },
+
+
+    {
+      "id" : "/people/person/date_of_birth",
+      "cvt" : false,
+      "name" : "birth date",
+      "kind" : "alias"
+    },
+    {
+      "id" : "/people/person/date_of_birth",
+      "cvt" : false,
+      "name" : "birth day",
+      "kind" : "alias"
+    },
+
+
+    {
+      "id" : "/people/person/date_of_birth",
+      "cvt" : false,
+      "name" : "date of birth",
+      "kind" : "alias"
+    },
+
+
+
+    {
+      "id" : "/people/person/date_of_birth",
+      "cvt" : false,
+      "name" : "birthdate",
+      "kind" : "alias"
+    },
+
+
+
+
     {
       "id" : "/people/person/gender",
       "cvt" : false,
@@ -77795,12 +77837,12 @@ exports.properties=[
       "name" : "exoplanet",
       "kind" : "expected"
     },
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
     {
       "id" : "/base/wordnet/word/sense",
       "cvt" : false,
@@ -148380,8 +148422,8 @@ exports.properties=[
       "cvt" : true,
       "name" : "bothy maintenance tenure",
       "kind" : "expected"
-    }  
+    }
   ]
-    
-    
-  
+
+
+

@@ -9,7 +9,6 @@ var async = require('async');
 var _ =require('underscore');
 var singularize=require('./lib/inflector').singularize;
 var sentence=require('./lib/sentence_tokenizer').sentenceparser;
-exports.wikipedia=require('./lib/wikipedia');
 
 var sentence_grammars=require('./data/sentence_grammars').sentence_grammars;
 var plural_types=require('./data/plurals').plurals;
@@ -95,17 +94,16 @@ exports.topic=function(q, options, callback){
     }
     get_id(q, options, function(id){
       if(!id){return callback({})}
+      options.filter=options.filter||'all'
       var url= host+'topic'+id+'?'+set_params(options)
       // if(options.filter){url+='&filter='+encodeURIComponent(options.filter)}
       // if(options.key){url+='&key='+options.key}
-      console.log(url)
       http(url, function(result){
         callback(result)
       })
     })
 }
-//exports.topic("toronto", {limit:1})
-
+//exports.topic("olive garden", {limit:1})
 
 
 //regular search api
@@ -655,6 +653,7 @@ exports.graph=function(q, options, callback){
       })
   })
 }
+//https://www.googleapis.com/freebase/v1/topic/en/toronto?filter=allproperties
 
 
 //get similar topics to a topic
@@ -704,6 +703,13 @@ exports.question=function(q, property, options, callback){
   if(_.isArray(q) && q.length>1){
     return doit_async(q, exports.question, options, callback)
   }
+  //straight-up id search
+  if(property.match(/^\/.{1,12}\/.{3}/)){
+    return exports.topic(q, {}, function(r){
+      if(!r || !r.property[property]){return callback([])}
+      callback(r.property[property].values)
+    })
+  }
   var candidate_metaschema=metaschema_lookup(property);
   if(candidate_metaschema){
     options.filter='(all '+candidate_metaschema+':"'+q+'")'
@@ -727,7 +733,8 @@ exports.question=function(q, property, options, callback){
   }
 }
 // exports.question("keanu reeves", "children")
-// exports.question("keanu reeves", "acted by")
+ //exports.question("thom yorke", "produced")
+ //exports.question("pulp fiction", "/film/film/initial_release_date")
 
 //list of topics with images
 exports.gallery=function(q, options, callback){
