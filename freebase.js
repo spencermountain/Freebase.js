@@ -1,4 +1,3 @@
-var async_max=2;//the hardest we will ever concurrently hit freebase
 var host='https://www.googleapis.com/freebase/v1/';
 var image_host="https://usercontent.googleapis.com/freebase/v1/image";
 var geosearch='http://api.freebase.com/api/service/geosearch'
@@ -7,17 +6,9 @@ var wikipedia_host='http://en.wikipedia.org/w/api.php'
 var request = require('request');
 var async = require('async');
 var _ =require('underscore');
-var singularize=require('./lib/inflector').singularize;
-var sentence=require('./lib/sentence_tokenizer').sentenceparser;
 
-var sentence_grammars=require('./data/sentence_grammars').sentence_grammars;
-var plural_types=require('./data/plurals').plurals;
-var category_like=require('./data/is_a').is_a;
-var related_properties=require('./data/related_properties').related;
-var definate_articles=require('./data/definate_articles').definate_articles;
-var properties=require('./data/properties').properties;
-var metaschema=require('./data/metaschema').metaschema;
-
+var fns=require('./lib/helpers')//.helpers;
+var data=require('./lib/data.js').data;
 //main methods to freebase apis
 
 //AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI
@@ -31,11 +22,11 @@ exports.mqlread=function(query, options, callback){
   options.cursor=options.cursor||"";
     //is it an array of sub-queries?
   if(_.isArray(query) && query.length>1){
-    return doit_async(query, exports.mqlread, options, callback)
+    return fns.doit_async(query, exports.mqlread, options, callback)
   }
-  var params=set_params(options)
+  var params=fns.set_params(options)
   var url= host+'mqlread?query='+encodeURIComponent(JSON.stringify(query))+'&'+params;
-  http(url, function(result){
+  fns.http(url, function(result){
     callback(result)
   })
 }
@@ -47,7 +38,7 @@ exports.lookup=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.lookup, options, callback)
+    return fns.doit_async(q, exports.lookup, options, callback)
   }
   options.type=options.type||"/common/topic";
   var url= host+'search?limit=2&lang=en&type='+options.type+'&filter=';
@@ -55,7 +46,7 @@ exports.lookup=function(q, options, callback){
   if(options.key){
     url+='&key='+options.key;
   }
-  http(url, function(result){
+  fns.http(url, function(result){
     if(!result || !result.result || !result.result[0] ){return callback([])}
     //filter-out shit results
     result=result.result||[]
@@ -63,18 +54,17 @@ exports.lookup=function(q, options, callback){
     result[1]=result[1]||{}
     //kill low-relevance
     if( !result[0].score && result[0].score<30){
-      console.log("is ambiguous at " + ((result[0].score||0) * 0.7))
+      //console.log("is ambiguous at " + ((result[0].score||0) * 0.7))
       return callback({})
     }
     //kill if 2nd result is also notable
     if(! ((result[0].score||0) * 0.7) > (result[1].score||0) ){
-      console.log("is ambiguous at " + ((result[0].score||0) * 0.7))
+      //console.log("is ambiguous at " + ((result[0].score||0) * 0.7))
       return callback({})
     }
     //kill if types are crap
     var kill=["/music/track","/music/release_track", "/tv/tv_episode", "/music/recording", "/music/composition", "/book/book_edition"]
-    if(result[0].notable && isin( result[0].notable.id, kill)){
-      console.log("ugly type")
+    if(result[0].notable && fns.isin( result[0].notable.id, kill)){
       return callback({})
     }
     return callback(result[0])
@@ -82,7 +72,7 @@ exports.lookup=function(q, options, callback){
 }
 
 
-
+//https://www.googleapis.com/freebase/v1/topic/en/toronto?filter=allproperties
 //topic api
 exports.topic=function(q, options, callback){
     callback=callback||console.log;
@@ -90,20 +80,20 @@ exports.topic=function(q, options, callback){
     options=options||{};
      //is it an array of sub-tasks?
     if(_.isArray(q) && q.length>1){
-      return doit_async(q, exports.topic, options, callback)
+      return fns.doit_async(q, exports.topic, options, callback)
     }
     get_id(q, options, function(id){
       if(!id){return callback({})}
       options.filter=options.filter||'all'
-      var url= host+'topic'+id+'?'+set_params(options)
+      var url= host+'topic'+id+'?'+fns.set_params(options)
       // if(options.filter){url+='&filter='+encodeURIComponent(options.filter)}
       // if(options.key){url+='&key='+options.key}
-      http(url, function(result){
+      fns.http(url, function(result){
         callback(result)
       })
     })
 }
-//exports.topic("olive garden", {limit:1})
+ //exports.topic("toronto", {filter:"allproperties"})
 
 
 //regular search api
@@ -113,16 +103,16 @@ exports.search=function(q, options, callback){
       options=options||{};
        //is it an array of sub-tasks?
       if(_.isArray(q) && q.length>1){
-        return doit_async(q, exports.search, options, callback)
+        return fns.doit_async(q, exports.search, options, callback)
       }
       options.query=q || '';
       if(options.filter){
         options.filter=encodeURIComponent(options.filter)
       }
       options.query=encodeURIComponent(options.query);
-      var params=set_params(options)
+      var params=fns.set_params(options)
       var url= host+'search/?'+params;
-      http(url, function(result){
+      fns.http(url, function(result){
         if(!result || !result.result || !result.result[0] ){return callback([])}
         callback(result.result)
     })
@@ -134,29 +124,29 @@ exports.paginate=function(query, options, callback){
   callback=callback||console.log;
   if(!query){return callback([])}
   options=options||{};
+  options.max=options.max||500;
   //is it an array of sub-tasks?
   if(_.isArray(query) && query.length>1){
-    return doit_async(query, exports.paginate, options, callback)
+    return fns.doit_async(query, exports.paginate, options, callback)
   }
  // if(_.isObject(query)){query=[query]}
-  var data=[];
+  var all=[];
   //recursive mqlread until cursor is false, or maximum reached
   iterate('')
   function iterate(cursor){
     options.cursor=cursor
     exports.mqlread(query, options, function(result){
-      data=data.concat(result.result)
-      if(result.cursor && (!options.max || data.length<options.max) ){
+      if(!result||!result.result){return callback(all);}
+      all=all.concat(result.result);
+      if(result.cursor && (!options.max || all.length<options.max) ){
         iterate(result.cursor)
       }else{
-        callback(data)
+        callback(all)
       }
     })
   }
 }
 
-
-///////////////////////////sugar methods
 
 //get the proper pronoun to use for a topic eg. he/she/they/it
 exports.grammar=function(q, options, callback){
@@ -165,7 +155,7 @@ exports.grammar=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.pronoun, options, callback)
+    return fns.doit_async(q, exports.pronoun, options, callback)
   }
    get_id(q, options, function(id){
      if(!id){return callback("")}
@@ -193,7 +183,7 @@ exports.grammar=function(q, options, callback){
         copula:"is"
       }
       //people grammar
-      if(isin('/people/person', result.type) || isin('/fictional_universe/fictional_character', result.type) ){
+      if(fns.isin('/people/person', result.type) || fns.isin('/fictional_universe/fictional_character', result.type) ){
         var gender = result["/people/person/gender"][0] || result["/fictional_universe/fictional_character/gender"][0];
         if(gender) {
           if(gender.id == "/en/male") { //male
@@ -209,13 +199,13 @@ exports.grammar=function(q, options, callback){
         }
       }else{ //not a person
         //plural topics
-        if(_.intersection(plural_types, result.type).length >0){
+        if(_.intersection(data.plural_types, result.type).length >0){
           grammar.plural=true;
           grammar.pronoun="they";
           grammar.copula="are"
         }
         //categories that need a 'the' instead of 'a'
-        if(_.intersection(definate_articles, result.type).length >0){
+        if(_.intersection(data.definate_articles, result.type).length >0){
           grammar.article="the";
         }
       }
@@ -235,29 +225,29 @@ exports.same_as_links=function(q, options, callback){
   options.filter=options.filter||"/common/topic"
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.same_as_links, options, callback)
+    return fns.doit_async(q, exports.same_as_links, options, callback)
   }
   var url= host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q);
   if(options.key){
     url+='&key='+options.key;
   }
-  http(url, function(result){
+  fns.http(url, function(result){
     if(!result || !result.result || !result.result[0]){
       return callback({})
     }
       //get its formatted links from the topic api
-    exports.topic(result.result[0].mid , options, function(data){
+    exports.topic(result.result[0].mid , options, function(all){
       var links=[];
       //same-as ones
-      if(data.property['/common/topic/topic_equivalent_webpage']){
-       links=data.property['/common/topic/topic_equivalent_webpage'].values.map(function(v){
-          return {href:v.value, title:parseurl(v.value).authority}
+      if(all.property['/common/topic/topic_equivalent_webpage']){
+       links=all.property['/common/topic/topic_equivalent_webpage'].values.map(function(v){
+          return {href:v.value, title: fns.parseurl(v.value).authority}
         })
       }
       //webpage ones
-      if(data.property['/common/topic/topical_webpage']){
-       links=links.concat(data.property['/common/topic/topical_webpage'].values.map(function(v){
-          var host=parseurl(v.value).authority || ''
+      if(all.property['/common/topic/topical_webpage']){
+       links=links.concat(all.property['/common/topic/topical_webpage'].values.map(function(v){
+          var host= fns.parseurl(v.value).authority || ''
           return {href:v.value, title:host.replace(/^www\./,'')}
         }))
       }
@@ -274,7 +264,7 @@ exports.translate=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.translate, options, callback)
+    return fns.doit_async(q, exports.translate, options, callback)
   }
   if(!options.lang){options.lang="/lang/fr"}//defaulting to french is better than an error..?
   if(!options.lang.match(/\/lang\//)){
@@ -310,7 +300,7 @@ exports.image=function(q, options, callback){
   options.errorid=options.errorid||"/m/0djw4wd"
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.image, options, callback)
+    return fns.doit_async(q, exports.image, options, callback)
   }
    get_id(q, options, function(id){
      if(!id){return callback("")}
@@ -326,7 +316,7 @@ exports.image=function(q, options, callback){
         return callback('')
       }
       var url='http://www.freebase.com/api/trans/image_thumb'+result.result[0]["/common/topic/image"][0].id;
-      var params=set_params(options);
+      var params=fns.set_params(options);
       url+='?'+params;
       return callback(url)
     })
@@ -341,7 +331,7 @@ exports.description=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.description, options, callback)
+    return fns.doit_async(q, exports.description, options, callback)
   }
  get_id(q, options, function(id){
   if(!id){return callback("")}
@@ -349,7 +339,7 @@ exports.description=function(q, options, callback){
   if(options.key){
     url+='?key='+options.key;
   }
-  http(url,function(result){
+  fns.http(url,function(result){
     if(!result.result){return callback('')}
     callback(result.result)
   })
@@ -363,7 +353,7 @@ exports.notable=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.notable, options, callback)
+    return fns.doit_async(q, exports.notable, options, callback)
   }
  exports.topic(q, {filter:"/common/topic/notable_types"}, function(result){
   if(!result || !result.property || !result.property['/common/topic/notable_types']){return callback({})}
@@ -379,11 +369,11 @@ exports.sentence=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.sentence, options, callback)
+    return fns.doit_async(q, exports.sentence, options, callback)
   }
   exports.description(q, options, function(desc){
     if(!desc){return callback("")}
-    desc=sentence(desc)||[]
+    desc=fns.sentenceparser(desc)||[]
     desc=desc[0]||''
     desc=desc.replace(/\(.*?\)/g,'')//remove birthdates
     desc=desc.replace(/  /g,' ')
@@ -399,11 +389,11 @@ exports.list=function(q, options, callback){
   options.max=options.max || 5000;
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.list, options, callback)
+    return fns.doit_async(q, exports.list, options, callback)
   }
   //singularize it if it's a search query
   if(!q.match(/\/.{1,12}\/.{3}/)){
-    q=singularize(q);
+    q=fns.singularize(q);
   }
   //get its id
   get_id(q, {type:"/type/type"}, function(id){
@@ -418,16 +408,18 @@ exports.list=function(q, options, callback){
    })
 }
 //exports.list("hurricanes")
+//exports.list("/book/author")
+
 
 function list_category_like(q, options, callback){
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
-  q=singularize(q);
+  q=fns.singularize(q);
   exports.topic(q, options, function(r){
     if(!r || !r.property || !_.isObject(r.property) ){return callback([])}
     var all=Object.keys(r.property).filter(function(v){
-      return isin(v, category_like)
+      return fns.isin(v, data.category_like)
     }).map(function(p){
       //add the property
       r.property[p].values=r.property[p].values.map(function(v){
@@ -452,7 +444,7 @@ exports.place_data = function(geo, options, callback) {
   options = options || {};
   //is it an array of sub-tasks?
   if(_.isArray(geo) && geo.length > 1) {
-    return doit_async(q, exports.place_data, options, callback)
+    return fns.doit_async(q, exports.place_data, options, callback)
   }
   var location = {"coordinates":[ geo.lng , geo.lat ],"type":"Point"}
   var out = [{
@@ -461,7 +453,7 @@ exports.place_data = function(geo, options, callback) {
     "type": []
   }]
   var url = geosearch + '?location=' + encodeURIComponent(JSON.stringify(location)) + '&order_by=distance&limit=1&type=/location/citytown&within=15&format=json&mql_output=' + encodeURIComponent(JSON.stringify(out))
-  http(url, function(r) {
+  fns.http(url, function(r) {
     var all = {
       city: null,
       country: null,
@@ -552,7 +544,7 @@ exports.incoming=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.incoming, options, callback)
+    return fns.doit_async(q, exports.incoming, options, callback)
   }
   get_id(q, options, function(id){
     if(!id){return callback([])}
@@ -583,7 +575,7 @@ exports.outgoing=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.outgoing, options, callback)
+    return fns.doit_async(q, exports.outgoing, options, callback)
   }
   exports.lookup(q, options, function(topic){
     if(!topic || !topic.mid){return callback([])}
@@ -593,7 +585,6 @@ exports.outgoing=function(q, options, callback){
         result.property=kill_boring(result.property)
         Object.keys(result.property).forEach(function(key){
           var v=result.property[key];
-
           //add topics
           if(v.valuetype=="object"){
             v.values=v.values.map(function(s){s.property=key; return s})
@@ -619,7 +610,7 @@ exports.outgoing=function(q, options, callback){
           if(_.isArray(o.property)){
             property=o.property.join('');
           }
-          var grammar=sentence_grammars.filter(function(v){return v.property==property})[0]||{}
+          var grammar=data.sentence_grammars.filter(function(v){return v.property==property})[0]||{}
           if(grammar["sentence form"] && topic.name && o.name){
             o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
           }
@@ -629,7 +620,7 @@ exports.outgoing=function(q, options, callback){
       })
     })
 }
-
+//exports.outgoing("rob ford")
 
 //return all outgoing and incoming links for a topic
 exports.graph=function(q, options, callback){
@@ -638,22 +629,82 @@ exports.graph=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.graph, options, callback)
+    return fns.doit_async(q, exports.graph, options, callback)
   }
-  get_id(q, options, function(id){
-      if(!id){return callback({})}
-      var all={incoming:null, outgoing:null, id:id}
-      exports.incoming(id, options, function(result){
-        all.incoming=result;
-        if(all.incoming&&all.outgoing){return callback(all)}
-      })
-      exports.outgoing(id, options, function(result){
-        all.outgoing=result;
-        if(all.incoming&&all.outgoing){return callback(all)}
+  exports.lookup(q, options, function(topic){
+      if(!topic){return callback({})}
+        delete topic.score;
+        delete topic.lang;
+      options.filter="allproperties";
+      exports.topic(topic.mid, options, function(r){
+        var incoming={};var outgoing ={};
+        Object.keys(r.property).forEach(function(k){
+          if(k.match(/^\!/)){
+            outgoing[k]=r.property[k]
+          }else{
+            incoming[k]=r.property[k]
+          }
+        })
+        incoming=parse_topic_api(incoming);
+        outgoing=parse_topic_api(outgoing);
+        var out=incoming.map(function(v){
+          return {subject:topic, property:{id:v.property}, object:v}
+        })
+        out=out.concat(outgoing.map(function(v){
+          return {object:topic, property:{id:v.property}, subject:v}
+        }))
+        return callback(out)
       })
   })
 }
-//https://www.googleapis.com/freebase/v1/topic/en/toronto?filter=allproperties
+//exports.graph("toronto")
+
+
+function parse_topic_api(properties, options) {
+  var out = [];
+  properties = kill_boring(properties)
+  Object.keys(properties).forEach(function(key) {
+    var v = properties[key];
+    //add topics
+    if(v.valuetype == "object") {
+      v.values = v.values.map(function(s) {
+        s.property = key;
+        return s
+      })
+      out = out.concat(v.values)
+    }
+    //add the topics from cvt values in the same manner
+    if(v.valuetype == "compound") {
+      v.values.forEach(function(c) {
+        c.property = kill_boring(c.property);
+        Object.keys(c.property).forEach(function(key2) {
+          if(c.property[key2].valuetype == "object") {
+            c.property[key2].values = c.property[key2].values.map(function(s) {
+              s.property = [key, key2];
+              return s
+            })
+            out = out.concat(c.property[key2].values)
+          }
+        })
+      })
+    }
+  })
+  out = out.map(function(o) {
+    return {
+      name: o.text,
+      id: o.id,
+      property: o.property
+    }
+  })
+  out = out.map(function(o) {
+    if(_.isArray(o.property)) {
+      o.property = o.property.join('');
+    }
+    return o
+  })
+  return out;
+}
+
 
 
 //get similar topics to a topic
@@ -664,28 +715,29 @@ exports.related=function(q, options, callback){
   options.max=options.max||25;
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.related, options, callback)
+    return fns.doit_async(q, exports.related, options, callback)
   }
   var all=[];
   //pluck relevant connected topics from outgoing links
   exports.outgoing(q, options, function(result){
     all=result.filter(function(v){
-      return isin(v.property, related_properties)
+      return fns.isin(v.property, data.related_properties)
     })
     //randomize the results
     all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
-    console.log(all)
-    all=json_unique(all, "id")
+    all=fns.json_unique(all, "id")
     if(all.length >= options.max){
       return callback(all)
     }
     //else, append topics that share the notable type
     exports.notable(q, options, function(result){
       if(result && result.id){
-        exports.list(result.id, {limit:options.max}, function(r){
-          all=all.concat(r.result)
-          all=json_unique(all, "id")
-          all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
+        exports.list(result.id, {max:options.max}, function(r){
+         // console.log(all.length + "  " + r.length)
+          if(!r){return callback(all)}
+          all=all.concat(r)
+          all=fns.json_unique(all, "id")
+          //all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
           return callback(all)
         })
       }
@@ -693,6 +745,8 @@ exports.related=function(q, options, callback){
     })
   })
 }
+//exports.related("rick james", {key:"AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI"})
+
 
 exports.question=function(q, property, options, callback){
   callback=callback||console.log;
@@ -701,7 +755,7 @@ exports.question=function(q, property, options, callback){
   options.max=options.max||25;
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.question, options, callback)
+    return fns.doit_async(q, exports.question, options, callback)
   }
   //straight-up id search
   if(property.match(/^\/.{1,12}\/.{3}/)){
@@ -727,7 +781,7 @@ exports.question=function(q, property, options, callback){
          all=all.concat(result.property[p.id].values)
         }
       })
-      all=json_unique(all, "id")
+      all=fns.json_unique(all, "id")
       return callback(all)
     })
   }
@@ -743,7 +797,7 @@ exports.gallery=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.gallery, options, callback)
+    return fns.doit_async(q, exports.gallery, options, callback)
   }
   options.extend = {
   "/common/topic/image": [{
@@ -772,7 +826,7 @@ exports.wordnet=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.wordnet, options, callback)
+    return fns.doit_async(q, exports.wordnet, options, callback)
   }
   var query=[{
     "id":            null,
@@ -815,7 +869,7 @@ exports.transitive=function(q, property, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, property, exports.transitive, options, callback)
+    return fns.doit_async(q, property, exports.transitive, options, callback)
   }
   get_id(q, options, function(id){
     if(!id){return callback({})}
@@ -840,7 +894,7 @@ exports.geolocation=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.nearby, options, callback)
+    return fns.doit_async(q, exports.nearby, options, callback)
   }
   options.type=options.type||"/location/location";
   get_id(q, options, function(id){
@@ -875,7 +929,7 @@ exports.nearby=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.nearby, options, callback)
+    return fns.doit_async(q, exports.nearby, options, callback)
   }
   exports.geolocation(q, options, function(geo){
     if(!geo || !geo.latitude || !geo.longitude){return callback({})}
@@ -884,7 +938,7 @@ exports.nearby=function(q, options, callback){
           options.within=options.within||5;
           options.type=options.type||"/location/location";
           var url=geosearch+'?location='+encodeURIComponent(location)+'&order_by=distance&type='+options.type+'&within='+options.within+'&limit=200&format=json'
-          http(url, function(r){
+          fns.http(url, function(r){
             return callback(r.result.features)
           })
     })
@@ -899,7 +953,7 @@ exports.inside=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.inside, options, callback)
+    return fns.doit_async(q, exports.inside, options, callback)
   }
   //handy to have their geocoordinates too
   options.mql_output=options.mql_output || [{
@@ -927,7 +981,7 @@ exports.dbpedia_page=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.dbpedia_page, options, callback)
+    return fns.doit_async(q, exports.dbpedia_page, options, callback)
   }
    get_id(q, options, function(id){
      if(!id){return callback("")}
@@ -956,7 +1010,7 @@ exports.dbpedia_data=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.dbpedia_data, options, callback)
+    return fns.doit_async(q, exports.dbpedia_data, options, callback)
   }
    get_id(q, options, function(id){
      if(!id){return callback("")}
@@ -970,23 +1024,29 @@ exports.dbpedia_data=function(q, options, callback){
       }]
     exports.mqlread(query, options, function(result){
       if(!result || !result.result || !result.result[0] || !result.result[0].key.value){return callback('')}
-      var url='http://dbpedia.org/data/'+encodeURIComponent(exports.mqlkey_unencode(result.result[0].key.value))+'.json'
-      http(url, callback)
+      var subj='http://dbpedia.org/resource/'+fns.mqlkey_unencode(result.result[0].key.value);
+      var url='http://dbpedia.org/data/'+encodeURIComponent(fns.mqlkey_unencode(result.result[0].key.value))+'.json'
+      fns.http(url, function(result){
+        var all=Object.keys(result).map(function(i){
+          return {
+            subject:{dbpedia:subj, id:dbpedia_to_freebase(subj)},
+            property:{dbpedia:Object.keys(result[i])[0]},
+            object:{dbpedia:i, id:dbpedia_to_freebase(i)}
+          }
+        })
+        return callback(all)
+      })
     })
   })
 }
-// exports.dbpedia_data("Köppen climate classification", function(result){
-//   var all=Object.keys(r).map(function(i){
-//     console.log(dbpedia_to_freebase(i))
-//   })
-// })
-//exports.dbpedia_data("Toronto", console.log)
+//exports.dbpedia_data("Köppen climate classification", {}, console.log)
+// exports.dbpedia_data("Toronto", console.log)
 
 function dbpedia_to_freebase(url){
-  if(!url){return ''}
-  url=url.replace(/https?:\/\/dbpedia\.org\/(page|data|resource)\//i,'')
-  if(!url){return ''}
-  return "/wikipedia/en/"+exports.mql_encode(url.replace(/ /g,'_'));
+  if(!url || !url.match(/https?:\/\/dbpedia\.org\/(page|data|resource)\//i) ){return ''}
+  url=url.replace(/https?:\/\/dbpedia\.org\/(page|data|resource)\//i,'') ||''
+  url=decodeURI(url)
+  return "/wikipedia/en/"+fns.mql_encode(url.replace(/ /g,'_'));
 }
 
 //get a url for wikipedia based on this topic
@@ -996,7 +1056,7 @@ exports.wikipedia_page=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.wikipedia_page, options, callback)
+    return fns.doit_async(q, exports.wikipedia_page, options, callback)
   }
    get_id(q, options, function(id){
      if(!id){return callback("")}
@@ -1010,34 +1070,35 @@ exports.wikipedia_page=function(q, options, callback){
       }]
     exports.mqlread(query, options, function(result){
       if(!result || !result.result || !result.result[0]){return callback('')}
-      return callback(exports.mqlkey_unencode(result.result[0].key.value))//'http://en.wikipedia.org/wiki/'
+      return callback(fns.mqlkey_unencode(result.result[0].key.value))//'http://en.wikipedia.org/wiki/'
     })
   })
 }
 
 exports.wikipedia_categories=function(q, options, callback){
   callback=callback||console.log;
-  if(!q){return callback({})}
+  if(!q){return callback([])}
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.wikipedia_categories, options, callback)
+    return fns.doit_async(q, exports.wikipedia_categories, options, callback)
   }
   //if its not a wikipedia title, reuse get-topic logic for searches/ids
   if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
     return exports.wikipedia_page(q, options, function(r){
-      exports.wikipedia_external_links(r, options, callback)
+      exports.wikipedia_categories(r, options, callback)
     })
   }
   var url=wikipedia_host+'?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles='+encodeURIComponent(q);
-  http(url, function(r){
+  fns.http(url, function(r){
     if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
     var cats=r.query.pages[Object.keys(r.query.pages)[0]].categories ||[]
+    cats=cats.map(function(v){return v.title})
     return callback(cats)
-    console.log()
   })
 }
 //exports.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
+//exports.wikipedia_categories("Thom Yorke", {}, console.log)
 
 //outgoing links from this wikipedia page, converted to freebase ids
 exports.wikipedia_links=function(q, options, callback){
@@ -1046,7 +1107,7 @@ exports.wikipedia_links=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.wikipedia_links, options, callback)
+    return fns.doit_async(q, exports.wikipedia_links, options, callback)
   }
   //if its not a wikipedia title, reuse get-topic logic for searches/ids
   if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
@@ -1055,15 +1116,16 @@ exports.wikipedia_links=function(q, options, callback){
     })
   }
   var url=wikipedia_host+'?action=query&prop=links&format=json&plnamespace=0&pllimit=500&titles='+encodeURIComponent(q);
-  http(url, function(r){
+  fns.http(url, function(r){
     if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
     var links=r.query.pages[Object.keys(r.query.pages)[0]].links ||[]
     //filter-out non-freebase topics
     links=links.filter(function(v){return v.title.match(/^List of /i)==null})
     links=links.map(function(o){
-      o.id="/wikipedia/en/"+exports.mql_encode(o.title.replace(/ /g,'_'));
+      o.id="/wikipedia/en/"+fns.mql_encode(o.title.replace(/ /g,'_'));
       o.name=o.title
       delete o.title
+      delete o.ns
       return o
     })
     return callback(links)
@@ -1078,7 +1140,7 @@ exports.wikipedia_external_links=function(q, options, callback){
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return doit_async(q, exports.wikipedia_external_links, options, callback)
+    return fns.doit_async(q, exports.wikipedia_external_links, options, callback)
   }
   //if its not a wikipedia title, reuse get-topic logic for searches/ids
   if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
@@ -1087,12 +1149,12 @@ exports.wikipedia_external_links=function(q, options, callback){
     })
   }
   var url=wikipedia_host+'?action=query&prop=extlinks&format=json&plnamespace=0&pllimit=500&titles='+encodeURIComponent(q);
-  http(url, function(r){
+  fns.http(url, function(r){
     if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
     var links=r.query.pages[Object.keys(r.query.pages)[0]].extlinks ||[]
     links=links.filter(function(v){return v["*"].match(/^http/)})
     links=links.map(function(v){
-      var box=parseurl(v["*"]);
+      var box=fns.parseurl(v["*"]);
       return {url:v["*"], domain:box.host}
     })
     return callback(links)
@@ -1135,19 +1197,13 @@ function get_id(q, options, callback){
 
 
 
-
-
-///////////////////////////helper functions
-/////////////////////////
-
-
 //lookup property matches offline..
 function property_lookup(property){
   property=property.toLowerCase();
   property=property.replace(/  /,' ');
   property=property.replace(/^\s+|\s+$/, '');
-  var property_singular=singularize(property);
-  var candidate_properties=properties.filter(function(v){
+  var property_singular=fns.singularize(property);
+  var candidate_properties=data.properties.filter(function(v){
     return v.id==property || v.name==property || v.name==property_singular
   })
   return candidate_properties;
@@ -1160,9 +1216,9 @@ function metaschema_lookup(property){
   property=property.replace(/  /g,' ');
   property=property.replace(/_/g,' ');
   property=property.replace(/^\s+|\s+$/, '');
-  var candidate_properties=metaschema.filter(function(v){
+  var candidate_properties=data.metaschema.filter(function(v){
     v.aliases=v.aliases||[]
-    return v.id==property || v.name.toLowerCase()==property || isin(property, v.aliases) || v.search_filter_operand.replace(/_/g,' ')==property
+    return v.id==property || v.name.toLowerCase()==property || fns.isin(property, v.aliases) || v.search_filter_operand.replace(/_/g,' ')==property
   })[0]
   candidate_properties=candidate_properties||{}
   return candidate_properties.search_filter_operand;
@@ -1176,7 +1232,7 @@ function url_lookup(q, options, callback){
   if(options.key){
     url+='&key='+options.key;
   }
-  http(url, function(result){
+  fns.http(url, function(result){
     callback(result)
   })
 }
@@ -1184,169 +1240,9 @@ function url_lookup(q, options, callback){
 
 //kill the freebase internal-properties that don't feel graphy
 function kill_boring(obj){
-  var boring=[
-    "/type/object/attribution",
-    "/type/object/key",
-    "/type/object/mid",
-    "/common/topic/notable_properties",
-    "/type/object/guid",
-    "/type/object/type",
-    "/type/object/id",
-    "/type/object/creator",
-    "/type/object/timestamp",
-    "/type/object/permission",
-    "/common/topic/alias",
-    "/common/topic/article",
-    "/common/topic/image",
-    "/common/topic/notable_for",
-    "/common/topic/notable_types",
-    "/common/topic/official_website",
-    "/common/topic/topic_equivalent_webpage",
-    "/common/topic/topical_webpage",
-    "/travel/travel_destination_monthly_climate/month",
-    "/location/religion_percentage/religion"
-    ]
-    boring.forEach(function(v){delete obj[v]})
-    return obj
-}
-
-
-function isin(word,arr){
-  return arr.some(function(v){return v==word})
-}
-
-
-function parseurl (str) {
-  var  o   = {
-      strictMode: false,
-      key: ["source","protocol","authority","userInfo","user","password","host","port","relative","path","directory","file","query","anchor"],
-      q:   {
-        name:   "queryKey",
-        parser: /(?:^|&)([^&=]*)=?([^&]*)/g
-      },
-      parser: {
-        strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
-        loose:  /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
-      }
-    },
-    m   = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
-    uri = {},
-    i   = 14;
-  while (i--) uri[o.key[i]] = m[i] || "";
-  uri[o.q.name] = {};
-  uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
-    if ($1) uri[o.q.name][$1] = $2;
-  });
-  return uri;
-};
-
-function http(url, callback){
-   if(!url){return callback({error:"bad url"})}
-   request({
-        uri: url,
-        headers:{"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:10.0) Gecko/20100101 Firefox/10.0"}
-    }, function(error, response, body) {
-        try{
-          body=JSON.parse(body)
-        }catch(e){return callback({error:e})}
-        if (error || response.statusCode != 200 ) {
-              return callback({error:error})
-              }
-        return callback(body);
-    })
-}
-
-//turn options object into get paramaters
-function set_params(options){
-  if(!options){return ''}
-  return Object.keys(options).map(function(v){
-    if(_.isArray(options[v]) || _.isObject(options[v])){
-     options[v]=encodeURIComponent(JSON.stringify(options[v]));
-    }
-    return v+'='+options[v]
-  }).join('&')
-}
-
-//turn an array into smaller groups of arrays
-  function groups_of(arr, group_length){
-    var all=[]
-    for(var i in arr){
-      if(i%group_length==0){
-        all.push([arr[i]])
-      }else{
-        all[all.length-1].push(arr[i])
-      }
-    }
-    return all
-    }
-
-
-//  quote a unicode string to turn it into a valid mql /type/key/value
-exports.mql_encode=function(s) {
-        if(!s){return ''}
-        s=s.replace(/  /,' ');
-        s=s.replace(/^\s+|\s+$/, '');
-        s=s.replace(/ /g,'_');
-        var mqlkey_start = 'A-Za-z0-9';
-        var mqlkey_char = 'A-Za-z0-9_-';
-        var MQLKEY_VALID = new RegExp('^[' + mqlkey_start + '][' + mqlkey_char + ']*$');
-        var MQLKEY_CHAR_MUSTQUOTE = new RegExp('([^' + mqlkey_char + '])', 'g');
-        if (MQLKEY_VALID.exec(s)) // fastpath
-        return s;
-        var convert = function(a, b) {
-                var hex = b.charCodeAt(0).toString(16).toUpperCase();
-                if (hex.length == 2) hex = '00' + hex;
-                if (hex.length == 3) hex = '0' + hex;
-                return '$' + hex;
-            };
-        x = s.replace(MQLKEY_CHAR_MUSTQUOTE, convert);
-        if (x.charAt(0) == '-' || x.charAt(0) == '_') {
-            x = convert(x, x.charAt(0)) + x.substr(1);
-        }
-        return x;
-    }
-
-//turn freebase's silly $00 encoding into unicode
-exports.mqlkey_unencode = function (x) {
-    x = x.replace(/\$([0-9A-Fa-f]{4})/g, function (a,b) {
-        return String.fromCharCode(parseInt(b, 16));
-    });
-    return x;
-}
-//console.log(exports.mqlkey_unencode("K$00F6ppen_climate_classification"))
-
-
- //remove objects with a duplicate field from json
- function json_unique(x, field) {
-   var newArray=new Array();
-    label:for(var i=0; i<x.length;i++ ){
-      for(var j=0; j<newArray.length;j++ ){
-          if(newArray[j] && x[i] && newArray[j][field]==x[i][field])
-          continue label;
-        }
-        newArray[newArray.length] = x[i];
-      }
-    return newArray;
-  }
-
-
-//handle rate-limited asynchronous freebase calls with a ending callback
-function doit_async(arr, fn, options, done){
-    //wrap them all in functions
-  var function_list=arr.map(function(r){
-      return function(callback){
-              fn(r, options, function(r){
-                callback(null, r);
-              })
-      }
-    })
-  //groups of async tasks in a synchonous task
-  var all=groups_of(function_list, async_max).map(function(f_group){
-    return function(callback){async.parallel(f_group, callback  );}
-  })
-  async.series(all, function(err, result){
-    done(_.flatten(result))
-  });
+  if(!obj){return {}}
+  data.boring.forEach(function(v){delete obj[v]})
+  return obj
 }
 
 
@@ -1389,7 +1285,7 @@ var aliases={
 }
 for(var i in aliases){
   aliases[i].map(function(v){
-    exports[v]=exports[i]
+  //  exports[v]=exports[i]
   })
 }
 //console.log(Object.keys(exports))
