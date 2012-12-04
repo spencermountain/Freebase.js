@@ -1,28 +1,34 @@
 var freebase=require('./freebase')
+var fns=require('./lib/helpers')
 var _=require('underscore');
 
 //failing
-//freebase.graph("paul ryan", {}, console.log)
-// freebase.wordnet(["bat","wood"])
-//freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
- //freebase.lookup("http://toronto.ca", {}, function(r){console.log(r)})
 
 // freebase.inside('toronto',{}, function(r){
 // 	console.log(r.length>3)
 // })
-
+ // freebase.transitive("barrie", "part_of", {}, function(r){
+ // 	console.log(r.length>3)
+ // })
 
 //passing
-//exports.wikipedia_external_links("/en/toronto", {}, console.log)
-//exports.wikipedia_links("Toronto", {}, console.log)
-
-
- // freebase.lookup("australia",{type:"/film/film"}, function(r){console.log(r.mid=="/m/026qnh6")})
-  // freebase.same_as_links("http://www.geonames.org/6167865/", {}, function(r){console.log(r.links.length>3)})
- // freebase.image("australia",{type:"/location/location"}, function(r){console.log(r.match(/maxheight/)!=null)})
-// freebase.transitive("barrie", "part_of", {}, function(r){
-// 	console.log(r.length>3)
+// freebase.lookup("http://toronto.ca", {}, function(r){console.log(r.id=="/en/toronto")})
+// freebase.lookup(["/m/09jm8", "http://myspace.com/u2"], {}, function(r){
+// 	console.log(r[1].name=="U2")
 // })
+// freebase.nearby("cn tower", {type:"/food/restaurant"}, function(r){
+// 	console.log(r.length>4)
+// })
+// freebase.wordnet(["bat","wood"],{}, function(r){console.log(r.length==2)})
+// freebase.wikipedia_external_links("/en/toronto", {}, function(r){console.log(r.length>=3)})
+//freebase.wikipedia_links("Toronto", {}, function(r){console.log(r.length>=5)})
+
+//freebase.graph("paul ryan", {}, function(r){console.log(r[0].object.name=="Paul Ryan"|| r[0].subject.name=="Paul Ryan")})
+
+//  freebase.lookup("australia",{type:"/film/film"}, function(r){console.log(r.mid=="/m/026qnh6")})
+//   freebase.same_as_links("http://www.geonames.org/6167865/", {}, function(r){console.log(r.links.length>3)})
+//  freebase.image("australia",{type:"/location/location"}, function(r){console.log(r.match(/maxheight/)!=null)})
+
 // freebase.grammar("toronto maple leafs",{},function(r){
 // 	console.log(_.isEqual(r, { plural: true,
 // 					  gender: null,
@@ -62,10 +68,10 @@ var _=require('underscore');
 // freebase.sentence(["toronto","suddenly susan"],{},function(r){console.log(r.length==2)})
 
 
-// freebase.sentence([{name:"toronto"},{id:"/en/radiohead",name:"suddenly susan"}],{},function(r){console.log(r.length==2)})
+//freebase.sentence([{name:"toronto"},{id:"/en/radiohead",name:"suddenly susan"}],{},function(r){console.log(r.length==2)})
 
-// var query=[{id:"/en/toronto", name:null},{id:"/en/radsdfiohead", name:null},{id:"/en/thom_yorke", name:null}]
-// freebase.mqlread(query, {}, function(r){console.log(r.length==3)})
+// var query=[{id:"/en/toronto", name:null},{id:"/en/radsdfiohead", name:null},{id:"/en/thom_yorke", name:null}, {id:"/en/tony_hawk", name:null} ]
+// freebase.mqlread(query, {}, function(r){console.log(r.length==4)})
 
 // freebase.lookup("thom yorke", {}, function(r){console.log(r.mid=="/m/01p0w_")})
 // freebase.lookup("tom green", {}, function(r){console.log(r.mid=="/m/017yxq")})
@@ -82,6 +88,9 @@ var _=require('underscore');
 
  // query=[{"type":"/base/disaster2/tornado","name":null}]
  // freebase.paginate(query, {max:20}, function(r){console.log(r.length>20)} )
+
+ // query=[{"type":"/base/disaster2/tornado","name":null}]
+ // freebase.continue(query, {max:20}, function(r){console.log(r.length>20)} )
 
 
 // freebase.list("earthquakes", {}, function(r){console.log(r.length>20)})
