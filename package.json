@@ -2,7 +2,7 @@
   "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
   "name": "freebase",
   "description": "a very masculine way to work with data from freebase.com",
-  "version": "2.0.9",
+  "version": "2.1.0",
   "repository": {
     "type": "git",
     "url": "git://github.com/spencermountain/Freebase-nodejs.git"
