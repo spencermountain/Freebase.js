@@ -58,6 +58,9 @@ freebase.lookup=function(q, options, callback){
   options.type=options.type||"/common/topic";
   var url= host+'search?limit=2&lang=en&type='+options.type+'&filter=';
   url+=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'" id:"'+q+'")');
+  if(options.type=="/type/type" || options.type=="/type/property"){
+    url+="&scoring=schema&stemmed=true"
+  }
   if(options.key){
     url+='&key='+options.key;
   }
@@ -80,7 +83,7 @@ freebase.lookup=function(q, options, callback){
     if(result[1] && result[0].notable && fns.isin( result[0].notable.id, kill)){
       return callback({})
     }
-    result[0].name=result[0].text;
+    result[0].name= result[0].name||result[0].text||'';
     return callback(result[0])
   })
 }
@@ -146,6 +149,9 @@ freebase.search=function(q, options, callback){
       options.query=q || '';
       if(options.filter){
         options.filter=encodeURIComponent(options.filter)
+      }
+      if(options.type=="/type/type" || options.type=="/type/property"){
+        url+="&scoring=schema&stemmed=true"
       }
       options.query=encodeURIComponent(options.query);
       var params=fns.set_params(options)
@@ -863,19 +869,21 @@ freebase.question=function(q, options, callback){
       return callback(result)
     })
   }else{
-    var candidate_properties=property_lookup(property);
-    if(candidate_properties.length==0){return callback([])}
-    options.filter=type;
-     //look for these properties in the topic api
-    freebase.topic(q, options, function(result){
-      var all=[];
-      candidate_properties.forEach(function(p){
-        if(result.property[p.id]){
-         all=all.concat(result.property[p.id].values)
-        }
+    freebase.property_lookup(property, {}, function(candidate_properties){
+      var candidate_properties=property_lookup(property);
+      if(candidate_properties.length==0){return callback([])}
+      options.filter=type;
+       //look for these properties in the topic api
+      freebase.topic(q, options, function(result){
+        var all=[];
+        candidate_properties.forEach(function(p){
+          if(result.property[p.id]){
+           all=all.concat(result.property[p.id].values)
+          }
+        })
+        all=fns.json_unique(all, "id")
+        return callback(all)
       })
-      all=fns.json_unique(all, "id")
-      return callback(all)
     })
   }
 }
@@ -1300,20 +1308,124 @@ freebase.wikipedia_external_links=function(q, options, callback){
 //freebase.wikipedia_external_links("/en/toronto", {}, console.log)
 
 
+//common lookups for types and properties
+freebase.schema_introspection=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.schema_introspection, options, callback)
+  }
+  //see if its a type
+  freebase.search(q, {type:"/type/type"}, function(r){
+    if(r && r[0] && r[0].id){
+     r=r[0]
+     var query=[{
+        "id": r.id,
+        "mid": null,
+        "name":null,
+        "properties": [{
+          "id": null,
+          "name": null,
+          "/type/property/reverse_property":[{
+            "id": null,
+            "name": null,
+            "optional":true
+          }]
+        }],
+        "/freebase/type_hints/mediator": null,
+        "/freebase/type_hints/included_types": [{
+          "id": null,
+          "name": null
+        }],
+        "/freebase/type_profile/published":null,
+        "/type/type/expected_by": [{
+          "id": null,
+          "name": null
+        }],
+        "/freebase/type_profile/instance_count": null,
+        "/freebase/type_profile/property_count": null,
+        "domain": {
+          "id": null,
+          "name": null
+        },
+        "/freebase/type_profile/equivalent_topic": {
+          "id": null,
+          "name": null
+        },
+        "type": "/type/type"
+      }]
+      freebase.mqlread(query, {}, function(r){
+        if(!r || !r.result || !r.result[0]){return callback({})}
+        r=r.result[0]
+        var obj={}
+        obj.domain=r.domain
+        obj.id=r.id
+        obj.included_types=r["/freebase/type_hints/included_types"]
+        obj.incoming_properties=r["/type/type/expected_by"]
+        obj.is_compound_value=r["/freebase/type_hints/mediator"]||false
+        obj.is_commons=r["/freebase/type_profile/published"]||false
+        obj.equivalent_topic=r["/freebase/type_profile/equivalent_topic"]
+        obj.topic_count=r["/freebase/type_profile/instance_count"]||0
+        obj.property_count=r["/freebase/type_profile/property_count"]||0;
+        //types that include this one
+        var query=[{
+          "id": null,
+          "name": null,
+          "s:name": {
+            "value": null,
+            "lang": "/lang/en",
+            "optional": "required"
+          },
+          "/freebase/type_hints/included_types": [{
+            "id": obj.id
+          }]
+        }]
+        freebase.mqlread(query,{},function(r){
+          if(!r || !r.result){return callback(obj)}
+          obj.included_by=r.result.map(function(v){return {id:v.id, name:v.name}})
+          return callback(obj)
+        })
+      })
 
-
-
-//lookup property matches offline..
-function property_lookup(property){
-  property=property.toLowerCase();
-  property=property.replace(/  /,' ');
-  property=property.replace(/^\s+|\s+$/, '');
-  var property_singular=fns.singularize(property);
-  var candidate_properties=data.properties.filter(function(v){
-    return v.id==property || v.name==property || v.name==property_singular
+    }
+    else{
+      freebase.property_lookup(q,{},function(r){
+        return callback(r)
+      })
+    }
   })
-  return candidate_properties;
 }
+//freebase.schema_introspection("politician")
+//freebase.schema_introspection("/type/property/master_property")
+
+
+//lookup soft property matches, like 'birthday' vs 'date of birth'
+freebase.property_lookup=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.property_lookup, options, callback)
+  }
+  freebase.search(q, {type:"/type/property"}, function(candidate_properties){
+      //look up offline for property aliases
+    if(!q.match(/\/.*?\/.*?\//)){
+      q=q.toLowerCase();
+      q=q.replace(/  /,' ');
+      q=q.replace(/^\s+|\s+$/, '');
+      var property_singular=fns.singularize(q);
+      candidate_properties=candidate_properties.concat(data.properties.filter(function(v){
+        return v.name==q || v.name==property_singular
+      }))
+    }
+    return callback(candidate_properties)
+  })
+}
+// freebase.property_lookup.description="lookup soft property matches, like 'birthday' vs 'date of birth'"
+//freebase.property_lookup("albums")
 
 //lookup metaschema predicate matches offline..
 function metaschema_lookup(property){
