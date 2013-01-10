@@ -1392,13 +1392,83 @@ freebase.schema_introspection=function(q, options, callback){
     }
     else{
       freebase.property_lookup(q,{},function(r){
-        return callback(r)
+        if(!r || !r[0] || !r[0].id){
+          return callback({})
+        }
+        return freebase.property_inspection(r[0].id, {}, callback)
       })
     }
   })
 }
 //freebase.schema_introspection("politician")
 //freebase.schema_introspection("/type/property/master_property")
+
+
+//common lookups for freebase property data
+freebase.property_introspection=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.property_introspection, options, callback)
+  }
+  var query=[{
+      "id": q,
+      "mid": null,
+      "name": null,
+      "type": "/type/property",
+      "reverse_property": [{
+        "id": null,
+        "name": null,
+        "optional": true
+      }],
+      "expected_type": [{
+        "id": null,
+        "name": null,
+        "optional": true,
+      }],
+      "unique": null,
+      "schema": {
+        "id":null,
+        "name":null,
+        "/freebase/type_profile/instance_count": null
+      },
+      "/common/topic/description": null
+    }]
+    freebase.mqlread(query,{},function(r){
+      var obj={}
+      if(!r || !r.result || !r.result[0]){return callback(obj)}
+      r=r.result[0]
+      obj.name=r.name
+      obj.id=r.id
+      obj.type=r.schema
+      obj.description=r["/common/topic/description"]
+      obj.unique=r.unique||false;
+      obj.reverse_property=r.reverse_property
+      obj.expected_type=r.expected_type
+
+      //get its metaschema
+      var query=[{
+        "name": null,
+        "type": "/base/fbontology/semantic_predicate",
+        "paths": {
+          "a:properties": q,
+          "b:properties":[{"id":null}]
+        }
+      }]
+      freebase.mqlread(query,{},function(r){
+        obj.meta=r.result
+        return callback(obj)
+      })
+    })
+  //   //get its property aliases
+  // var query=[{type:"/base/natlang/property_alias",
+  //   property:property,
+  //   alias:[]
+  //   }]
+}
+//freebase.property_introspection("/government/politician/party")
 
 
 //lookup soft property matches, like 'birthday' vs 'date of birth'
