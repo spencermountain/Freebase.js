@@ -57,7 +57,7 @@ freebase.lookup=function(q, options, callback){
     }
   options.type=options.type||"/common/topic";
   var url= host+'search?limit=2&lang=en&type='+options.type+'&filter=';
-  url+=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'" id:"'+q+'")');
+  url+=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'" )'); //id:"'+q+'"
   if(options.type=="/type/type" || options.type=="/type/property"){
     url+="&scoring=schema&stemmed=true"
   }
@@ -87,8 +87,8 @@ freebase.lookup=function(q, options, callback){
     return callback(result[0])
   })
 }
-// freebase.lookup(["/m/09jm8", "http://myspace.com/u2"])
-
+ //freebase.lookup(["/m/09jm8", "http://myspace.com/u2"])
+//freebase.lookup("toronto")
 
 
 //like freebase.lookup but only needs an id
@@ -656,10 +656,11 @@ freebase.outgoing=function(q, options, callback){
         out=out.map(function(o){return {name:o.text, id:o.id, property:o.property }})
         //add sentence-forms
         out=out.map(function(o){
-          var property=o.property;
+          var property=o.property ||'';
           if(_.isArray(o.property)){
             property=o.property.join('');
           }
+          o.sentence=topic.name +"'s " +_.last(property.split('/')).replace('_',' ') +" is "+ o.name; //ugly fallback
           var grammar=data.sentence_grammars.filter(function(v){return v.property==property})[0]||{}
           if(grammar["sentence form"] && topic.name && o.name){
             o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
@@ -670,7 +671,7 @@ freebase.outgoing=function(q, options, callback){
       })
     })
 }
-//freebase.outgoing("rob ford")
+freebase.outgoing("vancouver")
 
 //return all outgoing and incoming links for a topic
 freebase.graph=function(q, options, callback){
@@ -705,11 +706,13 @@ freebase.graph=function(q, options, callback){
         }))
         //add the sentences
         out=out.map(function(obj){
-          var property=obj.property.id.replace(/^\!/,'')
-          var grammar=data.sentence_grammars.filter(function(v){return v.property==property})[0]||{}
+          obj.property.id=obj.property.id.replace(/^\!/,'')
+          delete obj.subject.property
+          var grammar=data.sentence_grammars.filter(function(v){return v.property==obj.property.id})[0]||{}
+          obj.sentence=obj.subject.name +"'s " +_.last(obj.property.id.split('/')).replace('_',' ') +" is "+ obj.object.name;
           if(grammar["sentence form"] && obj.subject.name && obj.object.name){
             obj.sentence=grammar["sentence form"].replace(/\bsubj\b/, obj.subject.name).replace(/\bobj\b/, obj.object.name);
-          }
+         }
           return obj
         })
         return callback(out)
