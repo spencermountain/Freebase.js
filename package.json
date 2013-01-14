@@ -14,5 +14,6 @@
     "request": "2.12.0",
     "async": "0.1.22",
     "underscore": "1.4.2"
-  }
+  },
+  "preferGlobal": true
 }

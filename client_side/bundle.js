@@ -1,4 +1,5203 @@
-exports.data={
+var require = function (file, cwd) {
+    var resolved = require.resolve(file, cwd || '/');
+    var mod = require.modules[resolved];
+    if (!mod) throw new Error(
+        'Failed to resolve module ' + file + ', tried ' + resolved
+    );
+    var cached = require.cache[resolved];
+    var res = cached? cached.exports : mod();
+    return res;
+};
+
+require.paths = [];
+require.modules = {};
+require.cache = {};
+require.extensions = [".js",".coffee",".json"];
+
+require._core = {
+    'assert': true,
+    'events': true,
+    'fs': true,
+    'path': true,
+    'vm': true
+};
+
+require.resolve = (function () {
+    return function (x, cwd) {
+        if (!cwd) cwd = '/';
+
+        if (require._core[x]) return x;
+        var path = require.modules.path();
+        cwd = path.resolve('/', cwd);
+        var y = cwd || '/';
+
+        if (x.match(/^(?:\.\.?\/|\/)/)) {
+            var m = loadAsFileSync(path.resolve(y, x))
+                || loadAsDirectorySync(path.resolve(y, x));
+            if (m) return m;
+        }
+
+        var n = loadNodeModulesSync(x, y);
+        if (n) return n;
+
+        throw new Error("Cannot find module '" + x + "'");
+
+        function loadAsFileSync (x) {
+            x = path.normalize(x);
+            if (require.modules[x]) {
+                return x;
+            }
+
+            for (var i = 0; i < require.extensions.length; i++) {
+                var ext = require.extensions[i];
+                if (require.modules[x + ext]) return x + ext;
+            }
+        }
+
+        function loadAsDirectorySync (x) {
+            x = x.replace(/\/+$/, '');
+            var pkgfile = path.normalize(x + '/package.json');
+            if (require.modules[pkgfile]) {
+                var pkg = require.modules[pkgfile]();
+                var b = pkg.browserify;
+                if (typeof b === 'object' && b.main) {
+                    var m = loadAsFileSync(path.resolve(x, b.main));
+                    if (m) return m;
+                }
+                else if (typeof b === 'string') {
+                    var m = loadAsFileSync(path.resolve(x, b));
+                    if (m) return m;
+                }
+                else if (pkg.main) {
+                    var m = loadAsFileSync(path.resolve(x, pkg.main));
+                    if (m) return m;
+                }
+            }
+
+            return loadAsFileSync(x + '/index');
+        }
+
+        function loadNodeModulesSync (x, start) {
+            var dirs = nodeModulesPathsSync(start);
+            for (var i = 0; i < dirs.length; i++) {
+                var dir = dirs[i];
+                var m = loadAsFileSync(dir + '/' + x);
+                if (m) return m;
+                var n = loadAsDirectorySync(dir + '/' + x);
+                if (n) return n;
+            }
+
+            var m = loadAsFileSync(x);
+            if (m) return m;
+        }
+
+        function nodeModulesPathsSync (start) {
+            var parts;
+            if (start === '/') parts = [ '' ];
+            else parts = path.normalize(start).split('/');
+
+            var dirs = [];
+            for (var i = parts.length - 1; i >= 0; i--) {
+                if (parts[i] === 'node_modules') continue;
+                var dir = parts.slice(0, i + 1).join('/') + '/node_modules';
+                dirs.push(dir);
+            }
+
+            return dirs;
+        }
+    };
+})();
+
+require.alias = function (from, to) {
+    var path = require.modules.path();
+    var res = null;
+    try {
+        res = require.resolve(from + '/package.json', '/');
+    }
+    catch (err) {
+        res = require.resolve(from, '/');
+    }
+    var basedir = path.dirname(res);
+
+    var keys = (Object.keys || function (obj) {
+        var res = [];
+        for (var key in obj) res.push(key);
+        return res;
+    })(require.modules);
+
+    for (var i = 0; i < keys.length; i++) {
+        var key = keys[i];
+        if (key.slice(0, basedir.length + 1) === basedir + '/') {
+            var f = key.slice(basedir.length);
+            require.modules[to + f] = require.modules[basedir + f];
+        }
+        else if (key === basedir) {
+            require.modules[to] = require.modules[basedir];
+        }
+    }
+};
+
+(function () {
+    var process = {};
+    var global = typeof window !== 'undefined' ? window : {};
+    var definedProcess = false;
+
+    require.define = function (filename, fn) {
+        if (!definedProcess && require.modules.__browserify_process) {
+            process = require.modules.__browserify_process();
+            definedProcess = true;
+        }
+
+        var dirname = require._core[filename]
+            ? ''
+            : require.modules.path().dirname(filename)
+        ;
+
+        var require_ = function (file) {
+            var requiredModule = require(file, dirname);
+            var cached = require.cache[require.resolve(file, dirname)];
+
+            if (cached && cached.parent === null) {
+                cached.parent = module_;
+            }
+
+            return requiredModule;
+        };
+        require_.resolve = function (name) {
+            return require.resolve(name, dirname);
+        };
+        require_.modules = require.modules;
+        require_.define = require.define;
+        require_.cache = require.cache;
+        var module_ = {
+            id : filename,
+            filename: filename,
+            exports : {},
+            loaded : false,
+            parent: null
+        };
+
+        require.modules[filename] = function () {
+            require.cache[filename] = module_;
+            fn.call(
+                module_.exports,
+                require_,
+                module_,
+                module_.exports,
+                dirname,
+                filename,
+                process,
+                global
+            );
+            module_.loaded = true;
+            return module_.exports;
+        };
+    };
+})();
+
+
+require.define("path",function(require,module,exports,__dirname,__filename,process,global){function filter (xs, fn) {
+    var res = [];
+    for (var i = 0; i < xs.length; i++) {
+        if (fn(xs[i], i, xs)) res.push(xs[i]);
+    }
+    return res;
+}
+
+// resolves . and .. elements in a path array with directory names there
+// must be no slashes, empty elements, or device names (c:\) in the array
+// (so also no leading and trailing slashes - it does not distinguish
+// relative and absolute paths)
+function normalizeArray(parts, allowAboveRoot) {
+  // if the path tries to go above the root, `up` ends up > 0
+  var up = 0;
+  for (var i = parts.length; i >= 0; i--) {
+    var last = parts[i];
+    if (last == '.') {
+      parts.splice(i, 1);
+    } else if (last === '..') {
+      parts.splice(i, 1);
+      up++;
+    } else if (up) {
+      parts.splice(i, 1);
+      up--;
+    }
+  }
+
+  // if the path is allowed to go above the root, restore leading ..s
+  if (allowAboveRoot) {
+    for (; up--; up) {
+      parts.unshift('..');
+    }
+  }
+
+  return parts;
+}
+
+// Regex to split a filename into [*, dir, basename, ext]
+// posix version
+var splitPathRe = /^(.+\/(?!$)|\/)?((?:.+?)?(\.[^.]*)?)$/;
+
+// path.resolve([from ...], to)
+// posix version
+exports.resolve = function() {
+var resolvedPath = '',
+    resolvedAbsolute = false;
+
+for (var i = arguments.length; i >= -1 && !resolvedAbsolute; i--) {
+  var path = (i >= 0)
+      ? arguments[i]
+      : process.cwd();
+
+  // Skip empty and invalid entries
+  if (typeof path !== 'string' || !path) {
+    continue;
+  }
+
+  resolvedPath = path + '/' + resolvedPath;
+  resolvedAbsolute = path.charAt(0) === '/';
+}
+
+// At this point the path should be resolved to a full absolute path, but
+// handle relative paths to be safe (might happen when process.cwd() fails)
+
+// Normalize the path
+resolvedPath = normalizeArray(filter(resolvedPath.split('/'), function(p) {
+    return !!p;
+  }), !resolvedAbsolute).join('/');
+
+  return ((resolvedAbsolute ? '/' : '') + resolvedPath) || '.';
+};
+
+// path.normalize(path)
+// posix version
+exports.normalize = function(path) {
+var isAbsolute = path.charAt(0) === '/',
+    trailingSlash = path.slice(-1) === '/';
+
+// Normalize the path
+path = normalizeArray(filter(path.split('/'), function(p) {
+    return !!p;
+  }), !isAbsolute).join('/');
+
+  if (!path && !isAbsolute) {
+    path = '.';
+  }
+  if (path && trailingSlash) {
+    path += '/';
+  }
+
+  return (isAbsolute ? '/' : '') + path;
+};
+
+
+// posix version
+exports.join = function() {
+  var paths = Array.prototype.slice.call(arguments, 0);
+  return exports.normalize(filter(paths, function(p, index) {
+    return p && typeof p === 'string';
+  }).join('/'));
+};
+
+
+exports.dirname = function(path) {
+  var dir = splitPathRe.exec(path)[1] || '';
+  var isWindows = false;
+  if (!dir) {
+    // No dirname
+    return '.';
+  } else if (dir.length === 1 ||
+      (isWindows && dir.length <= 3 && dir.charAt(1) === ':')) {
+    // It is just a slash or a drive letter with a slash
+    return dir;
+  } else {
+    // It is a full dirname, strip trailing slash
+    return dir.substring(0, dir.length - 1);
+  }
+};
+
+
+exports.basename = function(path, ext) {
+  var f = splitPathRe.exec(path)[2] || '';
+  // TODO: make this comparison case-insensitive on windows?
+  if (ext && f.substr(-1 * ext.length) === ext) {
+    f = f.substr(0, f.length - ext.length);
+  }
+  return f;
+};
+
+
+exports.extname = function(path) {
+  return splitPathRe.exec(path)[3] || '';
+};
+
+exports.relative = function(from, to) {
+  from = exports.resolve(from).substr(1);
+  to = exports.resolve(to).substr(1);
+
+  function trim(arr) {
+    var start = 0;
+    for (; start < arr.length; start++) {
+      if (arr[start] !== '') break;
+    }
+
+    var end = arr.length - 1;
+    for (; end >= 0; end--) {
+      if (arr[end] !== '') break;
+    }
+
+    if (start > end) return [];
+    return arr.slice(start, end - start + 1);
+  }
+
+  var fromParts = trim(from.split('/'));
+  var toParts = trim(to.split('/'));
+
+  var length = Math.min(fromParts.length, toParts.length);
+  var samePartsLength = length;
+  for (var i = 0; i < length; i++) {
+    if (fromParts[i] !== toParts[i]) {
+      samePartsLength = i;
+      break;
+    }
+  }
+
+  var outputParts = [];
+  for (var i = samePartsLength; i < fromParts.length; i++) {
+    outputParts.push('..');
+  }
+
+  outputParts = outputParts.concat(toParts.slice(samePartsLength));
+
+  return outputParts.join('/');
+};
+
+});
+
+require.define("__browserify_process",function(require,module,exports,__dirname,__filename,process,global){var process = module.exports = {};
+
+process.nextTick = (function () {
+    var canSetImmediate = typeof window !== 'undefined'
+        && window.setImmediate;
+    var canPost = typeof window !== 'undefined'
+        && window.postMessage && window.addEventListener
+    ;
+
+    if (canSetImmediate) {
+        return function (f) { return window.setImmediate(f) };
+    }
+
+    if (canPost) {
+        var queue = [];
+        window.addEventListener('message', function (ev) {
+            if (ev.source === window && ev.data === 'browserify-tick') {
+                ev.stopPropagation();
+                if (queue.length > 0) {
+                    var fn = queue.shift();
+                    fn();
+                }
+            }
+        }, true);
+
+        return function nextTick(fn) {
+            queue.push(fn);
+            window.postMessage('browserify-tick', '*');
+        };
+    }
+
+    return function nextTick(fn) {
+        setTimeout(fn, 0);
+    };
+})();
+
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+
+process.binding = function (name) {
+    if (name === 'evals') return (require)('vm')
+    else throw new Error('No such module. (Possibly not yet loaded)')
+};
+
+(function () {
+    var cwd = '/';
+    var path;
+    process.cwd = function () { return cwd };
+    process.chdir = function (dir) {
+        if (!path) path = require('path');
+        cwd = path.resolve(dir, cwd);
+    };
+})();
+
+});
+
+require.define("/node_modules/request/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"./main"}
+});
+
+require.define("/node_modules/request/main.js",function(require,module,exports,__dirname,__filename,process,global){// Copyright 2010-2011 Mikeal Rogers
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+
+var http = require('http')
+  , https = false
+  , tls = false
+  , url = require('url')
+  , util = require('util')
+  , stream = require('stream')
+  , qs = require('querystring')
+  ;
+
+try {
+    https = require('https');
+} catch (e) {}
+
+try {
+    tls = require('tls');
+} catch (e) {}
+
+var toBase64 = function(str) {
+  return (new Buffer(str || "", "ascii")).toString("base64");
+};
+
+// Hacky fix for pre-0.4.4 https
+if (https && !https.Agent) {
+  https.Agent = function (options) {
+    http.Agent.call(this, options);
+  }
+  util.inherits(https.Agent, http.Agent);
+
+  https.Agent.prototype._getConnection = function(host, port, cb) {
+    var s = tls.connect(port, host, this.options, function() {
+      // do other checks here?
+      if (cb) cb();
+    });
+
+    return s;
+  };
+}
+
+var isUrl = /^https?:/;
+
+var globalPool = {};
+
+var Request = function (options) {
+  stream.Stream.call(this);
+  this.readable = true;
+  this.writable = true;
+
+  for (i in options) {
+    this[i] = options[i];
+  }
+  if (!this.pool) this.pool = globalPool;
+  this.dests = [];
+}
+util.inherits(Request, stream.Stream);
+Request.prototype.getAgent = function (host, port) {
+  if (!this.pool[host+':'+port]) {
+    this.pool[host+':'+port] = new this.httpModule.Agent({host:host, port:port});
+  }
+  return this.pool[host+':'+port];
+}
+Request.prototype.request = function () {
+  var options = this;
+  if (options.url) {
+    // People use this property instead all the time so why not just support it.
+    options.uri = options.url;
+    delete options.url;
+  }
+
+  if (!options.uri) {
+    throw new Error("options.uri is a required argument");
+  } else {
+    if (typeof options.uri == "string") options.uri = url.parse(options.uri);
+  }
+  if (options.proxy) {
+    if (typeof options.proxy == 'string') options.proxy = url.parse(options.proxy);
+  }
+
+  options._redirectsFollowed = options._redirectsFollowed || 0;
+  options.maxRedirects = (options.maxRedirects !== undefined) ? options.maxRedirects : 10;
+  options.followRedirect = (options.followRedirect !== undefined) ? options.followRedirect : true;
+
+  options.method = options.method || 'GET';
+  options.headers = options.headers || {};
+
+  var setHost = false;
+  if (!options.headers.host) {
+    options.headers.host = options.uri.hostname;
+    if (options.uri.port) {
+      if ( !(options.uri.port === 80 && options.uri.protocol === 'http:') &&
+           !(options.uri.port === 443 && options.uri.protocol === 'https:') )
+      options.headers.host += (':'+options.uri.port);
+    }
+    setHost = true;
+  }
+
+  if (!options.uri.pathname) {options.uri.pathname = '/';}
+  if (!options.uri.port) {
+    if (options.uri.protocol == 'http:') {options.uri.port = 80;}
+    else if (options.uri.protocol == 'https:') {options.uri.port = 443;}
+  }
+
+  if (options.bodyStream || options.responseBodyStream) {
+    console.error('options.bodyStream and options.responseBodyStream is deprecated. You should now send the request object to stream.pipe()');
+    this.pipe(options.responseBodyStream || options.bodyStream)
+  }
+
+  if (options.proxy) {
+    options.port = options.proxy.port;
+    options.host = options.proxy.hostname;
+  } else {
+    options.port = options.uri.port;
+    options.host = options.uri.hostname;
+  }
+
+  if (options.onResponse === true) {
+    options.onResponse = options.callback;
+    delete options.callback;
+  }
+
+  var clientErrorHandler = function (error) {
+    if (setHost) delete options.headers.host;
+    options.emit('error', error);
+  };
+  if (options.onResponse) options.on('error', function (e) {options.onResponse(e)});
+  if (options.callback) options.on('error', function (e) {options.callback(e)});
+
+
+  if (options.uri.auth && !options.headers.authorization) {
+    options.headers.authorization = "Basic " + toBase64(options.uri.auth.split(':').map(qs.unescape).join(':'));
+  }
+  if (options.proxy && options.proxy.auth && !options.headers['proxy-authorization']) {
+    options.headers['proxy-authorization'] = "Basic " + toBase64(options.proxy.auth.split(':').map(qs.unescape).join(':'));
+  }
+
+  options.path = options.uri.href.replace(options.uri.protocol + '//' + options.uri.host, '');
+  if (options.path.length === 0) options.path = '/';
+
+  if (options.proxy) options.path = (options.uri.protocol + '//' + options.uri.host + options.path);
+
+  if (options.json) {
+    options.headers['content-type'] = 'application/json';
+    options.body = JSON.stringify(options.json);
+  } else if (options.multipart) {
+    options.body = '';
+    options.headers['content-type'] = 'multipart/related;boundary="frontier"';
+
+    if (!options.multipart.forEach) throw new Error('Argument error, options.multipart.');
+    options.multipart.forEach(function (part) {
+      var body = part.body;
+      if(!body) throw Error('Body attribute missing in multipart.');
+      delete part.body;
+      options.body += '--frontier\r\n';
+      Object.keys(part).forEach(function(key){
+        options.body += key + ': ' + part[key] + '\r\n'
+      })
+      options.body += '\r\n' + body + '\r\n';
+    })
+    options.body += '--frontier--'
+  }
+
+  if (options.body) {
+    if (!Buffer.isBuffer(options.body)) {
+      options.body = new Buffer(options.body);
+    }
+    if (options.body.length) {
+      options.headers['content-length'] = options.body.length;
+    } else {
+      throw new Error('Argument error, options.body.');
+    }
+  }
+
+  options.httpModule =
+    {"http:":http, "https:":https}[options.proxy ? options.proxy.protocol : options.uri.protocol]
+
+  if (!options.httpModule) throw new Error("Invalid protocol");
+
+  if (options.pool === false) {
+    options.agent = false;
+  } else {
+    if (options.maxSockets) {
+      options.agent = options.getAgent(options.host, options.port);
+      options.agent.maxSockets = options.maxSockets;
+    }
+    if (options.pool.maxSockets) {
+      options.agent = options.getAgent(options.host, options.port);
+      options.agent.maxSockets = options.pool.maxSockets;
+    }
+  }
+
+  options.req = options.httpModule.request(options, function (response) {
+    options.response = response;
+    if (setHost) delete options.headers.host;
+
+    if (response.statusCode >= 300 &&
+        response.statusCode < 400  &&
+        options.followRedirect     &&
+        options.method !== 'PUT' &&
+        options.method !== 'POST' &&
+        response.headers.location) {
+      if (options._redirectsFollowed >= options.maxRedirects) {
+        options.emit('error', new Error("Exceeded maxRedirects. Probably stuck in a redirect loop."));
+      }
+      options._redirectsFollowed += 1;
+      if (!isUrl.test(response.headers.location)) {
+        response.headers.location = url.resolve(options.uri.href, response.headers.location);
+      }
+      options.uri = response.headers.location;
+      delete options.req;
+      delete options.agent;
+      if (options.headers) {
+        delete options.headers.host;
+      }
+      request(options, options.callback);
+      return; // Ignore the rest of the response
+    } else {
+      options._redirectsFollowed = 0;
+      // Be a good stream and emit end when the response is finished.
+      // Hack to emit end on close becuase of a core bug that never fires end
+      response.on('close', function () {options.emit('end')})
+
+      if (options.encoding) {
+        if (options.dests.length !== 0) {
+          console.error("Ingoring encoding parameter as this stream is being piped to another stream which makes the encoding option invalid.");
+        } else {
+          response.setEncoding(options.encoding);
+        }
+      }
+
+      if (options.dests.length !== 0) {
+        options.dests.forEach(function (dest) {
+          response.pipe(dest);
+        })
+        if (options.onResponse) options.onResponse(null, response);
+        if (options.callback) options.callback(null, response, options.responseBodyStream);
+
+      } else {
+        if (options.onResponse) {
+          options.onResponse(null, response);
+        }
+        if (options.callback) {
+          var buffer = '';
+          response.on("data", function (chunk) {
+            buffer += chunk;
+          })
+          response.on("end", function () {
+            options.callback(null, response, buffer);
+          })
+          ;
+        }
+      }
+    }
+  })
+
+  options.req.on('error', clientErrorHandler);
+
+  options.once('pipe', function (src) {
+    if (options.ntick) throw new Error("You cannot pipe to this stream after the first nextTick() after creation of the request stream.")
+    options.src = src;
+    options.on('pipe', function () {
+      console.error("You have already piped to this stream. Pipeing twice is likely to break the request.")
+    })
+  })
+
+  process.nextTick(function () {
+    if (options.body) {
+      options.req.write(options.body);
+      options.req.end();
+    } else if (options.requestBodyStream) {
+      console.warn("options.requestBodyStream is deprecated, please pass the request object to stream.pipe.")
+      options.requestBodyStream.pipe(options);
+    } else if (!options.src) {
+      options.req.end();
+    }
+    options.ntick = true;
+  })
+}
+Request.prototype.pipe = function (dest) {
+  if (this.response) throw new Error("You cannot pipe after the response event.")
+  this.dests.push(dest);
+}
+Request.prototype.write = function () {
+  if (!this.req) throw new Error("This request has been piped before http.request() was called.");
+  this.req.write.apply(this.req, arguments);
+}
+Request.prototype.end = function () {
+  if (!this.req) throw new Error("This request has been piped before http.request() was called.");
+  this.req.end.apply(this.req, arguments);
+}
+Request.prototype.pause = function () {
+  if (!this.req) throw new Error("This request has been piped before http.request() was called.");
+  this.req.pause.apply(this.req, arguments);
+}
+Request.prototype.resume = function () {
+  if (!this.req) throw new Error("This request has been piped before http.request() was called.");
+  this.req.resume.apply(this.req, arguments);
+}
+
+function request (options, callback) {
+  if (callback) options.callback = callback;
+  var r = new Request(options);
+  r.request();
+  return r;
+}
+
+module.exports = request;
+
+request.defaults = function (options) {
+  var def = function (method) {
+    var d = function (opts, callback) {
+      for (i in options) {
+        if (!opts[i]) opts[i] = options[i];
+        return method(opts, callback);
+      }
+    }
+    return d;
+  }
+  de = def(request);
+  de.get = def(request.get);
+  de.post = def(request.post);
+  de.put = def(request.put);
+  de.head = def(request.head);
+  de.del = def(request.del);
+  return d;
+}
+
+request.get = request;
+request.post = function (options, callback) {
+  options.method = 'POST';
+  return request(options, callback);
+};
+request.put = function (options, callback) {
+  options.method = 'PUT';
+  return request(options, callback);
+};
+request.head = function (options, callback) {
+  options.method = 'HEAD';
+  if (options.body || options.requestBodyStream || options.json || options.multipart) {
+    throw new Error("HTTP HEAD requests MUST NOT include a request body.");
+  }
+  return request(options, callback);
+};
+request.del = function (options, callback) {
+  options.method = 'DELETE';
+  return request(options, callback);
+}
+
+});
+
+require.define("http",function(require,module,exports,__dirname,__filename,process,global){module.exports = require("http-browserify")
+});
+
+require.define("/node_modules/http-browserify/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"index.js","browserify":"index.js"}
+});
+
+require.define("/node_modules/http-browserify/index.js",function(require,module,exports,__dirname,__filename,process,global){var http = module.exports;
+var EventEmitter = require('events').EventEmitter;
+var Request = require('./lib/request');
+
+http.request = function (params, cb) {
+    if (!params) params = {};
+    if (!params.host) params.host = window.location.host.split(':')[0];
+    if (!params.port) params.port = window.location.port;
+
+    var req = new Request(new xhrHttp, params);
+    if (cb) req.on('response', cb);
+    return req;
+};
+
+http.get = function (params, cb) {
+    params.method = 'GET';
+    var req = http.request(params, cb);
+    req.end();
+    return req;
+};
+
+http.Agent = function () {};
+http.Agent.defaultMaxSockets = 4;
+
+var xhrHttp = (function () {
+    if (typeof window === 'undefined') {
+        throw new Error('no window object present');
+    }
+    else if (window.XMLHttpRequest) {
+        return window.XMLHttpRequest;
+    }
+    else if (window.ActiveXObject) {
+        var axs = [
+            'Msxml2.XMLHTTP.6.0',
+            'Msxml2.XMLHTTP.3.0',
+            'Microsoft.XMLHTTP'
+        ];
+        for (var i = 0; i < axs.length; i++) {
+            try {
+                var ax = new(window.ActiveXObject)(axs[i]);
+                return function () {
+                    if (ax) {
+                        var ax_ = ax;
+                        ax = null;
+                        return ax_;
+                    }
+                    else {
+                        return new(window.ActiveXObject)(axs[i]);
+                    }
+                };
+            }
+            catch (e) {}
+        }
+        throw new Error('ajax not supported in this browser')
+    }
+    else {
+        throw new Error('ajax not supported in this browser');
+    }
+})();
+
+});
+
+require.define("events",function(require,module,exports,__dirname,__filename,process,global){if (!process.EventEmitter) process.EventEmitter = function () {};
+
+var EventEmitter = exports.EventEmitter = process.EventEmitter;
+var isArray = typeof Array.isArray === 'function'
+    ? Array.isArray
+    : function (xs) {
+        return Object.prototype.toString.call(xs) === '[object Array]'
+    }
+;
+function indexOf (xs, x) {
+    if (xs.indexOf) return xs.indexOf(x);
+    for (var i = 0; i < xs.length; i++) {
+        if (x === xs[i]) return i;
+    }
+    return -1;
+}
+
+// By default EventEmitters will print a warning if more than
+// 10 listeners are added to it. This is a useful default which
+// helps finding memory leaks.
+//
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+var defaultMaxListeners = 10;
+EventEmitter.prototype.setMaxListeners = function(n) {
+  if (!this._events) this._events = {};
+  this._events.maxListeners = n;
+};
+
+
+EventEmitter.prototype.emit = function(type) {
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._events || !this._events.error ||
+        (isArray(this._events.error) && !this._events.error.length))
+    {
+      if (arguments[1] instanceof Error) {
+        throw arguments[1]; // Unhandled 'error' event
+      } else {
+        throw new Error("Uncaught, unspecified 'error' event.");
+      }
+      return false;
+    }
+  }
+
+  if (!this._events) return false;
+  var handler = this._events[type];
+  if (!handler) return false;
+
+  if (typeof handler == 'function') {
+    switch (arguments.length) {
+      // fast cases
+      case 1:
+        handler.call(this);
+        break;
+      case 2:
+        handler.call(this, arguments[1]);
+        break;
+      case 3:
+        handler.call(this, arguments[1], arguments[2]);
+        break;
+      // slower
+      default:
+        var args = Array.prototype.slice.call(arguments, 1);
+        handler.apply(this, args);
+    }
+    return true;
+
+  } else if (isArray(handler)) {
+    var args = Array.prototype.slice.call(arguments, 1);
+
+    var listeners = handler.slice();
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      listeners[i].apply(this, args);
+    }
+    return true;
+
+  } else {
+    return false;
+  }
+};
+
+// EventEmitter is defined in src/node_events.cc
+// EventEmitter.prototype.emit() is also defined there.
+EventEmitter.prototype.addListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('addListener only takes instances of Function');
+  }
+
+  if (!this._events) this._events = {};
+
+  // To avoid recursion in the case that type == "newListeners"! Before
+  // adding it to the listeners, first emit "newListeners".
+  this.emit('newListener', type, listener);
+
+  if (!this._events[type]) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  } else if (isArray(this._events[type])) {
+
+    // Check for listener leak
+    if (!this._events[type].warned) {
+      var m;
+      if (this._events.maxListeners !== undefined) {
+        m = this._events.maxListeners;
+      } else {
+        m = defaultMaxListeners;
+      }
+
+      if (m && m > 0 && this._events[type].length > m) {
+        this._events[type].warned = true;
+        console.error('(node) warning: possible EventEmitter memory ' +
+                      'leak detected. %d listeners added. ' +
+                      'Use emitter.setMaxListeners() to increase limit.',
+                      this._events[type].length);
+        console.trace();
+      }
+    }
+
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+  } else {
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.on = EventEmitter.prototype.addListener;
+
+EventEmitter.prototype.once = function(type, listener) {
+  var self = this;
+  self.on(type, function g() {
+    self.removeListener(type, g);
+    listener.apply(this, arguments);
+  });
+
+  return this;
+};
+
+EventEmitter.prototype.removeListener = function(type, listener) {
+  if ('function' !== typeof listener) {
+    throw new Error('removeListener only takes instances of Function');
+  }
+
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (!this._events || !this._events[type]) return this;
+
+  var list = this._events[type];
+
+  if (isArray(list)) {
+    var i = indexOf(list, listener);
+    if (i < 0) return this;
+    list.splice(i, 1);
+    if (list.length == 0)
+      delete this._events[type];
+  } else if (this._events[type] === listener) {
+    delete this._events[type];
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  // does not use listeners(), so no side effect of creating _events[type]
+  if (type && this._events && this._events[type]) this._events[type] = null;
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  if (!this._events) this._events = {};
+  if (!this._events[type]) this._events[type] = [];
+  if (!isArray(this._events[type])) {
+    this._events[type] = [this._events[type]];
+  }
+  return this._events[type];
+};
+
+});
+
+require.define("/node_modules/http-browserify/lib/request.js",function(require,module,exports,__dirname,__filename,process,global){var Stream = require('stream');
+var Response = require('./response');
+var concatStream = require('concat-stream')
+
+var Request = module.exports = function (xhr, params) {
+    var self = this;
+    self.writable = true;
+    self.xhr = xhr;
+    self.body = concatStream()
+
+    var uri = params.host + ':' + params.port + (params.path || '/');
+
+    xhr.open(
+        params.method || 'GET',
+        (params.scheme || 'http') + '://' + uri,
+        true
+    );
+
+    if (params.headers) {
+        var keys = objectKeys(params.headers);
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (!self.isSafeRequestHeader(key)) return;
+            var value = params.headers[key];
+            if (isArray(value)) {
+                for (var j = 0; j < value.length; j++) {
+                    xhr.setRequestHeader(key, value[j]);
+                }
+            }
+            else xhr.setRequestHeader(key, value)
+        }
+    }
+
+    var res = new Response;
+    res.on('close', function () {
+        self.emit('close');
+    });
+
+    res.on('ready', function () {
+        self.emit('response', res);
+    });
+
+    xhr.onreadystatechange = function () {
+        res.handle(xhr);
+    };
+};
+
+Request.prototype = new Stream;
+
+Request.prototype.setHeader = function (key, value) {
+    if (isArray(value)) {
+        for (var i = 0; i < value.length; i++) {
+            this.xhr.setRequestHeader(key, value[i]);
+        }
+    }
+    else {
+        this.xhr.setRequestHeader(key, value);
+    }
+};
+
+Request.prototype.write = function (s) {
+    this.body.write(s);
+};
+
+Request.prototype.destroy = function (s) {
+    this.xhr.abort();
+    this.emit('close');
+};
+
+Request.prototype.end = function (s) {
+    if (s !== undefined) this.body.write(s);
+    this.body.end()
+    this.xhr.send(this.body.getBody());
+};
+
+// Taken from http://dxr.mozilla.org/mozilla/mozilla-central/content/base/src/nsXMLHttpRequest.cpp.html
+Request.unsafeHeaders = [
+    "accept-charset",
+    "accept-encoding",
+    "access-control-request-headers",
+    "access-control-request-method",
+    "connection",
+    "content-length",
+    "cookie",
+    "cookie2",
+    "content-transfer-encoding",
+    "date",
+    "expect",
+    "host",
+    "keep-alive",
+    "origin",
+    "referer",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+    "user-agent",
+    "via"
+];
+
+Request.prototype.isSafeRequestHeader = function (headerName) {
+    if (!headerName) return false;
+    return indexOf(Request.unsafeHeaders, headerName.toLowerCase()) === -1;
+};
+
+var objectKeys = Object.keys || function (obj) {
+    var keys = [];
+    for (var key in obj) keys.push(key);
+    return keys;
+};
+
+var isArray = Array.isArray || function (xs) {
+    return Object.prototype.toString.call(xs) === '[object Array]';
+};
+
+var indexOf = function (xs, x) {
+    if (xs.indexOf) return xs.indexOf(x);
+    for (var i = 0; i < xs.length; i++) {
+        if (xs[i] === x) return i;
+    }
+    return -1;
+};
+
+});
+
+require.define("stream",function(require,module,exports,__dirname,__filename,process,global){var events = require('events');
+var util = require('util');
+
+function Stream() {
+  events.EventEmitter.call(this);
+}
+util.inherits(Stream, events.EventEmitter);
+module.exports = Stream;
+// Backwards-compat with node 0.4.x
+Stream.Stream = Stream;
+
+Stream.prototype.pipe = function(dest, options) {
+  var source = this;
+
+  function ondata(chunk) {
+    if (dest.writable) {
+      if (false === dest.write(chunk) && source.pause) {
+        source.pause();
+      }
+    }
+  }
+
+  source.on('data', ondata);
+
+  function ondrain() {
+    if (source.readable && source.resume) {
+      source.resume();
+    }
+  }
+
+  dest.on('drain', ondrain);
+
+  // If the 'end' option is not supplied, dest.end() will be called when
+  // source gets the 'end' or 'close' events.  Only dest.end() once, and
+  // only when all sources have ended.
+  if (!dest._isStdio && (!options || options.end !== false)) {
+    dest._pipeCount = dest._pipeCount || 0;
+    dest._pipeCount++;
+
+    source.on('end', onend);
+    source.on('close', onclose);
+  }
+
+  var didOnEnd = false;
+  function onend() {
+    if (didOnEnd) return;
+    didOnEnd = true;
+
+    dest._pipeCount--;
+
+    // remove the listeners
+    cleanup();
+
+    if (dest._pipeCount > 0) {
+      // waiting for other incoming streams to end.
+      return;
+    }
+
+    dest.end();
+  }
+
+
+  function onclose() {
+    if (didOnEnd) return;
+    didOnEnd = true;
+
+    dest._pipeCount--;
+
+    // remove the listeners
+    cleanup();
+
+    if (dest._pipeCount > 0) {
+      // waiting for other incoming streams to end.
+      return;
+    }
+
+    dest.destroy();
+  }
+
+  // don't leave dangling pipes when there are errors.
+  function onerror(er) {
+    cleanup();
+    if (this.listeners('error').length === 0) {
+      throw er; // Unhandled stream error in pipe.
+    }
+  }
+
+  source.on('error', onerror);
+  dest.on('error', onerror);
+
+  // remove all the event listeners that were added.
+  function cleanup() {
+    source.removeListener('data', ondata);
+    dest.removeListener('drain', ondrain);
+
+    source.removeListener('end', onend);
+    source.removeListener('close', onclose);
+
+    source.removeListener('error', onerror);
+    dest.removeListener('error', onerror);
+
+    source.removeListener('end', cleanup);
+    source.removeListener('close', cleanup);
+
+    dest.removeListener('end', cleanup);
+    dest.removeListener('close', cleanup);
+  }
+
+  source.on('end', cleanup);
+  source.on('close', cleanup);
+
+  dest.on('end', cleanup);
+  dest.on('close', cleanup);
+
+  dest.emit('pipe', source);
+
+  // Allow for unix-like usage: A.pipe(B).pipe(C)
+  return dest;
+};
+
+});
+
+require.define("util",function(require,module,exports,__dirname,__filename,process,global){var events = require('events');
+
+exports.isArray = isArray;
+exports.isDate = function(obj){return Object.prototype.toString.call(obj) === '[object Date]'};
+exports.isRegExp = function(obj){return Object.prototype.toString.call(obj) === '[object RegExp]'};
+
+
+exports.print = function () {};
+exports.puts = function () {};
+exports.debug = function() {};
+
+exports.inspect = function(obj, showHidden, depth, colors) {
+  var seen = [];
+
+  var stylize = function(str, styleType) {
+    // http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+    var styles =
+        { 'bold' : [1, 22],
+          'italic' : [3, 23],
+          'underline' : [4, 24],
+          'inverse' : [7, 27],
+          'white' : [37, 39],
+          'grey' : [90, 39],
+          'black' : [30, 39],
+          'blue' : [34, 39],
+          'cyan' : [36, 39],
+          'green' : [32, 39],
+          'magenta' : [35, 39],
+          'red' : [31, 39],
+          'yellow' : [33, 39] };
+
+    var style =
+        { 'special': 'cyan',
+          'number': 'blue',
+          'boolean': 'yellow',
+          'undefined': 'grey',
+          'null': 'bold',
+          'string': 'green',
+          'date': 'magenta',
+          // "name": intentionally not styling
+          'regexp': 'red' }[styleType];
+
+    if (style) {
+      return '\033[' + styles[style][0] + 'm' + str +
+             '\033[' + styles[style][1] + 'm';
+    } else {
+      return str;
+    }
+  };
+  if (! colors) {
+    stylize = function(str, styleType) { return str; };
+  }
+
+  function format(value, recurseTimes) {
+    // Provide a hook for user-specified inspect functions.
+    // Check that value is an object with an inspect function on it
+    if (value && typeof value.inspect === 'function' &&
+        // Filter out the util module, it's inspect function is special
+        value !== exports &&
+        // Also filter out any prototype objects using the circular check.
+        !(value.constructor && value.constructor.prototype === value)) {
+      return value.inspect(recurseTimes);
+    }
+
+    // Primitive types cannot have properties
+    switch (typeof value) {
+      case 'undefined':
+        return stylize('undefined', 'undefined');
+
+      case 'string':
+        var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
+                                                 .replace(/'/g, "\\'")
+                                                 .replace(/\\"/g, '"') + '\'';
+        return stylize(simple, 'string');
+
+      case 'number':
+        return stylize('' + value, 'number');
+
+      case 'boolean':
+        return stylize('' + value, 'boolean');
+    }
+    // For some reason typeof null is "object", so special case here.
+    if (value === null) {
+      return stylize('null', 'null');
+    }
+
+    // Look up the keys of the object.
+    var visible_keys = Object_keys(value);
+    var keys = showHidden ? Object_getOwnPropertyNames(value) : visible_keys;
+
+    // Functions without properties can be shortcutted.
+    if (typeof value === 'function' && keys.length === 0) {
+      if (isRegExp(value)) {
+        return stylize('' + value, 'regexp');
+      } else {
+        var name = value.name ? ': ' + value.name : '';
+        return stylize('[Function' + name + ']', 'special');
+      }
+    }
+
+    // Dates without properties can be shortcutted
+    if (isDate(value) && keys.length === 0) {
+      return stylize(value.toUTCString(), 'date');
+    }
+
+    var base, type, braces;
+    // Determine the object type
+    if (isArray(value)) {
+      type = 'Array';
+      braces = ['[', ']'];
+    } else {
+      type = 'Object';
+      braces = ['{', '}'];
+    }
+
+    // Make functions say that they are functions
+    if (typeof value === 'function') {
+      var n = value.name ? ': ' + value.name : '';
+      base = (isRegExp(value)) ? ' ' + value : ' [Function' + n + ']';
+    } else {
+      base = '';
+    }
+
+    // Make dates with properties first say the date
+    if (isDate(value)) {
+      base = ' ' + value.toUTCString();
+    }
+
+    if (keys.length === 0) {
+      return braces[0] + base + braces[1];
+    }
+
+    if (recurseTimes < 0) {
+      if (isRegExp(value)) {
+        return stylize('' + value, 'regexp');
+      } else {
+        return stylize('[Object]', 'special');
+      }
+    }
+
+    seen.push(value);
+
+    var output = keys.map(function(key) {
+      var name, str;
+      if (value.__lookupGetter__) {
+        if (value.__lookupGetter__(key)) {
+          if (value.__lookupSetter__(key)) {
+            str = stylize('[Getter/Setter]', 'special');
+          } else {
+            str = stylize('[Getter]', 'special');
+          }
+        } else {
+          if (value.__lookupSetter__(key)) {
+            str = stylize('[Setter]', 'special');
+          }
+        }
+      }
+      if (visible_keys.indexOf(key) < 0) {
+        name = '[' + key + ']';
+      }
+      if (!str) {
+        if (seen.indexOf(value[key]) < 0) {
+          if (recurseTimes === null) {
+            str = format(value[key]);
+          } else {
+            str = format(value[key], recurseTimes - 1);
+          }
+          if (str.indexOf('\n') > -1) {
+            if (isArray(value)) {
+              str = str.split('\n').map(function(line) {
+                return '  ' + line;
+              }).join('\n').substr(2);
+            } else {
+              str = '\n' + str.split('\n').map(function(line) {
+                return '   ' + line;
+              }).join('\n');
+            }
+          }
+        } else {
+          str = stylize('[Circular]', 'special');
+        }
+      }
+      if (typeof name === 'undefined') {
+        if (type === 'Array' && key.match(/^\d+$/)) {
+          return str;
+        }
+        name = JSON.stringify('' + key);
+        if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+          name = name.substr(1, name.length - 2);
+          name = stylize(name, 'name');
+        } else {
+          name = name.replace(/'/g, "\\'")
+                     .replace(/\\"/g, '"')
+                     .replace(/(^"|"$)/g, "'");
+          name = stylize(name, 'string');
+        }
+      }
+
+      return name + ': ' + str;
+    });
+
+    seen.pop();
+
+    var numLinesEst = 0;
+    var length = output.reduce(function(prev, cur) {
+      numLinesEst++;
+      if (cur.indexOf('\n') >= 0) numLinesEst++;
+      return prev + cur.length + 1;
+    }, 0);
+
+    if (length > 50) {
+      output = braces[0] +
+               (base === '' ? '' : base + '\n ') +
+               ' ' +
+               output.join(',\n  ') +
+               ' ' +
+               braces[1];
+
+    } else {
+      output = braces[0] + base + ' ' + output.join(', ') + ' ' + braces[1];
+    }
+
+    return output;
+  }
+  return format(obj, (typeof depth === 'undefined' ? 2 : depth));
+};
+
+
+function isArray(ar) {
+  return ar instanceof Array ||
+         Array.isArray(ar) ||
+         (ar && ar !== Object.prototype && isArray(ar.__proto__));
+}
+
+
+function isRegExp(re) {
+  return re instanceof RegExp ||
+    (typeof re === 'object' && Object.prototype.toString.call(re) === '[object RegExp]');
+}
+
+
+function isDate(d) {
+  if (d instanceof Date) return true;
+  if (typeof d !== 'object') return false;
+  var properties = Date.prototype && Object_getOwnPropertyNames(Date.prototype);
+  var proto = d.__proto__ && Object_getOwnPropertyNames(d.__proto__);
+  return JSON.stringify(proto) === JSON.stringify(properties);
+}
+
+function pad(n) {
+  return n < 10 ? '0' + n.toString(10) : n.toString(10);
+}
+
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov', 'Dec'];
+
+// 26 Feb 16:19:34
+function timestamp() {
+  var d = new Date();
+  var time = [pad(d.getHours()),
+              pad(d.getMinutes()),
+              pad(d.getSeconds())].join(':');
+  return [d.getDate(), months[d.getMonth()], time].join(' ');
+}
+
+exports.log = function (msg) {};
+
+exports.pump = null;
+
+var Object_keys = Object.keys || function (obj) {
+    var res = [];
+    for (var key in obj) res.push(key);
+    return res;
+};
+
+var Object_getOwnPropertyNames = Object.getOwnPropertyNames || function (obj) {
+    var res = [];
+    for (var key in obj) {
+        if (Object.hasOwnProperty.call(obj, key)) res.push(key);
+    }
+    return res;
+};
+
+var Object_create = Object.create || function (prototype, properties) {
+    // from es5-shim
+    var object;
+    if (prototype === null) {
+        object = { '__proto__' : null };
+    }
+    else {
+        if (typeof prototype !== 'object') {
+            throw new TypeError(
+                'typeof prototype[' + (typeof prototype) + '] != \'object\''
+            );
+        }
+        var Type = function () {};
+        Type.prototype = prototype;
+        object = new Type();
+        object.__proto__ = prototype;
+    }
+    if (typeof properties !== 'undefined' && Object.defineProperties) {
+        Object.defineProperties(object, properties);
+    }
+    return object;
+};
+
+exports.inherits = function(ctor, superCtor) {
+  ctor.super_ = superCtor;
+  ctor.prototype = Object_create(superCtor.prototype, {
+    constructor: {
+      value: ctor,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    }
+  });
+};
+
+var formatRegExp = /%[sdj%]/g;
+exports.format = function(f) {
+  if (typeof f !== 'string') {
+    var objects = [];
+    for (var i = 0; i < arguments.length; i++) {
+      objects.push(exports.inspect(arguments[i]));
+    }
+    return objects.join(' ');
+  }
+
+  var i = 1;
+  var args = arguments;
+  var len = args.length;
+  var str = String(f).replace(formatRegExp, function(x) {
+    if (x === '%%') return '%';
+    if (i >= len) return x;
+    switch (x) {
+      case '%s': return String(args[i++]);
+      case '%d': return Number(args[i++]);
+      case '%j': return JSON.stringify(args[i++]);
+      default:
+        return x;
+    }
+  });
+  for(var x = args[i]; i < len; x = args[++i]){
+    if (x === null || typeof x !== 'object') {
+      str += ' ' + x;
+    } else {
+      str += ' ' + exports.inspect(x);
+    }
+  }
+  return str;
+};
+
+});
+
+require.define("/node_modules/http-browserify/lib/response.js",function(require,module,exports,__dirname,__filename,process,global){var Stream = require('stream');
+
+var Response = module.exports = function (res) {
+    this.offset = 0;
+    this.readable = true;
+};
+
+Response.prototype = new Stream;
+
+var capable = {
+    streaming : true,
+    status2 : true
+};
+
+function parseHeaders (res) {
+    var lines = res.getAllResponseHeaders().split(/\r?\n/);
+    var headers = {};
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line === '') continue;
+
+        var m = line.match(/^([^:]+):\s*(.*)/);
+        if (m) {
+            var key = m[1].toLowerCase(), value = m[2];
+
+            if (headers[key] !== undefined) {
+
+                if (isArray(headers[key])) {
+                    headers[key].push(value);
+                }
+                else {
+                    headers[key] = [ headers[key], value ];
+                }
+            }
+            else {
+                headers[key] = value;
+            }
+        }
+        else {
+            headers[line] = true;
+        }
+    }
+    return headers;
+}
+
+Response.prototype.getResponse = function (xhr) {
+    var respType = String(xhr.responseType).toLowerCase();
+    if (respType === 'blob') return xhr.responseBlob;
+    if (respType === 'arraybuffer') return xhr.response;
+    return xhr.responseText;
+}
+
+Response.prototype.getHeader = function (key) {
+    return this.headers[key.toLowerCase()];
+};
+
+Response.prototype.handle = function (res) {
+    if (res.readyState === 2 && capable.status2) {
+        try {
+            this.statusCode = res.status;
+            this.headers = parseHeaders(res);
+        }
+        catch (err) {
+            capable.status2 = false;
+        }
+
+        if (capable.status2) {
+            this.emit('ready');
+        }
+    }
+    else if (capable.streaming && res.readyState === 3) {
+        try {
+            if (!this.statusCode) {
+                this.statusCode = res.status;
+                this.headers = parseHeaders(res);
+                this.emit('ready');
+            }
+        }
+        catch (err) {}
+
+        try {
+            this._emitData(res);
+        }
+        catch (err) {
+            capable.streaming = false;
+        }
+    }
+    else if (res.readyState === 4) {
+        if (!this.statusCode) {
+            this.statusCode = res.status;
+            this.emit('ready');
+        }
+        this._emitData(res);
+
+        if (res.error) {
+            this.emit('error', this.getResponse(res));
+        }
+        else this.emit('end');
+
+        this.emit('close');
+    }
+};
+
+Response.prototype._emitData = function (res) {
+    var respBody = this.getResponse(res);
+    if (respBody.toString().match(/ArrayBuffer/)) {
+        this.emit('data', new Uint8Array(respBody, this.offset));
+        this.offset = respBody.byteLength;
+        return;
+    }
+    if (respBody.length > this.offset) {
+        this.emit('data', respBody.slice(this.offset));
+        this.offset = respBody.length;
+    }
+};
+
+var isArray = Array.isArray || function (xs) {
+    return Object.prototype.toString.call(xs) === '[object Array]';
+};
+
+});
+
+require.define("/node_modules/http-browserify/node_modules/concat-stream/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {}
+});
+
+require.define("/node_modules/http-browserify/node_modules/concat-stream/index.js",function(require,module,exports,__dirname,__filename,process,global){var stream = require('stream')
+var util = require('util')
+
+function ConcatStream(cb) {
+  stream.Stream.call(this)
+  this.writable = true
+  if (cb) this.cb = cb
+  this.body = []
+  if (this.cb) this.on('error', cb)
+}
+
+util.inherits(ConcatStream, stream.Stream)
+
+ConcatStream.prototype.write = function(chunk) {
+  this.body.push(chunk)
+}
+
+ConcatStream.prototype.arrayConcat = function(arrs) {
+  if (arrs.length === 0) return []
+  if (arrs.length === 1) return arrs[0]
+  return arrs.reduce(function (a, b) { return a.concat(b) })
+}
+
+ConcatStream.prototype.isArray = function(arr) {
+  var isArray = Array.isArray(arr)
+  var isTypedArray = arr.toString().match(/Array/)
+  return isArray || isTypedArray
+}
+
+ConcatStream.prototype.getBody = function () {
+  if (this.body.length === 0) return
+  if (typeof(this.body[0]) === "string") return this.body.join('')
+  if (this.isArray(this.body[0])) return this.arrayConcat(this.body)
+  if (typeof(Buffer) !== "undefined" && Buffer.isBuffer(this.body[0])) {
+    return Buffer.concat(this.body)
+  }
+  return this.body
+}
+
+ConcatStream.prototype.end = function() {
+  if (this.cb) this.cb(false, this.getBody())
+}
+
+module.exports = function(cb) {
+  return new ConcatStream(cb)
+}
+
+module.exports.ConcatStream = ConcatStream
+
+});
+
+require.define("url",function(require,module,exports,__dirname,__filename,process,global){var punycode = { encode : function (s) { return s } };
+
+exports.parse = urlParse;
+exports.resolve = urlResolve;
+exports.resolveObject = urlResolveObject;
+exports.format = urlFormat;
+
+function arrayIndexOf(array, subject) {
+    for (var i = 0, j = array.length; i < j; i++) {
+        if(array[i] == subject) return i;
+    }
+    return -1;
+}
+
+var objectKeys = Object.keys || function objectKeys(object) {
+    if (object !== Object(object)) throw new TypeError('Invalid object');
+    var keys = [];
+    for (var key in object) if (object.hasOwnProperty(key)) keys[keys.length] = key;
+    return keys;
+}
+
+// Reference: RFC 3986, RFC 1808, RFC 2396
+
+// define these here so at least they only have to be
+// compiled once on the first module load.
+var protocolPattern = /^([a-z0-9.+-]+:)/i,
+    portPattern = /:[0-9]+$/,
+    // RFC 2396: characters reserved for delimiting URLs.
+    delims = ['<', '>', '"', '`', ' ', '\r', '\n', '\t'],
+    // RFC 2396: characters not allowed for various reasons.
+    unwise = ['{', '}', '|', '\\', '^', '~', '[', ']', '`'].concat(delims),
+    // Allowed by RFCs, but cause of XSS attacks.  Always escape these.
+    autoEscape = ['\''],
+    // Characters that are never ever allowed in a hostname.
+    // Note that any invalid chars are also handled, but these
+    // are the ones that are *expected* to be seen, so we fast-path
+    // them.
+    nonHostChars = ['%', '/', '?', ';', '#']
+      .concat(unwise).concat(autoEscape),
+    nonAuthChars = ['/', '@', '?', '#'].concat(delims),
+    hostnameMaxLen = 255,
+    hostnamePartPattern = /^[a-zA-Z0-9][a-z0-9A-Z_-]{0,62}$/,
+    hostnamePartStart = /^([a-zA-Z0-9][a-z0-9A-Z_-]{0,62})(.*)$/,
+    // protocols that can allow "unsafe" and "unwise" chars.
+    unsafeProtocol = {
+      'javascript': true,
+      'javascript:': true
+    },
+    // protocols that never have a hostname.
+    hostlessProtocol = {
+      'javascript': true,
+      'javascript:': true
+    },
+    // protocols that always have a path component.
+    pathedProtocol = {
+      'http': true,
+      'https': true,
+      'ftp': true,
+      'gopher': true,
+      'file': true,
+      'http:': true,
+      'ftp:': true,
+      'gopher:': true,
+      'file:': true
+    },
+    // protocols that always contain a // bit.
+    slashedProtocol = {
+      'http': true,
+      'https': true,
+      'ftp': true,
+      'gopher': true,
+      'file': true,
+      'http:': true,
+      'https:': true,
+      'ftp:': true,
+      'gopher:': true,
+      'file:': true
+    },
+    querystring = require('querystring');
+
+function urlParse(url, parseQueryString, slashesDenoteHost) {
+  if (url && typeof(url) === 'object' && url.href) return url;
+
+  if (typeof url !== 'string') {
+    throw new TypeError("Parameter 'url' must be a string, not " + typeof url);
+  }
+
+  var out = {},
+      rest = url;
+
+  // cut off any delimiters.
+  // This is to support parse stuff like "<http://foo.com>"
+  for (var i = 0, l = rest.length; i < l; i++) {
+    if (arrayIndexOf(delims, rest.charAt(i)) === -1) break;
+  }
+  if (i !== 0) rest = rest.substr(i);
+
+
+  var proto = protocolPattern.exec(rest);
+  if (proto) {
+    proto = proto[0];
+    var lowerProto = proto.toLowerCase();
+    out.protocol = lowerProto;
+    rest = rest.substr(proto.length);
+  }
+
+  // figure out if it's got a host
+  // user@server is *always* interpreted as a hostname, and url
+  // resolution will treat //foo/bar as host=foo,path=bar because that's
+  // how the browser resolves relative URLs.
+  if (slashesDenoteHost || proto || rest.match(/^\/\/[^@\/]+@[^@\/]+/)) {
+    var slashes = rest.substr(0, 2) === '//';
+    if (slashes && !(proto && hostlessProtocol[proto])) {
+      rest = rest.substr(2);
+      out.slashes = true;
+    }
+  }
+
+  if (!hostlessProtocol[proto] &&
+      (slashes || (proto && !slashedProtocol[proto]))) {
+    // there's a hostname.
+    // the first instance of /, ?, ;, or # ends the host.
+    // don't enforce full RFC correctness, just be unstupid about it.
+
+    // If there is an @ in the hostname, then non-host chars *are* allowed
+    // to the left of the first @ sign, unless some non-auth character
+    // comes *before* the @-sign.
+    // URLs are obnoxious.
+    var atSign = arrayIndexOf(rest, '@');
+    if (atSign !== -1) {
+      // there *may be* an auth
+      var hasAuth = true;
+      for (var i = 0, l = nonAuthChars.length; i < l; i++) {
+        var index = arrayIndexOf(rest, nonAuthChars[i]);
+        if (index !== -1 && index < atSign) {
+          // not a valid auth.  Something like http://foo.com/bar@baz/
+          hasAuth = false;
+          break;
+        }
+      }
+      if (hasAuth) {
+        // pluck off the auth portion.
+        out.auth = rest.substr(0, atSign);
+        rest = rest.substr(atSign + 1);
+      }
+    }
+
+    var firstNonHost = -1;
+    for (var i = 0, l = nonHostChars.length; i < l; i++) {
+      var index = arrayIndexOf(rest, nonHostChars[i]);
+      if (index !== -1 &&
+          (firstNonHost < 0 || index < firstNonHost)) firstNonHost = index;
+    }
+
+    if (firstNonHost !== -1) {
+      out.host = rest.substr(0, firstNonHost);
+      rest = rest.substr(firstNonHost);
+    } else {
+      out.host = rest;
+      rest = '';
+    }
+
+    // pull out port.
+    var p = parseHost(out.host);
+    var keys = objectKeys(p);
+    for (var i = 0, l = keys.length; i < l; i++) {
+      var key = keys[i];
+      out[key] = p[key];
+    }
+
+    // we've indicated that there is a hostname,
+    // so even if it's empty, it has to be present.
+    out.hostname = out.hostname || '';
+
+    // validate a little.
+    if (out.hostname.length > hostnameMaxLen) {
+      out.hostname = '';
+    } else {
+      var hostparts = out.hostname.split(/\./);
+      for (var i = 0, l = hostparts.length; i < l; i++) {
+        var part = hostparts[i];
+        if (!part) continue;
+        if (!part.match(hostnamePartPattern)) {
+          var newpart = '';
+          for (var j = 0, k = part.length; j < k; j++) {
+            if (part.charCodeAt(j) > 127) {
+              // we replace non-ASCII char with a temporary placeholder
+              // we need this to make sure size of hostname is not
+              // broken by replacing non-ASCII by nothing
+              newpart += 'x';
+            } else {
+              newpart += part[j];
+            }
+          }
+          // we test again with ASCII char only
+          if (!newpart.match(hostnamePartPattern)) {
+            var validParts = hostparts.slice(0, i);
+            var notHost = hostparts.slice(i + 1);
+            var bit = part.match(hostnamePartStart);
+            if (bit) {
+              validParts.push(bit[1]);
+              notHost.unshift(bit[2]);
+            }
+            if (notHost.length) {
+              rest = '/' + notHost.join('.') + rest;
+            }
+            out.hostname = validParts.join('.');
+            break;
+          }
+        }
+      }
+    }
+
+    // hostnames are always lower case.
+    out.hostname = out.hostname.toLowerCase();
+
+    // IDNA Support: Returns a puny coded representation of "domain".
+    // It only converts the part of the domain name that
+    // has non ASCII characters. I.e. it dosent matter if
+    // you call it with a domain that already is in ASCII.
+    var domainArray = out.hostname.split('.');
+    var newOut = [];
+    for (var i = 0; i < domainArray.length; ++i) {
+      var s = domainArray[i];
+      newOut.push(s.match(/[^A-Za-z0-9_-]/) ?
+          'xn--' + punycode.encode(s) : s);
+    }
+    out.hostname = newOut.join('.');
+
+    out.host = (out.hostname || '') +
+        ((out.port) ? ':' + out.port : '');
+    out.href += out.host;
+  }
+
+  // now rest is set to the post-host stuff.
+  // chop off any delim chars.
+  if (!unsafeProtocol[lowerProto]) {
+
+    // First, make 100% sure that any "autoEscape" chars get
+    // escaped, even if encodeURIComponent doesn't think they
+    // need to be.
+    for (var i = 0, l = autoEscape.length; i < l; i++) {
+      var ae = autoEscape[i];
+      var esc = encodeURIComponent(ae);
+      if (esc === ae) {
+        esc = escape(ae);
+      }
+      rest = rest.split(ae).join(esc);
+    }
+
+    // Now make sure that delims never appear in a url.
+    var chop = rest.length;
+    for (var i = 0, l = delims.length; i < l; i++) {
+      var c = arrayIndexOf(rest, delims[i]);
+      if (c !== -1) {
+        chop = Math.min(c, chop);
+      }
+    }
+    rest = rest.substr(0, chop);
+  }
+
+
+  // chop off from the tail first.
+  var hash = arrayIndexOf(rest, '#');
+  if (hash !== -1) {
+    // got a fragment string.
+    out.hash = rest.substr(hash);
+    rest = rest.slice(0, hash);
+  }
+  var qm = arrayIndexOf(rest, '?');
+  if (qm !== -1) {
+    out.search = rest.substr(qm);
+    out.query = rest.substr(qm + 1);
+    if (parseQueryString) {
+      out.query = querystring.parse(out.query);
+    }
+    rest = rest.slice(0, qm);
+  } else if (parseQueryString) {
+    // no query string, but parseQueryString still requested
+    out.search = '';
+    out.query = {};
+  }
+  if (rest) out.pathname = rest;
+  if (slashedProtocol[proto] &&
+      out.hostname && !out.pathname) {
+    out.pathname = '/';
+  }
+
+  //to support http.request
+  if (out.pathname || out.search) {
+    out.path = (out.pathname ? out.pathname : '') +
+               (out.search ? out.search : '');
+  }
+
+  // finally, reconstruct the href based on what has been validated.
+  out.href = urlFormat(out);
+  return out;
+}
+
+// format a parsed object into a url string
+function urlFormat(obj) {
+  // ensure it's an object, and not a string url.
+  // If it's an obj, this is a no-op.
+  // this way, you can call url_format() on strings
+  // to clean up potentially wonky urls.
+  if (typeof(obj) === 'string') obj = urlParse(obj);
+
+  var auth = obj.auth || '';
+  if (auth) {
+    auth = auth.split('@').join('%40');
+    for (var i = 0, l = nonAuthChars.length; i < l; i++) {
+      var nAC = nonAuthChars[i];
+      auth = auth.split(nAC).join(encodeURIComponent(nAC));
+    }
+    auth += '@';
+  }
+
+  var protocol = obj.protocol || '',
+      host = (obj.host !== undefined) ? auth + obj.host :
+          obj.hostname !== undefined ? (
+              auth + obj.hostname +
+              (obj.port ? ':' + obj.port : '')
+          ) :
+          false,
+      pathname = obj.pathname || '',
+      query = obj.query &&
+              ((typeof obj.query === 'object' &&
+                objectKeys(obj.query).length) ?
+                 querystring.stringify(obj.query) :
+                 '') || '',
+      search = obj.search || (query && ('?' + query)) || '',
+      hash = obj.hash || '';
+
+  if (protocol && protocol.substr(-1) !== ':') protocol += ':';
+
+  // only the slashedProtocols get the //.  Not mailto:, xmpp:, etc.
+  // unless they had them to begin with.
+  if (obj.slashes ||
+      (!protocol || slashedProtocol[protocol]) && host !== false) {
+    host = '//' + (host || '');
+    if (pathname && pathname.charAt(0) !== '/') pathname = '/' + pathname;
+  } else if (!host) {
+    host = '';
+  }
+
+  if (hash && hash.charAt(0) !== '#') hash = '#' + hash;
+  if (search && search.charAt(0) !== '?') search = '?' + search;
+
+  return protocol + host + pathname + search + hash;
+}
+
+function urlResolve(source, relative) {
+  return urlFormat(urlResolveObject(source, relative));
+}
+
+function urlResolveObject(source, relative) {
+  if (!source) return relative;
+
+  source = urlParse(urlFormat(source), false, true);
+  relative = urlParse(urlFormat(relative), false, true);
+
+  // hash is always overridden, no matter what.
+  source.hash = relative.hash;
+
+  if (relative.href === '') {
+    source.href = urlFormat(source);
+    return source;
+  }
+
+  // hrefs like //foo/bar always cut to the protocol.
+  if (relative.slashes && !relative.protocol) {
+    relative.protocol = source.protocol;
+    //urlParse appends trailing / to urls like http://www.example.com
+    if (slashedProtocol[relative.protocol] &&
+        relative.hostname && !relative.pathname) {
+      relative.path = relative.pathname = '/';
+    }
+    relative.href = urlFormat(relative);
+    return relative;
+  }
+
+  if (relative.protocol && relative.protocol !== source.protocol) {
+    // if it's a known url protocol, then changing
+    // the protocol does weird things
+    // first, if it's not file:, then we MUST have a host,
+    // and if there was a path
+    // to begin with, then we MUST have a path.
+    // if it is file:, then the host is dropped,
+    // because that's known to be hostless.
+    // anything else is assumed to be absolute.
+    if (!slashedProtocol[relative.protocol]) {
+      relative.href = urlFormat(relative);
+      return relative;
+    }
+    source.protocol = relative.protocol;
+    if (!relative.host && !hostlessProtocol[relative.protocol]) {
+      var relPath = (relative.pathname || '').split('/');
+      while (relPath.length && !(relative.host = relPath.shift()));
+      if (!relative.host) relative.host = '';
+      if (!relative.hostname) relative.hostname = '';
+      if (relPath[0] !== '') relPath.unshift('');
+      if (relPath.length < 2) relPath.unshift('');
+      relative.pathname = relPath.join('/');
+    }
+    source.pathname = relative.pathname;
+    source.search = relative.search;
+    source.query = relative.query;
+    source.host = relative.host || '';
+    source.auth = relative.auth;
+    source.hostname = relative.hostname || relative.host;
+    source.port = relative.port;
+    //to support http.request
+    if (source.pathname !== undefined || source.search !== undefined) {
+      source.path = (source.pathname ? source.pathname : '') +
+                    (source.search ? source.search : '');
+    }
+    source.slashes = source.slashes || relative.slashes;
+    source.href = urlFormat(source);
+    return source;
+  }
+
+  var isSourceAbs = (source.pathname && source.pathname.charAt(0) === '/'),
+      isRelAbs = (
+          relative.host !== undefined ||
+          relative.pathname && relative.pathname.charAt(0) === '/'
+      ),
+      mustEndAbs = (isRelAbs || isSourceAbs ||
+                    (source.host && relative.pathname)),
+      removeAllDots = mustEndAbs,
+      srcPath = source.pathname && source.pathname.split('/') || [],
+      relPath = relative.pathname && relative.pathname.split('/') || [],
+      psychotic = source.protocol &&
+          !slashedProtocol[source.protocol];
+
+  // if the url is a non-slashed url, then relative
+  // links like ../.. should be able
+  // to crawl up to the hostname, as well.  This is strange.
+  // source.protocol has already been set by now.
+  // Later on, put the first path part into the host field.
+  if (psychotic) {
+
+    delete source.hostname;
+    delete source.port;
+    if (source.host) {
+      if (srcPath[0] === '') srcPath[0] = source.host;
+      else srcPath.unshift(source.host);
+    }
+    delete source.host;
+    if (relative.protocol) {
+      delete relative.hostname;
+      delete relative.port;
+      if (relative.host) {
+        if (relPath[0] === '') relPath[0] = relative.host;
+        else relPath.unshift(relative.host);
+      }
+      delete relative.host;
+    }
+    mustEndAbs = mustEndAbs && (relPath[0] === '' || srcPath[0] === '');
+  }
+
+  if (isRelAbs) {
+    // it's absolute.
+    source.host = (relative.host || relative.host === '') ?
+                      relative.host : source.host;
+    source.hostname = (relative.hostname || relative.hostname === '') ?
+                      relative.hostname : source.hostname;
+    source.search = relative.search;
+    source.query = relative.query;
+    srcPath = relPath;
+    // fall through to the dot-handling below.
+  } else if (relPath.length) {
+    // it's relative
+    // throw away the existing file, and take the new path instead.
+    if (!srcPath) srcPath = [];
+    srcPath.pop();
+    srcPath = srcPath.concat(relPath);
+    source.search = relative.search;
+    source.query = relative.query;
+  } else if ('search' in relative) {
+    // just pull out the search.
+    // like href='?foo'.
+    // Put this after the other two cases because it simplifies the booleans
+    if (psychotic) {
+      source.hostname = source.host = srcPath.shift();
+      //occationaly the auth can get stuck only in host
+      //this especialy happens in cases like
+      //url.resolveObject('mailto:local1@domain1', 'local2@domain2')
+      var authInHost = source.host && arrayIndexOf(source.host, '@') > 0 ?
+                       source.host.split('@') : false;
+      if (authInHost) {
+        source.auth = authInHost.shift();
+        source.host = source.hostname = authInHost.shift();
+      }
+    }
+    source.search = relative.search;
+    source.query = relative.query;
+    //to support http.request
+    if (source.pathname !== undefined || source.search !== undefined) {
+      source.path = (source.pathname ? source.pathname : '') +
+                    (source.search ? source.search : '');
+    }
+    source.href = urlFormat(source);
+    return source;
+  }
+  if (!srcPath.length) {
+    // no path at all.  easy.
+    // we've already handled the other stuff above.
+    delete source.pathname;
+    //to support http.request
+    if (!source.search) {
+      source.path = '/' + source.search;
+    } else {
+      delete source.path;
+    }
+    source.href = urlFormat(source);
+    return source;
+  }
+  // if a url ENDs in . or .., then it must get a trailing slash.
+  // however, if it ends in anything else non-slashy,
+  // then it must NOT get a trailing slash.
+  var last = srcPath.slice(-1)[0];
+  var hasTrailingSlash = (
+      (source.host || relative.host) && (last === '.' || last === '..') ||
+      last === '');
+
+  // strip single dots, resolve double dots to parent dir
+  // if the path tries to go above the root, `up` ends up > 0
+  var up = 0;
+  for (var i = srcPath.length; i >= 0; i--) {
+    last = srcPath[i];
+    if (last == '.') {
+      srcPath.splice(i, 1);
+    } else if (last === '..') {
+      srcPath.splice(i, 1);
+      up++;
+    } else if (up) {
+      srcPath.splice(i, 1);
+      up--;
+    }
+  }
+
+  // if the path is allowed to go above the root, restore leading ..s
+  if (!mustEndAbs && !removeAllDots) {
+    for (; up--; up) {
+      srcPath.unshift('..');
+    }
+  }
+
+  if (mustEndAbs && srcPath[0] !== '' &&
+      (!srcPath[0] || srcPath[0].charAt(0) !== '/')) {
+    srcPath.unshift('');
+  }
+
+  if (hasTrailingSlash && (srcPath.join('/').substr(-1) !== '/')) {
+    srcPath.push('');
+  }
+
+  var isAbsolute = srcPath[0] === '' ||
+      (srcPath[0] && srcPath[0].charAt(0) === '/');
+
+  // put the host back
+  if (psychotic) {
+    source.hostname = source.host = isAbsolute ? '' :
+                                    srcPath.length ? srcPath.shift() : '';
+    //occationaly the auth can get stuck only in host
+    //this especialy happens in cases like
+    //url.resolveObject('mailto:local1@domain1', 'local2@domain2')
+    var authInHost = source.host && arrayIndexOf(source.host, '@') > 0 ?
+                     source.host.split('@') : false;
+    if (authInHost) {
+      source.auth = authInHost.shift();
+      source.host = source.hostname = authInHost.shift();
+    }
+  }
+
+  mustEndAbs = mustEndAbs || (source.host && srcPath.length);
+
+  if (mustEndAbs && !isAbsolute) {
+    srcPath.unshift('');
+  }
+
+  source.pathname = srcPath.join('/');
+  //to support request.http
+  if (source.pathname !== undefined || source.search !== undefined) {
+    source.path = (source.pathname ? source.pathname : '') +
+                  (source.search ? source.search : '');
+  }
+  source.auth = relative.auth || source.auth;
+  source.slashes = source.slashes || relative.slashes;
+  source.href = urlFormat(source);
+  return source;
+}
+
+function parseHost(host) {
+  var out = {};
+  var port = portPattern.exec(host);
+  if (port) {
+    port = port[0];
+    out.port = port.substr(1);
+    host = host.substr(0, host.length - port.length);
+  }
+  if (host) out.hostname = host;
+  return out;
+}
+
+});
+
+require.define("querystring",function(require,module,exports,__dirname,__filename,process,global){var isArray = typeof Array.isArray === 'function'
+    ? Array.isArray
+    : function (xs) {
+        return Object.prototype.toString.call(xs) === '[object Array]'
+    };
+
+var objectKeys = Object.keys || function objectKeys(object) {
+    if (object !== Object(object)) throw new TypeError('Invalid object');
+    var keys = [];
+    for (var key in object) if (object.hasOwnProperty(key)) keys[keys.length] = key;
+    return keys;
+}
+
+
+/*!
+ * querystring
+ * Copyright(c) 2010 TJ Holowaychuk <tj@vision-media.ca>
+ * MIT Licensed
+ */
+
+/**
+ * Library version.
+ */
+
+exports.version = '0.3.1';
+
+/**
+ * Object#toString() ref for stringify().
+ */
+
+var toString = Object.prototype.toString;
+
+/**
+ * Cache non-integer test regexp.
+ */
+
+var notint = /[^0-9]/;
+
+/**
+ * Parse the given query `str`, returning an object.
+ *
+ * @param {String} str
+ * @return {Object}
+ * @api public
+ */
+
+exports.parse = function(str){
+  if (null == str || '' == str) return {};
+
+  function promote(parent, key) {
+    if (parent[key].length == 0) return parent[key] = {};
+    var t = {};
+    for (var i in parent[key]) t[i] = parent[key][i];
+    parent[key] = t;
+    return t;
+  }
+
+  return String(str)
+    .split('&')
+    .reduce(function(ret, pair){
+      try{
+        pair = decodeURIComponent(pair.replace(/\+/g, ' '));
+      } catch(e) {
+        // ignore
+      }
+
+      var eql = pair.indexOf('=')
+        , brace = lastBraceInKey(pair)
+        , key = pair.substr(0, brace || eql)
+        , val = pair.substr(brace || eql, pair.length)
+        , val = val.substr(val.indexOf('=') + 1, val.length)
+        , parent = ret;
+
+      // ?foo
+      if ('' == key) key = pair, val = '';
+
+      // nested
+      if (~key.indexOf(']')) {
+        var parts = key.split('[')
+          , len = parts.length
+          , last = len - 1;
+
+        function parse(parts, parent, key) {
+          var part = parts.shift();
+
+          // end
+          if (!part) {
+            if (isArray(parent[key])) {
+              parent[key].push(val);
+            } else if ('object' == typeof parent[key]) {
+              parent[key] = val;
+            } else if ('undefined' == typeof parent[key]) {
+              parent[key] = val;
+            } else {
+              parent[key] = [parent[key], val];
+            }
+          // array
+          } else {
+            obj = parent[key] = parent[key] || [];
+            if (']' == part) {
+              if (isArray(obj)) {
+                if ('' != val) obj.push(val);
+              } else if ('object' == typeof obj) {
+                obj[objectKeys(obj).length] = val;
+              } else {
+                obj = parent[key] = [parent[key], val];
+              }
+            // prop
+            } else if (~part.indexOf(']')) {
+              part = part.substr(0, part.length - 1);
+              if(notint.test(part) && isArray(obj)) obj = promote(parent, key);
+              parse(parts, obj, part);
+            // key
+            } else {
+              if(notint.test(part) && isArray(obj)) obj = promote(parent, key);
+              parse(parts, obj, part);
+            }
+          }
+        }
+
+        parse(parts, parent, 'base');
+      // optimize
+      } else {
+        if (notint.test(key) && isArray(parent.base)) {
+          var t = {};
+          for(var k in parent.base) t[k] = parent.base[k];
+          parent.base = t;
+        }
+        set(parent.base, key, val);
+      }
+
+      return ret;
+    }, {base: {}}).base;
+};
+
+/**
+ * Turn the given `obj` into a query string
+ *
+ * @param {Object} obj
+ * @return {String}
+ * @api public
+ */
+
+var stringify = exports.stringify = function(obj, prefix) {
+  if (isArray(obj)) {
+    return stringifyArray(obj, prefix);
+  } else if ('[object Object]' == toString.call(obj)) {
+    return stringifyObject(obj, prefix);
+  } else if ('string' == typeof obj) {
+    return stringifyString(obj, prefix);
+  } else {
+    return prefix;
+  }
+};
+
+/**
+ * Stringify the given `str`.
+ *
+ * @param {String} str
+ * @param {String} prefix
+ * @return {String}
+ * @api private
+ */
+
+function stringifyString(str, prefix) {
+  if (!prefix) throw new TypeError('stringify expects an object');
+  return prefix + '=' + encodeURIComponent(str);
+}
+
+/**
+ * Stringify the given `arr`.
+ *
+ * @param {Array} arr
+ * @param {String} prefix
+ * @return {String}
+ * @api private
+ */
+
+function stringifyArray(arr, prefix) {
+  var ret = [];
+  if (!prefix) throw new TypeError('stringify expects an object');
+  for (var i = 0; i < arr.length; i++) {
+    ret.push(stringify(arr[i], prefix + '[]'));
+  }
+  return ret.join('&');
+}
+
+/**
+ * Stringify the given `obj`.
+ *
+ * @param {Object} obj
+ * @param {String} prefix
+ * @return {String}
+ * @api private
+ */
+
+function stringifyObject(obj, prefix) {
+  var ret = []
+    , keys = objectKeys(obj)
+    , key;
+  for (var i = 0, len = keys.length; i < len; ++i) {
+    key = keys[i];
+    ret.push(stringify(obj[key], prefix
+      ? prefix + '[' + encodeURIComponent(key) + ']'
+      : encodeURIComponent(key)));
+  }
+  return ret.join('&');
+}
+
+/**
+ * Set `obj`'s `key` to `val` respecting
+ * the weird and wonderful syntax of a qs,
+ * where "foo=bar&foo=baz" becomes an array.
+ *
+ * @param {Object} obj
+ * @param {String} key
+ * @param {String} val
+ * @api private
+ */
+
+function set(obj, key, val) {
+  var v = obj[key];
+  if (undefined === v) {
+    obj[key] = val;
+  } else if (isArray(v)) {
+    v.push(val);
+  } else {
+    obj[key] = [v, val];
+  }
+}
+
+/**
+ * Locate last brace in `str` within the key.
+ *
+ * @param {String} str
+ * @return {Number}
+ * @api private
+ */
+
+function lastBraceInKey(str) {
+  var len = str.length
+    , brace
+    , c;
+  for (var i = 0; i < len; ++i) {
+    c = str[i];
+    if (']' == c) brace = false;
+    if ('[' == c) brace = true;
+    if ('=' == c && !brace) return i;
+  }
+}
+
+});
+
+require.define("https",function(require,module,exports,__dirname,__filename,process,global){module.exports = require('http');
+
+});
+
+require.define("tls",function(require,module,exports,__dirname,__filename,process,global){// todo
+
+});
+
+require.define("/node_modules/async/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"./index"}
+});
+
+require.define("/node_modules/async/index.js",function(require,module,exports,__dirname,__filename,process,global){// This file is just added for convenience so this repository can be
+// directly checked out into a project's deps folder
+module.exports = require('./lib/async');
+
+});
+
+require.define("/node_modules/async/lib/async.js",function(require,module,exports,__dirname,__filename,process,global){/*global setTimeout: false, console: false */
+(function () {
+
+    var async = {};
+
+    // global on the server, window in the browser
+    var root = this,
+        previous_async = root.async;
+
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = async;
+    }
+    else {
+        root.async = async;
+    }
+
+    async.noConflict = function () {
+        root.async = previous_async;
+        return async;
+    };
+
+    //// cross-browser compatiblity functions ////
+
+    var _forEach = function (arr, iterator) {
+        if (arr.forEach) {
+            return arr.forEach(iterator);
+        }
+        for (var i = 0; i < arr.length; i += 1) {
+            iterator(arr[i], i, arr);
+        }
+    };
+
+    var _map = function (arr, iterator) {
+        if (arr.map) {
+            return arr.map(iterator);
+        }
+        var results = [];
+        _forEach(arr, function (x, i, a) {
+            results.push(iterator(x, i, a));
+        });
+        return results;
+    };
+
+    var _reduce = function (arr, iterator, memo) {
+        if (arr.reduce) {
+            return arr.reduce(iterator, memo);
+        }
+        _forEach(arr, function (x, i, a) {
+            memo = iterator(memo, x, i, a);
+        });
+        return memo;
+    };
+
+    var _keys = function (obj) {
+        if (Object.keys) {
+            return Object.keys(obj);
+        }
+        var keys = [];
+        for (var k in obj) {
+            if (obj.hasOwnProperty(k)) {
+                keys.push(k);
+            }
+        }
+        return keys;
+    };
+
+    //// exported async module functions ////
+
+    //// nextTick implementation with browser-compatible fallback ////
+    if (typeof process === 'undefined' || !(process.nextTick)) {
+        async.nextTick = function (fn) {
+            setTimeout(fn, 0);
+        };
+    }
+    else {
+        async.nextTick = process.nextTick;
+    }
+
+    async.forEach = function (arr, iterator, callback) {
+        callback = callback || function () {};
+        if (!arr.length) {
+            return callback();
+        }
+        var completed = 0;
+        _forEach(arr, function (x) {
+            iterator(x, function (err) {
+                if (err) {
+                    callback(err);
+                    callback = function () {};
+                }
+                else {
+                    completed += 1;
+                    if (completed === arr.length) {
+                        callback(null);
+                    }
+                }
+            });
+        });
+    };
+
+    async.forEachSeries = function (arr, iterator, callback) {
+        callback = callback || function () {};
+        if (!arr.length) {
+            return callback();
+        }
+        var completed = 0;
+        var iterate = function () {
+            iterator(arr[completed], function (err) {
+                if (err) {
+                    callback(err);
+                    callback = function () {};
+                }
+                else {
+                    completed += 1;
+                    if (completed === arr.length) {
+                        callback(null);
+                    }
+                    else {
+                        iterate();
+                    }
+                }
+            });
+        };
+        iterate();
+    };
+
+    async.forEachLimit = function (arr, limit, iterator, callback) {
+        callback = callback || function () {};
+        if (!arr.length || limit <= 0) {
+            return callback();
+        }
+        var completed = 0;
+        var started = 0;
+        var running = 0;
+
+        (function replenish () {
+            if (completed === arr.length) {
+                return callback();
+            }
+
+            while (running < limit && started < arr.length) {
+                started += 1;
+                running += 1;
+                iterator(arr[started - 1], function (err) {
+                    if (err) {
+                        callback(err);
+                        callback = function () {};
+                    }
+                    else {
+                        completed += 1;
+                        running -= 1;
+                        if (completed === arr.length) {
+                            callback();
+                        }
+                        else {
+                            replenish();
+                        }
+                    }
+                });
+            }
+        })();
+    };
+
+
+    var doParallel = function (fn) {
+        return function () {
+            var args = Array.prototype.slice.call(arguments);
+            return fn.apply(null, [async.forEach].concat(args));
+        };
+    };
+    var doSeries = function (fn) {
+        return function () {
+            var args = Array.prototype.slice.call(arguments);
+            return fn.apply(null, [async.forEachSeries].concat(args));
+        };
+    };
+
+
+    var _asyncMap = function (eachfn, arr, iterator, callback) {
+        var results = [];
+        arr = _map(arr, function (x, i) {
+            return {index: i, value: x};
+        });
+        eachfn(arr, function (x, callback) {
+            iterator(x.value, function (err, v) {
+                results[x.index] = v;
+                callback(err);
+            });
+        }, function (err) {
+            callback(err, results);
+        });
+    };
+    async.map = doParallel(_asyncMap);
+    async.mapSeries = doSeries(_asyncMap);
+
+
+    // reduce only has a series version, as doing reduce in parallel won't
+    // work in many situations.
+    async.reduce = function (arr, memo, iterator, callback) {
+        async.forEachSeries(arr, function (x, callback) {
+            iterator(memo, x, function (err, v) {
+                memo = v;
+                callback(err);
+            });
+        }, function (err) {
+            callback(err, memo);
+        });
+    };
+    // inject alias
+    async.inject = async.reduce;
+    // foldl alias
+    async.foldl = async.reduce;
+
+    async.reduceRight = function (arr, memo, iterator, callback) {
+        var reversed = _map(arr, function (x) {
+            return x;
+        }).reverse();
+        async.reduce(reversed, memo, iterator, callback);
+    };
+    // foldr alias
+    async.foldr = async.reduceRight;
+
+    var _filter = function (eachfn, arr, iterator, callback) {
+        var results = [];
+        arr = _map(arr, function (x, i) {
+            return {index: i, value: x};
+        });
+        eachfn(arr, function (x, callback) {
+            iterator(x.value, function (v) {
+                if (v) {
+                    results.push(x);
+                }
+                callback();
+            });
+        }, function (err) {
+            callback(_map(results.sort(function (a, b) {
+                return a.index - b.index;
+            }), function (x) {
+                return x.value;
+            }));
+        });
+    };
+    async.filter = doParallel(_filter);
+    async.filterSeries = doSeries(_filter);
+    // select alias
+    async.select = async.filter;
+    async.selectSeries = async.filterSeries;
+
+    var _reject = function (eachfn, arr, iterator, callback) {
+        var results = [];
+        arr = _map(arr, function (x, i) {
+            return {index: i, value: x};
+        });
+        eachfn(arr, function (x, callback) {
+            iterator(x.value, function (v) {
+                if (!v) {
+                    results.push(x);
+                }
+                callback();
+            });
+        }, function (err) {
+            callback(_map(results.sort(function (a, b) {
+                return a.index - b.index;
+            }), function (x) {
+                return x.value;
+            }));
+        });
+    };
+    async.reject = doParallel(_reject);
+    async.rejectSeries = doSeries(_reject);
+
+    var _detect = function (eachfn, arr, iterator, main_callback) {
+        eachfn(arr, function (x, callback) {
+            iterator(x, function (result) {
+                if (result) {
+                    main_callback(x);
+                    main_callback = function () {};
+                }
+                else {
+                    callback();
+                }
+            });
+        }, function (err) {
+            main_callback();
+        });
+    };
+    async.detect = doParallel(_detect);
+    async.detectSeries = doSeries(_detect);
+
+    async.some = function (arr, iterator, main_callback) {
+        async.forEach(arr, function (x, callback) {
+            iterator(x, function (v) {
+                if (v) {
+                    main_callback(true);
+                    main_callback = function () {};
+                }
+                callback();
+            });
+        }, function (err) {
+            main_callback(false);
+        });
+    };
+    // any alias
+    async.any = async.some;
+
+    async.every = function (arr, iterator, main_callback) {
+        async.forEach(arr, function (x, callback) {
+            iterator(x, function (v) {
+                if (!v) {
+                    main_callback(false);
+                    main_callback = function () {};
+                }
+                callback();
+            });
+        }, function (err) {
+            main_callback(true);
+        });
+    };
+    // all alias
+    async.all = async.every;
+
+    async.sortBy = function (arr, iterator, callback) {
+        async.map(arr, function (x, callback) {
+            iterator(x, function (err, criteria) {
+                if (err) {
+                    callback(err);
+                }
+                else {
+                    callback(null, {value: x, criteria: criteria});
+                }
+            });
+        }, function (err, results) {
+            if (err) {
+                return callback(err);
+            }
+            else {
+                var fn = function (left, right) {
+                    var a = left.criteria, b = right.criteria;
+                    return a < b ? -1 : a > b ? 1 : 0;
+                };
+                callback(null, _map(results.sort(fn), function (x) {
+                    return x.value;
+                }));
+            }
+        });
+    };
+
+    async.auto = function (tasks, callback) {
+        callback = callback || function () {};
+        var keys = _keys(tasks);
+        if (!keys.length) {
+            return callback(null);
+        }
+
+        var results = {};
+
+        var listeners = [];
+        var addListener = function (fn) {
+            listeners.unshift(fn);
+        };
+        var removeListener = function (fn) {
+            for (var i = 0; i < listeners.length; i += 1) {
+                if (listeners[i] === fn) {
+                    listeners.splice(i, 1);
+                    return;
+                }
+            }
+        };
+        var taskComplete = function () {
+            _forEach(listeners.slice(0), function (fn) {
+                fn();
+            });
+        };
+
+        addListener(function () {
+            if (_keys(results).length === keys.length) {
+                callback(null, results);
+                callback = function () {};
+            }
+        });
+
+        _forEach(keys, function (k) {
+            var task = (tasks[k] instanceof Function) ? [tasks[k]]: tasks[k];
+            var taskCallback = function (err) {
+                if (err) {
+                    callback(err);
+                    // stop subsequent errors hitting callback multiple times
+                    callback = function () {};
+                }
+                else {
+                    var args = Array.prototype.slice.call(arguments, 1);
+                    if (args.length <= 1) {
+                        args = args[0];
+                    }
+                    results[k] = args;
+                    taskComplete();
+                }
+            };
+            var requires = task.slice(0, Math.abs(task.length - 1)) || [];
+            var ready = function () {
+                return _reduce(requires, function (a, x) {
+                    return (a && results.hasOwnProperty(x));
+                }, true) && !results.hasOwnProperty(k);
+            };
+            if (ready()) {
+                task[task.length - 1](taskCallback, results);
+            }
+            else {
+                var listener = function () {
+                    if (ready()) {
+                        removeListener(listener);
+                        task[task.length - 1](taskCallback, results);
+                    }
+                };
+                addListener(listener);
+            }
+        });
+    };
+
+    async.waterfall = function (tasks, callback) {
+        callback = callback || function () {};
+        if (!tasks.length) {
+            return callback();
+        }
+        var wrapIterator = function (iterator) {
+            return function (err) {
+                if (err) {
+                    callback(err);
+                    callback = function () {};
+                }
+                else {
+                    var args = Array.prototype.slice.call(arguments, 1);
+                    var next = iterator.next();
+                    if (next) {
+                        args.push(wrapIterator(next));
+                    }
+                    else {
+                        args.push(callback);
+                    }
+                    async.nextTick(function () {
+                        iterator.apply(null, args);
+                    });
+                }
+            };
+        };
+        wrapIterator(async.iterator(tasks))();
+    };
+
+    async.parallel = function (tasks, callback) {
+        callback = callback || function () {};
+        if (tasks.constructor === Array) {
+            async.map(tasks, function (fn, callback) {
+                if (fn) {
+                    fn(function (err) {
+                        var args = Array.prototype.slice.call(arguments, 1);
+                        if (args.length <= 1) {
+                            args = args[0];
+                        }
+                        callback.call(null, err, args);
+                    });
+                }
+            }, callback);
+        }
+        else {
+            var results = {};
+            async.forEach(_keys(tasks), function (k, callback) {
+                tasks[k](function (err) {
+                    var args = Array.prototype.slice.call(arguments, 1);
+                    if (args.length <= 1) {
+                        args = args[0];
+                    }
+                    results[k] = args;
+                    callback(err);
+                });
+            }, function (err) {
+                callback(err, results);
+            });
+        }
+    };
+
+    async.series = function (tasks, callback) {
+        callback = callback || function () {};
+        if (tasks.constructor === Array) {
+            async.mapSeries(tasks, function (fn, callback) {
+                if (fn) {
+                    fn(function (err) {
+                        var args = Array.prototype.slice.call(arguments, 1);
+                        if (args.length <= 1) {
+                            args = args[0];
+                        }
+                        callback.call(null, err, args);
+                    });
+                }
+            }, callback);
+        }
+        else {
+            var results = {};
+            async.forEachSeries(_keys(tasks), function (k, callback) {
+                tasks[k](function (err) {
+                    var args = Array.prototype.slice.call(arguments, 1);
+                    if (args.length <= 1) {
+                        args = args[0];
+                    }
+                    results[k] = args;
+                    callback(err);
+                });
+            }, function (err) {
+                callback(err, results);
+            });
+        }
+    };
+
+    async.iterator = function (tasks) {
+        var makeCallback = function (index) {
+            var fn = function () {
+                if (tasks.length) {
+                    tasks[index].apply(null, arguments);
+                }
+                return fn.next();
+            };
+            fn.next = function () {
+                return (index < tasks.length - 1) ? makeCallback(index + 1): null;
+            };
+            return fn;
+        };
+        return makeCallback(0);
+    };
+
+    async.apply = function (fn) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        return function () {
+            return fn.apply(
+                null, args.concat(Array.prototype.slice.call(arguments))
+            );
+        };
+    };
+
+    var _concat = function (eachfn, arr, fn, callback) {
+        var r = [];
+        eachfn(arr, function (x, cb) {
+            fn(x, function (err, y) {
+                r = r.concat(y || []);
+                cb(err);
+            });
+        }, function (err) {
+            callback(err, r);
+        });
+    };
+    async.concat = doParallel(_concat);
+    async.concatSeries = doSeries(_concat);
+
+    async.whilst = function (test, iterator, callback) {
+        if (test()) {
+            iterator(function (err) {
+                if (err) {
+                    return callback(err);
+                }
+                async.whilst(test, iterator, callback);
+            });
+        }
+        else {
+            callback();
+        }
+    };
+
+    async.until = function (test, iterator, callback) {
+        if (!test()) {
+            iterator(function (err) {
+                if (err) {
+                    return callback(err);
+                }
+                async.until(test, iterator, callback);
+            });
+        }
+        else {
+            callback();
+        }
+    };
+
+    async.queue = function (worker, concurrency) {
+        var workers = 0;
+        var q = {
+            tasks: [],
+            concurrency: concurrency,
+            saturated: null,
+            empty: null,
+            drain: null,
+            push: function (data, callback) {
+                if(data.constructor !== Array) {
+                    data = [data];
+                }
+                _forEach(data, function(task) {
+                    q.tasks.push({
+                        data: task,
+                        callback: typeof callback === 'function' ? callback : null
+                    });
+                    if (q.saturated && q.tasks.length == concurrency) {
+                        q.saturated();
+                    }
+                    async.nextTick(q.process);
+                });
+            },
+            process: function () {
+                if (workers < q.concurrency && q.tasks.length) {
+                    var task = q.tasks.shift();
+                    if(q.empty && q.tasks.length == 0) q.empty();
+                    workers += 1;
+                    worker(task.data, function () {
+                        workers -= 1;
+                        if (task.callback) {
+                            task.callback.apply(task, arguments);
+                        }
+                        if(q.drain && q.tasks.length + workers == 0) q.drain();
+                        q.process();
+                    });
+                }
+            },
+            length: function () {
+                return q.tasks.length;
+            },
+            running: function () {
+                return workers;
+            }
+        };
+        return q;
+    };
+
+    var _console_fn = function (name) {
+        return function (fn) {
+            var args = Array.prototype.slice.call(arguments, 1);
+            fn.apply(null, args.concat([function (err) {
+                var args = Array.prototype.slice.call(arguments, 1);
+                if (typeof console !== 'undefined') {
+                    if (err) {
+                        if (console.error) {
+                            console.error(err);
+                        }
+                    }
+                    else if (console[name]) {
+                        _forEach(args, function (x) {
+                            console[name](x);
+                        });
+                    }
+                }
+            }]));
+        };
+    };
+    async.log = _console_fn('log');
+    async.dir = _console_fn('dir');
+    /*async.info = _console_fn('info');
+    async.warn = _console_fn('warn');
+    async.error = _console_fn('error');*/
+
+    async.memoize = function (fn, hasher) {
+        var memo = {};
+        var queues = {};
+        hasher = hasher || function (x) {
+            return x;
+        };
+        var memoized = function () {
+            var args = Array.prototype.slice.call(arguments);
+            var callback = args.pop();
+            var key = hasher.apply(null, args);
+            if (key in memo) {
+                callback.apply(null, memo[key]);
+            }
+            else if (key in queues) {
+                queues[key].push(callback);
+            }
+            else {
+                queues[key] = [callback];
+                fn.apply(null, args.concat([function () {
+                    memo[key] = arguments;
+                    var q = queues[key];
+                    delete queues[key];
+                    for (var i = 0, l = q.length; i < l; i++) {
+                      q[i].apply(null, arguments);
+                    }
+                }]));
+            }
+        };
+        memoized.unmemoized = fn;
+        return memoized;
+    };
+
+    async.unmemoize = function (fn) {
+      return function () {
+        return (fn.unmemoized || fn).apply(null, arguments);
+      };
+    };
+
+}());
+
+});
+
+require.define("/node_modules/underscore/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"underscore.js"}
+});
+
+require.define("/node_modules/underscore/underscore.js",function(require,module,exports,__dirname,__filename,process,global){//     Underscore.js 1.4.2
+//     http://underscorejs.org
+//     (c) 2009-2012 Jeremy Ashkenas, DocumentCloud Inc.
+//     Underscore may be freely distributed under the MIT license.
+
+(function() {
+
+  // Baseline setup
+  // --------------
+
+  // Establish the root object, `window` in the browser, or `global` on the server.
+  var root = this;
+
+  // Save the previous value of the `_` variable.
+  var previousUnderscore = root._;
+
+  // Establish the object that gets returned to break out of a loop iteration.
+  var breaker = {};
+
+  // Save bytes in the minified (but not gzipped) version:
+  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
+
+  // Create quick reference variables for speed access to core prototypes.
+  var push             = ArrayProto.push,
+      slice            = ArrayProto.slice,
+      concat           = ArrayProto.concat,
+      unshift          = ArrayProto.unshift,
+      toString         = ObjProto.toString,
+      hasOwnProperty   = ObjProto.hasOwnProperty;
+
+  // All **ECMAScript 5** native function implementations that we hope to use
+  // are declared here.
+  var
+    nativeForEach      = ArrayProto.forEach,
+    nativeMap          = ArrayProto.map,
+    nativeReduce       = ArrayProto.reduce,
+    nativeReduceRight  = ArrayProto.reduceRight,
+    nativeFilter       = ArrayProto.filter,
+    nativeEvery        = ArrayProto.every,
+    nativeSome         = ArrayProto.some,
+    nativeIndexOf      = ArrayProto.indexOf,
+    nativeLastIndexOf  = ArrayProto.lastIndexOf,
+    nativeIsArray      = Array.isArray,
+    nativeKeys         = Object.keys,
+    nativeBind         = FuncProto.bind;
+
+  // Create a safe reference to the Underscore object for use below.
+  var _ = function(obj) {
+    if (obj instanceof _) return obj;
+    if (!(this instanceof _)) return new _(obj);
+    this._wrapped = obj;
+  };
+
+  // Export the Underscore object for **Node.js**, with
+  // backwards-compatibility for the old `require()` API. If we're in
+  // the browser, add `_` as a global object via a string identifier,
+  // for Closure Compiler "advanced" mode.
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = _;
+    }
+    exports._ = _;
+  } else {
+    root['_'] = _;
+  }
+
+  // Current version.
+  _.VERSION = '1.4.2';
+
+  // Collection Functions
+  // --------------------
+
+  // The cornerstone, an `each` implementation, aka `forEach`.
+  // Handles objects with the built-in `forEach`, arrays, and raw objects.
+  // Delegates to **ECMAScript 5**'s native `forEach` if available.
+  var each = _.each = _.forEach = function(obj, iterator, context) {
+    if (obj == null) return;
+    if (nativeForEach && obj.forEach === nativeForEach) {
+      obj.forEach(iterator, context);
+    } else if (obj.length === +obj.length) {
+      for (var i = 0, l = obj.length; i < l; i++) {
+        if (iterator.call(context, obj[i], i, obj) === breaker) return;
+      }
+    } else {
+      for (var key in obj) {
+        if (_.has(obj, key)) {
+          if (iterator.call(context, obj[key], key, obj) === breaker) return;
+        }
+      }
+    }
+  };
+
+  // Return the results of applying the iterator to each element.
+  // Delegates to **ECMAScript 5**'s native `map` if available.
+  _.map = _.collect = function(obj, iterator, context) {
+    var results = [];
+    if (obj == null) return results;
+    if (nativeMap && obj.map === nativeMap) return obj.map(iterator, context);
+    each(obj, function(value, index, list) {
+      results[results.length] = iterator.call(context, value, index, list);
+    });
+    return results;
+  };
+
+  // **Reduce** builds up a single result from a list of values, aka `inject`,
+  // or `foldl`. Delegates to **ECMAScript 5**'s native `reduce` if available.
+  _.reduce = _.foldl = _.inject = function(obj, iterator, memo, context) {
+    var initial = arguments.length > 2;
+    if (obj == null) obj = [];
+    if (nativeReduce && obj.reduce === nativeReduce) {
+      if (context) iterator = _.bind(iterator, context);
+      return initial ? obj.reduce(iterator, memo) : obj.reduce(iterator);
+    }
+    each(obj, function(value, index, list) {
+      if (!initial) {
+        memo = value;
+        initial = true;
+      } else {
+        memo = iterator.call(context, memo, value, index, list);
+      }
+    });
+    if (!initial) throw new TypeError('Reduce of empty array with no initial value');
+    return memo;
+  };
+
+  // The right-associative version of reduce, also known as `foldr`.
+  // Delegates to **ECMAScript 5**'s native `reduceRight` if available.
+  _.reduceRight = _.foldr = function(obj, iterator, memo, context) {
+    var initial = arguments.length > 2;
+    if (obj == null) obj = [];
+    if (nativeReduceRight && obj.reduceRight === nativeReduceRight) {
+      if (context) iterator = _.bind(iterator, context);
+      return arguments.length > 2 ? obj.reduceRight(iterator, memo) : obj.reduceRight(iterator);
+    }
+    var length = obj.length;
+    if (length !== +length) {
+      var keys = _.keys(obj);
+      length = keys.length;
+    }
+    each(obj, function(value, index, list) {
+      index = keys ? keys[--length] : --length;
+      if (!initial) {
+        memo = obj[index];
+        initial = true;
+      } else {
+        memo = iterator.call(context, memo, obj[index], index, list);
+      }
+    });
+    if (!initial) throw new TypeError('Reduce of empty array with no initial value');
+    return memo;
+  };
+
+  // Return the first value which passes a truth test. Aliased as `detect`.
+  _.find = _.detect = function(obj, iterator, context) {
+    var result;
+    any(obj, function(value, index, list) {
+      if (iterator.call(context, value, index, list)) {
+        result = value;
+        return true;
+      }
+    });
+    return result;
+  };
+
+  // Return all the elements that pass a truth test.
+  // Delegates to **ECMAScript 5**'s native `filter` if available.
+  // Aliased as `select`.
+  _.filter = _.select = function(obj, iterator, context) {
+    var results = [];
+    if (obj == null) return results;
+    if (nativeFilter && obj.filter === nativeFilter) return obj.filter(iterator, context);
+    each(obj, function(value, index, list) {
+      if (iterator.call(context, value, index, list)) results[results.length] = value;
+    });
+    return results;
+  };
+
+  // Return all the elements for which a truth test fails.
+  _.reject = function(obj, iterator, context) {
+    var results = [];
+    if (obj == null) return results;
+    each(obj, function(value, index, list) {
+      if (!iterator.call(context, value, index, list)) results[results.length] = value;
+    });
+    return results;
+  };
+
+  // Determine whether all of the elements match a truth test.
+  // Delegates to **ECMAScript 5**'s native `every` if available.
+  // Aliased as `all`.
+  _.every = _.all = function(obj, iterator, context) {
+    iterator || (iterator = _.identity);
+    var result = true;
+    if (obj == null) return result;
+    if (nativeEvery && obj.every === nativeEvery) return obj.every(iterator, context);
+    each(obj, function(value, index, list) {
+      if (!(result = result && iterator.call(context, value, index, list))) return breaker;
+    });
+    return !!result;
+  };
+
+  // Determine if at least one element in the object matches a truth test.
+  // Delegates to **ECMAScript 5**'s native `some` if available.
+  // Aliased as `any`.
+  var any = _.some = _.any = function(obj, iterator, context) {
+    iterator || (iterator = _.identity);
+    var result = false;
+    if (obj == null) return result;
+    if (nativeSome && obj.some === nativeSome) return obj.some(iterator, context);
+    each(obj, function(value, index, list) {
+      if (result || (result = iterator.call(context, value, index, list))) return breaker;
+    });
+    return !!result;
+  };
+
+  // Determine if the array or object contains a given value (using `===`).
+  // Aliased as `include`.
+  _.contains = _.include = function(obj, target) {
+    var found = false;
+    if (obj == null) return found;
+    if (nativeIndexOf && obj.indexOf === nativeIndexOf) return obj.indexOf(target) != -1;
+    found = any(obj, function(value) {
+      return value === target;
+    });
+    return found;
+  };
+
+  // Invoke a method (with arguments) on every item in a collection.
+  _.invoke = function(obj, method) {
+    var args = slice.call(arguments, 2);
+    return _.map(obj, function(value) {
+      return (_.isFunction(method) ? method : value[method]).apply(value, args);
+    });
+  };
+
+  // Convenience version of a common use case of `map`: fetching a property.
+  _.pluck = function(obj, key) {
+    return _.map(obj, function(value){ return value[key]; });
+  };
+
+  // Convenience version of a common use case of `filter`: selecting only objects
+  // with specific `key:value` pairs.
+  _.where = function(obj, attrs) {
+    if (_.isEmpty(attrs)) return [];
+    return _.filter(obj, function(value) {
+      for (var key in attrs) {
+        if (attrs[key] !== value[key]) return false;
+      }
+      return true;
+    });
+  };
+
+  // Return the maximum element or (element-based computation).
+  // Can't optimize arrays of integers longer than 65,535 elements.
+  // See: https://bugs.webkit.org/show_bug.cgi?id=80797
+  _.max = function(obj, iterator, context) {
+    if (!iterator && _.isArray(obj) && obj[0] === +obj[0] && obj.length < 65535) {
+      return Math.max.apply(Math, obj);
+    }
+    if (!iterator && _.isEmpty(obj)) return -Infinity;
+    var result = {computed : -Infinity};
+    each(obj, function(value, index, list) {
+      var computed = iterator ? iterator.call(context, value, index, list) : value;
+      computed >= result.computed && (result = {value : value, computed : computed});
+    });
+    return result.value;
+  };
+
+  // Return the minimum element (or element-based computation).
+  _.min = function(obj, iterator, context) {
+    if (!iterator && _.isArray(obj) && obj[0] === +obj[0] && obj.length < 65535) {
+      return Math.min.apply(Math, obj);
+    }
+    if (!iterator && _.isEmpty(obj)) return Infinity;
+    var result = {computed : Infinity};
+    each(obj, function(value, index, list) {
+      var computed = iterator ? iterator.call(context, value, index, list) : value;
+      computed < result.computed && (result = {value : value, computed : computed});
+    });
+    return result.value;
+  };
+
+  // Shuffle an array.
+  _.shuffle = function(obj) {
+    var rand;
+    var index = 0;
+    var shuffled = [];
+    each(obj, function(value) {
+      rand = _.random(index++);
+      shuffled[index - 1] = shuffled[rand];
+      shuffled[rand] = value;
+    });
+    return shuffled;
+  };
+
+  // An internal function to generate lookup iterators.
+  var lookupIterator = function(value) {
+    return _.isFunction(value) ? value : function(obj){ return obj[value]; };
+  };
+
+  // Sort the object's values by a criterion produced by an iterator.
+  _.sortBy = function(obj, value, context) {
+    var iterator = lookupIterator(value);
+    return _.pluck(_.map(obj, function(value, index, list) {
+      return {
+        value : value,
+        index : index,
+        criteria : iterator.call(context, value, index, list)
+      };
+    }).sort(function(left, right) {
+      var a = left.criteria;
+      var b = right.criteria;
+      if (a !== b) {
+        if (a > b || a === void 0) return 1;
+        if (a < b || b === void 0) return -1;
+      }
+      return left.index < right.index ? -1 : 1;
+    }), 'value');
+  };
+
+  // An internal function used for aggregate "group by" operations.
+  var group = function(obj, value, context, behavior) {
+    var result = {};
+    var iterator = lookupIterator(value);
+    each(obj, function(value, index) {
+      var key = iterator.call(context, value, index, obj);
+      behavior(result, key, value);
+    });
+    return result;
+  };
+
+  // Groups the object's values by a criterion. Pass either a string attribute
+  // to group by, or a function that returns the criterion.
+  _.groupBy = function(obj, value, context) {
+    return group(obj, value, context, function(result, key, value) {
+      (_.has(result, key) ? result[key] : (result[key] = [])).push(value);
+    });
+  };
+
+  // Counts instances of an object that group by a certain criterion. Pass
+  // either a string attribute to count by, or a function that returns the
+  // criterion.
+  _.countBy = function(obj, value, context) {
+    return group(obj, value, context, function(result, key, value) {
+      if (!_.has(result, key)) result[key] = 0;
+      result[key]++;
+    });
+  };
+
+  // Use a comparator function to figure out the smallest index at which
+  // an object should be inserted so as to maintain order. Uses binary search.
+  _.sortedIndex = function(array, obj, iterator, context) {
+    iterator = iterator == null ? _.identity : lookupIterator(iterator);
+    var value = iterator.call(context, obj);
+    var low = 0, high = array.length;
+    while (low < high) {
+      var mid = (low + high) >>> 1;
+      iterator.call(context, array[mid]) < value ? low = mid + 1 : high = mid;
+    }
+    return low;
+  };
+
+  // Safely convert anything iterable into a real, live array.
+  _.toArray = function(obj) {
+    if (!obj) return [];
+    if (obj.length === +obj.length) return slice.call(obj);
+    return _.values(obj);
+  };
+
+  // Return the number of elements in an object.
+  _.size = function(obj) {
+    return (obj.length === +obj.length) ? obj.length : _.keys(obj).length;
+  };
+
+  // Array Functions
+  // ---------------
+
+  // Get the first element of an array. Passing **n** will return the first N
+  // values in the array. Aliased as `head` and `take`. The **guard** check
+  // allows it to work with `_.map`.
+  _.first = _.head = _.take = function(array, n, guard) {
+    return (n != null) && !guard ? slice.call(array, 0, n) : array[0];
+  };
+
+  // Returns everything but the last entry of the array. Especially useful on
+  // the arguments object. Passing **n** will return all the values in
+  // the array, excluding the last N. The **guard** check allows it to work with
+  // `_.map`.
+  _.initial = function(array, n, guard) {
+    return slice.call(array, 0, array.length - ((n == null) || guard ? 1 : n));
+  };
+
+  // Get the last element of an array. Passing **n** will return the last N
+  // values in the array. The **guard** check allows it to work with `_.map`.
+  _.last = function(array, n, guard) {
+    if ((n != null) && !guard) {
+      return slice.call(array, Math.max(array.length - n, 0));
+    } else {
+      return array[array.length - 1];
+    }
+  };
+
+  // Returns everything but the first entry of the array. Aliased as `tail` and `drop`.
+  // Especially useful on the arguments object. Passing an **n** will return
+  // the rest N values in the array. The **guard**
+  // check allows it to work with `_.map`.
+  _.rest = _.tail = _.drop = function(array, n, guard) {
+    return slice.call(array, (n == null) || guard ? 1 : n);
+  };
+
+  // Trim out all falsy values from an array.
+  _.compact = function(array) {
+    return _.filter(array, function(value){ return !!value; });
+  };
+
+  // Internal implementation of a recursive `flatten` function.
+  var flatten = function(input, shallow, output) {
+    each(input, function(value) {
+      if (_.isArray(value)) {
+        shallow ? push.apply(output, value) : flatten(value, shallow, output);
+      } else {
+        output.push(value);
+      }
+    });
+    return output;
+  };
+
+  // Return a completely flattened version of an array.
+  _.flatten = function(array, shallow) {
+    return flatten(array, shallow, []);
+  };
+
+  // Return a version of the array that does not contain the specified value(s).
+  _.without = function(array) {
+    return _.difference(array, slice.call(arguments, 1));
+  };
+
+  // Produce a duplicate-free version of the array. If the array has already
+  // been sorted, you have the option of using a faster algorithm.
+  // Aliased as `unique`.
+  _.uniq = _.unique = function(array, isSorted, iterator, context) {
+    var initial = iterator ? _.map(array, iterator, context) : array;
+    var results = [];
+    var seen = [];
+    each(initial, function(value, index) {
+      if (isSorted ? (!index || seen[seen.length - 1] !== value) : !_.contains(seen, value)) {
+        seen.push(value);
+        results.push(array[index]);
+      }
+    });
+    return results;
+  };
+
+  // Produce an array that contains the union: each distinct element from all of
+  // the passed-in arrays.
+  _.union = function() {
+    return _.uniq(concat.apply(ArrayProto, arguments));
+  };
+
+  // Produce an array that contains every item shared between all the
+  // passed-in arrays.
+  _.intersection = function(array) {
+    var rest = slice.call(arguments, 1);
+    return _.filter(_.uniq(array), function(item) {
+      return _.every(rest, function(other) {
+        return _.indexOf(other, item) >= 0;
+      });
+    });
+  };
+
+  // Take the difference between one array and a number of other arrays.
+  // Only the elements present in just the first array will remain.
+  _.difference = function(array) {
+    var rest = concat.apply(ArrayProto, slice.call(arguments, 1));
+    return _.filter(array, function(value){ return !_.contains(rest, value); });
+  };
+
+  // Zip together multiple lists into a single array -- elements that share
+  // an index go together.
+  _.zip = function() {
+    var args = slice.call(arguments);
+    var length = _.max(_.pluck(args, 'length'));
+    var results = new Array(length);
+    for (var i = 0; i < length; i++) {
+      results[i] = _.pluck(args, "" + i);
+    }
+    return results;
+  };
+
+  // Converts lists into objects. Pass either a single array of `[key, value]`
+  // pairs, or two parallel arrays of the same length -- one of keys, and one of
+  // the corresponding values.
+  _.object = function(list, values) {
+    var result = {};
+    for (var i = 0, l = list.length; i < l; i++) {
+      if (values) {
+        result[list[i]] = values[i];
+      } else {
+        result[list[i][0]] = list[i][1];
+      }
+    }
+    return result;
+  };
+
+  // If the browser doesn't supply us with indexOf (I'm looking at you, **MSIE**),
+  // we need this function. Return the position of the first occurrence of an
+  // item in an array, or -1 if the item is not included in the array.
+  // Delegates to **ECMAScript 5**'s native `indexOf` if available.
+  // If the array is large and already in sort order, pass `true`
+  // for **isSorted** to use binary search.
+  _.indexOf = function(array, item, isSorted) {
+    if (array == null) return -1;
+    var i = 0, l = array.length;
+    if (isSorted) {
+      if (typeof isSorted == 'number') {
+        i = (isSorted < 0 ? Math.max(0, l + isSorted) : isSorted);
+      } else {
+        i = _.sortedIndex(array, item);
+        return array[i] === item ? i : -1;
+      }
+    }
+    if (nativeIndexOf && array.indexOf === nativeIndexOf) return array.indexOf(item, isSorted);
+    for (; i < l; i++) if (array[i] === item) return i;
+    return -1;
+  };
+
+  // Delegates to **ECMAScript 5**'s native `lastIndexOf` if available.
+  _.lastIndexOf = function(array, item, from) {
+    if (array == null) return -1;
+    var hasIndex = from != null;
+    if (nativeLastIndexOf && array.lastIndexOf === nativeLastIndexOf) {
+      return hasIndex ? array.lastIndexOf(item, from) : array.lastIndexOf(item);
+    }
+    var i = (hasIndex ? from : array.length);
+    while (i--) if (array[i] === item) return i;
+    return -1;
+  };
+
+  // Generate an integer Array containing an arithmetic progression. A port of
+  // the native Python `range()` function. See
+  // [the Python documentation](http://docs.python.org/library/functions.html#range).
+  _.range = function(start, stop, step) {
+    if (arguments.length <= 1) {
+      stop = start || 0;
+      start = 0;
+    }
+    step = arguments[2] || 1;
+
+    var len = Math.max(Math.ceil((stop - start) / step), 0);
+    var idx = 0;
+    var range = new Array(len);
+
+    while(idx < len) {
+      range[idx++] = start;
+      start += step;
+    }
+
+    return range;
+  };
+
+  // Function (ahem) Functions
+  // ------------------
+
+  // Reusable constructor function for prototype setting.
+  var ctor = function(){};
+
+  // Create a function bound to a given object (assigning `this`, and arguments,
+  // optionally). Binding with arguments is also known as `curry`.
+  // Delegates to **ECMAScript 5**'s native `Function.bind` if available.
+  // We check for `func.bind` first, to fail fast when `func` is undefined.
+  _.bind = function bind(func, context) {
+    var bound, args;
+    if (func.bind === nativeBind && nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+    if (!_.isFunction(func)) throw new TypeError;
+    args = slice.call(arguments, 2);
+    return bound = function() {
+      if (!(this instanceof bound)) return func.apply(context, args.concat(slice.call(arguments)));
+      ctor.prototype = func.prototype;
+      var self = new ctor;
+      var result = func.apply(self, args.concat(slice.call(arguments)));
+      if (Object(result) === result) return result;
+      return self;
+    };
+  };
+
+  // Bind all of an object's methods to that object. Useful for ensuring that
+  // all callbacks defined on an object belong to it.
+  _.bindAll = function(obj) {
+    var funcs = slice.call(arguments, 1);
+    if (funcs.length == 0) funcs = _.functions(obj);
+    each(funcs, function(f) { obj[f] = _.bind(obj[f], obj); });
+    return obj;
+  };
+
+  // Memoize an expensive function by storing its results.
+  _.memoize = function(func, hasher) {
+    var memo = {};
+    hasher || (hasher = _.identity);
+    return function() {
+      var key = hasher.apply(this, arguments);
+      return _.has(memo, key) ? memo[key] : (memo[key] = func.apply(this, arguments));
+    };
+  };
+
+  // Delays a function for the given number of milliseconds, and then calls
+  // it with the arguments supplied.
+  _.delay = function(func, wait) {
+    var args = slice.call(arguments, 2);
+    return setTimeout(function(){ return func.apply(null, args); }, wait);
+  };
+
+  // Defers a function, scheduling it to run after the current call stack has
+  // cleared.
+  _.defer = function(func) {
+    return _.delay.apply(_, [func, 1].concat(slice.call(arguments, 1)));
+  };
+
+  // Returns a function, that, when invoked, will only be triggered at most once
+  // during a given window of time.
+  _.throttle = function(func, wait) {
+    var context, args, timeout, throttling, more, result;
+    var whenDone = _.debounce(function(){ more = throttling = false; }, wait);
+    return function() {
+      context = this; args = arguments;
+      var later = function() {
+        timeout = null;
+        if (more) {
+          result = func.apply(context, args);
+        }
+        whenDone();
+      };
+      if (!timeout) timeout = setTimeout(later, wait);
+      if (throttling) {
+        more = true;
+      } else {
+        throttling = true;
+        result = func.apply(context, args);
+      }
+      whenDone();
+      return result;
+    };
+  };
+
+  // Returns a function, that, as long as it continues to be invoked, will not
+  // be triggered. The function will be called after it stops being called for
+  // N milliseconds. If `immediate` is passed, trigger the function on the
+  // leading edge, instead of the trailing.
+  _.debounce = function(func, wait, immediate) {
+    var timeout, result;
+    return function() {
+      var context = this, args = arguments;
+      var later = function() {
+        timeout = null;
+        if (!immediate) result = func.apply(context, args);
+      };
+      var callNow = immediate && !timeout;
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+      if (callNow) result = func.apply(context, args);
+      return result;
+    };
+  };
+
+  // Returns a function that will be executed at most one time, no matter how
+  // often you call it. Useful for lazy initialization.
+  _.once = function(func) {
+    var ran = false, memo;
+    return function() {
+      if (ran) return memo;
+      ran = true;
+      memo = func.apply(this, arguments);
+      func = null;
+      return memo;
+    };
+  };
+
+  // Returns the first function passed as an argument to the second,
+  // allowing you to adjust arguments, run code before and after, and
+  // conditionally execute the original function.
+  _.wrap = function(func, wrapper) {
+    return function() {
+      var args = [func];
+      push.apply(args, arguments);
+      return wrapper.apply(this, args);
+    };
+  };
+
+  // Returns a function that is the composition of a list of functions, each
+  // consuming the return value of the function that follows.
+  _.compose = function() {
+    var funcs = arguments;
+    return function() {
+      var args = arguments;
+      for (var i = funcs.length - 1; i >= 0; i--) {
+        args = [funcs[i].apply(this, args)];
+      }
+      return args[0];
+    };
+  };
+
+  // Returns a function that will only be executed after being called N times.
+  _.after = function(times, func) {
+    if (times <= 0) return func();
+    return function() {
+      if (--times < 1) {
+        return func.apply(this, arguments);
+      }
+    };
+  };
+
+  // Object Functions
+  // ----------------
+
+  // Retrieve the names of an object's properties.
+  // Delegates to **ECMAScript 5**'s native `Object.keys`
+  _.keys = nativeKeys || function(obj) {
+    if (obj !== Object(obj)) throw new TypeError('Invalid object');
+    var keys = [];
+    for (var key in obj) if (_.has(obj, key)) keys[keys.length] = key;
+    return keys;
+  };
+
+  // Retrieve the values of an object's properties.
+  _.values = function(obj) {
+    var values = [];
+    for (var key in obj) if (_.has(obj, key)) values.push(obj[key]);
+    return values;
+  };
+
+  // Convert an object into a list of `[key, value]` pairs.
+  _.pairs = function(obj) {
+    var pairs = [];
+    for (var key in obj) if (_.has(obj, key)) pairs.push([key, obj[key]]);
+    return pairs;
+  };
+
+  // Invert the keys and values of an object. The values must be serializable.
+  _.invert = function(obj) {
+    var result = {};
+    for (var key in obj) if (_.has(obj, key)) result[obj[key]] = key;
+    return result;
+  };
+
+  // Return a sorted list of the function names available on the object.
+  // Aliased as `methods`
+  _.functions = _.methods = function(obj) {
+    var names = [];
+    for (var key in obj) {
+      if (_.isFunction(obj[key])) names.push(key);
+    }
+    return names.sort();
+  };
+
+  // Extend a given object with all the properties in passed-in object(s).
+  _.extend = function(obj) {
+    each(slice.call(arguments, 1), function(source) {
+      for (var prop in source) {
+        obj[prop] = source[prop];
+      }
+    });
+    return obj;
+  };
+
+  // Return a copy of the object only containing the whitelisted properties.
+  _.pick = function(obj) {
+    var copy = {};
+    var keys = concat.apply(ArrayProto, slice.call(arguments, 1));
+    each(keys, function(key) {
+      if (key in obj) copy[key] = obj[key];
+    });
+    return copy;
+  };
+
+   // Return a copy of the object without the blacklisted properties.
+  _.omit = function(obj) {
+    var copy = {};
+    var keys = concat.apply(ArrayProto, slice.call(arguments, 1));
+    for (var key in obj) {
+      if (!_.contains(keys, key)) copy[key] = obj[key];
+    }
+    return copy;
+  };
+
+  // Fill in a given object with default properties.
+  _.defaults = function(obj) {
+    each(slice.call(arguments, 1), function(source) {
+      for (var prop in source) {
+        if (obj[prop] == null) obj[prop] = source[prop];
+      }
+    });
+    return obj;
+  };
+
+  // Create a (shallow-cloned) duplicate of an object.
+  _.clone = function(obj) {
+    if (!_.isObject(obj)) return obj;
+    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
+  };
+
+  // Invokes interceptor with the obj, and then returns obj.
+  // The primary purpose of this method is to "tap into" a method chain, in
+  // order to perform operations on intermediate results within the chain.
+  _.tap = function(obj, interceptor) {
+    interceptor(obj);
+    return obj;
+  };
+
+  // Internal recursive comparison function for `isEqual`.
+  var eq = function(a, b, aStack, bStack) {
+    // Identical objects are equal. `0 === -0`, but they aren't identical.
+    // See the Harmony `egal` proposal: http://wiki.ecmascript.org/doku.php?id=harmony:egal.
+    if (a === b) return a !== 0 || 1 / a == 1 / b;
+    // A strict comparison is necessary because `null == undefined`.
+    if (a == null || b == null) return a === b;
+    // Unwrap any wrapped objects.
+    if (a instanceof _) a = a._wrapped;
+    if (b instanceof _) b = b._wrapped;
+    // Compare `[[Class]]` names.
+    var className = toString.call(a);
+    if (className != toString.call(b)) return false;
+    switch (className) {
+      // Strings, numbers, dates, and booleans are compared by value.
+      case '[object String]':
+        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
+        // equivalent to `new String("5")`.
+        return a == String(b);
+      case '[object Number]':
+        // `NaN`s are equivalent, but non-reflexive. An `egal` comparison is performed for
+        // other numeric values.
+        return a != +a ? b != +b : (a == 0 ? 1 / a == 1 / b : a == +b);
+      case '[object Date]':
+      case '[object Boolean]':
+        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
+        // millisecond representations. Note that invalid dates with millisecond representations
+        // of `NaN` are not equivalent.
+        return +a == +b;
+      // RegExps are compared by their source patterns and flags.
+      case '[object RegExp]':
+        return a.source == b.source &&
+               a.global == b.global &&
+               a.multiline == b.multiline &&
+               a.ignoreCase == b.ignoreCase;
+    }
+    if (typeof a != 'object' || typeof b != 'object') return false;
+    // Assume equality for cyclic structures. The algorithm for detecting cyclic
+    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
+    var length = aStack.length;
+    while (length--) {
+      // Linear search. Performance is inversely proportional to the number of
+      // unique nested structures.
+      if (aStack[length] == a) return bStack[length] == b;
+    }
+    // Add the first object to the stack of traversed objects.
+    aStack.push(a);
+    bStack.push(b);
+    var size = 0, result = true;
+    // Recursively compare objects and arrays.
+    if (className == '[object Array]') {
+      // Compare array lengths to determine if a deep comparison is necessary.
+      size = a.length;
+      result = size == b.length;
+      if (result) {
+        // Deep compare the contents, ignoring non-numeric properties.
+        while (size--) {
+          if (!(result = eq(a[size], b[size], aStack, bStack))) break;
+        }
+      }
+    } else {
+      // Objects with different constructors are not equivalent, but `Object`s
+      // from different frames are.
+      var aCtor = a.constructor, bCtor = b.constructor;
+      if (aCtor !== bCtor && !(_.isFunction(aCtor) && (aCtor instanceof aCtor) &&
+                               _.isFunction(bCtor) && (bCtor instanceof bCtor))) {
+        return false;
+      }
+      // Deep compare objects.
+      for (var key in a) {
+        if (_.has(a, key)) {
+          // Count the expected number of properties.
+          size++;
+          // Deep compare each member.
+          if (!(result = _.has(b, key) && eq(a[key], b[key], aStack, bStack))) break;
+        }
+      }
+      // Ensure that both objects contain the same number of properties.
+      if (result) {
+        for (key in b) {
+          if (_.has(b, key) && !(size--)) break;
+        }
+        result = !size;
+      }
+    }
+    // Remove the first object from the stack of traversed objects.
+    aStack.pop();
+    bStack.pop();
+    return result;
+  };
+
+  // Perform a deep comparison to check if two objects are equal.
+  _.isEqual = function(a, b) {
+    return eq(a, b, [], []);
+  };
+
+  // Is a given array, string, or object empty?
+  // An "empty" object has no enumerable own-properties.
+  _.isEmpty = function(obj) {
+    if (obj == null) return true;
+    if (_.isArray(obj) || _.isString(obj)) return obj.length === 0;
+    for (var key in obj) if (_.has(obj, key)) return false;
+    return true;
+  };
+
+  // Is a given value a DOM element?
+  _.isElement = function(obj) {
+    return !!(obj && obj.nodeType === 1);
+  };
+
+  // Is a given value an array?
+  // Delegates to ECMA5's native Array.isArray
+  _.isArray = nativeIsArray || function(obj) {
+    return toString.call(obj) == '[object Array]';
+  };
+
+  // Is a given variable an object?
+  _.isObject = function(obj) {
+    return obj === Object(obj);
+  };
+
+  // Add some isType methods: isArguments, isFunction, isString, isNumber, isDate, isRegExp.
+  each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp'], function(name) {
+    _['is' + name] = function(obj) {
+      return toString.call(obj) == '[object ' + name + ']';
+    };
+  });
+
+  // Define a fallback version of the method in browsers (ahem, IE), where
+  // there isn't any inspectable "Arguments" type.
+  if (!_.isArguments(arguments)) {
+    _.isArguments = function(obj) {
+      return !!(obj && _.has(obj, 'callee'));
+    };
+  }
+
+  // Optimize `isFunction` if appropriate.
+  if (typeof (/./) !== 'function') {
+    _.isFunction = function(obj) {
+      return typeof obj === 'function';
+    };
+  }
+
+  // Is a given object a finite number?
+  _.isFinite = function(obj) {
+    return _.isNumber(obj) && isFinite(obj);
+  };
+
+  // Is the given value `NaN`? (NaN is the only number which does not equal itself).
+  _.isNaN = function(obj) {
+    return _.isNumber(obj) && obj != +obj;
+  };
+
+  // Is a given value a boolean?
+  _.isBoolean = function(obj) {
+    return obj === true || obj === false || toString.call(obj) == '[object Boolean]';
+  };
+
+  // Is a given value equal to null?
+  _.isNull = function(obj) {
+    return obj === null;
+  };
+
+  // Is a given variable undefined?
+  _.isUndefined = function(obj) {
+    return obj === void 0;
+  };
+
+  // Shortcut function for checking if an object has a given property directly
+  // on itself (in other words, not on a prototype).
+  _.has = function(obj, key) {
+    return hasOwnProperty.call(obj, key);
+  };
+
+  // Utility Functions
+  // -----------------
+
+  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
+  // previous owner. Returns a reference to the Underscore object.
+  _.noConflict = function() {
+    root._ = previousUnderscore;
+    return this;
+  };
+
+  // Keep the identity function around for default iterators.
+  _.identity = function(value) {
+    return value;
+  };
+
+  // Run a function **n** times.
+  _.times = function(n, iterator, context) {
+    for (var i = 0; i < n; i++) iterator.call(context, i);
+  };
+
+  // Return a random integer between min and max (inclusive).
+  _.random = function(min, max) {
+    if (max == null) {
+      max = min;
+      min = 0;
+    }
+    return min + (0 | Math.random() * (max - min + 1));
+  };
+
+  // List of HTML entities for escaping.
+  var entityMap = {
+    escape: {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#x27;',
+      '/': '&#x2F;'
+    }
+  };
+  entityMap.unescape = _.invert(entityMap.escape);
+
+  // Regexes containing the keys and values listed immediately above.
+  var entityRegexes = {
+    escape:   new RegExp('[' + _.keys(entityMap.escape).join('') + ']', 'g'),
+    unescape: new RegExp('(' + _.keys(entityMap.unescape).join('|') + ')', 'g')
+  };
+
+  // Functions for escaping and unescaping strings to/from HTML interpolation.
+  _.each(['escape', 'unescape'], function(method) {
+    _[method] = function(string) {
+      if (string == null) return '';
+      return ('' + string).replace(entityRegexes[method], function(match) {
+        return entityMap[method][match];
+      });
+    };
+  });
+
+  // If the value of the named property is a function then invoke it;
+  // otherwise, return it.
+  _.result = function(object, property) {
+    if (object == null) return null;
+    var value = object[property];
+    return _.isFunction(value) ? value.call(object) : value;
+  };
+
+  // Add your own custom functions to the Underscore object.
+  _.mixin = function(obj) {
+    each(_.functions(obj), function(name){
+      var func = _[name] = obj[name];
+      _.prototype[name] = function() {
+        var args = [this._wrapped];
+        push.apply(args, arguments);
+        return result.call(this, func.apply(_, args));
+      };
+    });
+  };
+
+  // Generate a unique integer id (unique within the entire client session).
+  // Useful for temporary DOM ids.
+  var idCounter = 0;
+  _.uniqueId = function(prefix) {
+    var id = idCounter++;
+    return prefix ? prefix + id : id;
+  };
+
+  // By default, Underscore uses ERB-style template delimiters, change the
+  // following template settings to use alternative delimiters.
+  _.templateSettings = {
+    evaluate    : /<%([\s\S]+?)%>/g,
+    interpolate : /<%=([\s\S]+?)%>/g,
+    escape      : /<%-([\s\S]+?)%>/g
+  };
+
+  // When customizing `templateSettings`, if you don't want to define an
+  // interpolation, evaluation or escaping regex, we need one that is
+  // guaranteed not to match.
+  var noMatch = /(.)^/;
+
+  // Certain characters need to be escaped so that they can be put into a
+  // string literal.
+  var escapes = {
+    "'":      "'",
+    '\\':     '\\',
+    '\r':     'r',
+    '\n':     'n',
+    '\t':     't',
+    '\u2028': 'u2028',
+    '\u2029': 'u2029'
+  };
+
+  var escaper = /\\|'|\r|\n|\t|\u2028|\u2029/g;
+
+  // JavaScript micro-templating, similar to John Resig's implementation.
+  // Underscore templating handles arbitrary delimiters, preserves whitespace,
+  // and correctly escapes quotes within interpolated code.
+  _.template = function(text, data, settings) {
+    settings = _.defaults({}, settings, _.templateSettings);
+
+    // Combine delimiters into one regular expression via alternation.
+    var matcher = new RegExp([
+      (settings.escape || noMatch).source,
+      (settings.interpolate || noMatch).source,
+      (settings.evaluate || noMatch).source
+    ].join('|') + '|$', 'g');
+
+    // Compile the template source, escaping string literals appropriately.
+    var index = 0;
+    var source = "__p+='";
+    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
+      source += text.slice(index, offset)
+        .replace(escaper, function(match) { return '\\' + escapes[match]; });
+      source +=
+        escape ? "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'" :
+        interpolate ? "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'" :
+        evaluate ? "';\n" + evaluate + "\n__p+='" : '';
+      index = offset + match.length;
+    });
+    source += "';\n";
+
+    // If a variable is not specified, place data values in local scope.
+    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
+
+    source = "var __t,__p='',__j=Array.prototype.join," +
+      "print=function(){__p+=__j.call(arguments,'');};\n" +
+      source + "return __p;\n";
+
+    try {
+      var render = new Function(settings.variable || 'obj', '_', source);
+    } catch (e) {
+      e.source = source;
+      throw e;
+    }
+
+    if (data) return render(data, _);
+    var template = function(data) {
+      return render.call(this, data, _);
+    };
+
+    // Provide the compiled function source as a convenience for precompilation.
+    template.source = 'function(' + (settings.variable || 'obj') + '){\n' + source + '}';
+
+    return template;
+  };
+
+  // Add a "chain" function, which will delegate to the wrapper.
+  _.chain = function(obj) {
+    return _(obj).chain();
+  };
+
+  // OOP
+  // ---------------
+  // If Underscore is called as a function, it returns a wrapped object that
+  // can be used OO-style. This wrapper holds altered versions of all the
+  // underscore functions. Wrapped objects may be chained.
+
+  // Helper function to continue chaining intermediate results.
+  var result = function(obj) {
+    return this._chain ? _(obj).chain() : obj;
+  };
+
+  // Add all of the Underscore functions to the wrapper object.
+  _.mixin(_);
+
+  // Add all mutator Array functions to the wrapper.
+  each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      var obj = this._wrapped;
+      method.apply(obj, arguments);
+      if ((name == 'shift' || name == 'splice') && obj.length === 0) delete obj[0];
+      return result.call(this, obj);
+    };
+  });
+
+  // Add all accessor Array functions to the wrapper.
+  each(['concat', 'join', 'slice'], function(name) {
+    var method = ArrayProto[name];
+    _.prototype[name] = function() {
+      return result.call(this, method.apply(this._wrapped, arguments));
+    };
+  });
+
+  _.extend(_.prototype, {
+
+    // Start chaining a wrapped Underscore object.
+    chain: function() {
+      this._chain = true;
+      return this;
+    },
+
+    // Extracts the result from a wrapped and chained object.
+    value: function() {
+      return this._wrapped;
+    }
+
+  });
+
+}).call(this);
+
+});
+
+require.define("/lib/helpers.js",function(require,module,exports,__dirname,__filename,process,global){var request = require('request');
+var async = require('async');
+var _ =require('underscore');
+var async_max=10;//the hardest we will ever concurrently hit freebase
+
+
+//non-front-facing methods that are used for the freebase javascript package
+
+var fns={}
+
+
+  //originally by david huynh 2010, http://www.freebase.com/appeditor/#!path=//cubed.dfhuynh.user.dev/index
+  //Algorithm is adopted from
+  //http://www.csse.monash.edu.au/~damian/papers/HTML/Plurals.html
+  fns.singularize= function(text) {
+    if(text.match(' ')) { //multiple words
+      var words = text.split(' ');
+      var last = words[words.length - 1];
+      var firsts = words.slice(0, -1);
+      return firsts.join(" ") + ' ' + fns.singularize(last);
+    }
+    var prepositions = {
+      "about": 1,
+      "above": 1,
+      "across": 1,
+      "after": 1,
+      "against": 1,
+      "along": 1,
+      "among": 1,
+      "around": 1,
+      "at": 1,
+      "before": 1,
+      "behind": 1,
+      "below": 1,
+      "beneath": 1,
+      "beside": 1,
+      "between": 1,
+      "beyond": 1,
+      "but": 1,
+      "by": 1,
+      "despite": 1,
+      "down": 1,
+      "during": 1,
+      "except": 1,
+      "for": 1,
+      "from": 1,
+      "in": 1,
+      "inside": 1,
+      "into": 1,
+      "like": 1,
+      "near": 1,
+      "of": 1,
+      "off": 1,
+      "on": 1,
+      "onto": 1,
+      "out": 1,
+      "outside": 1,
+      "over": 1,
+      "past": 1,
+      "since": 1,
+      "through": 1,
+      "throughout": 1,
+      "till": 1,
+      "to": 1,
+      "toward": 1,
+      "under": 1,
+      "underneath": 1,
+      "until": 1,
+      "up": 1,
+      "upon": 1,
+      "with": 1,
+      "within": 1,
+      "without": 1
+    };
+    var userDefinedNouns = [{
+      "p": "people",
+      "s": "person"
+    }, {
+      "p": "tornadoes",
+      "s": "tornado"
+    }, {
+      "p": "churches",
+      "s": "church"
+    }, {
+      "p": "countries",
+      "s": "country"
+    }, {
+      "p": "cities",
+      "s": "city"
+    }, {
+      "p": "companies",
+      "s": "company"
+    }, {
+      "p": "monkies",
+      "s": "monkey"
+    }, {
+      "p": "donkies",
+      "s": "donkey"
+    }, {
+      "p": "mysteries",
+      "s": "mystery"
+    }, {
+      "p": "authors",
+      "s": "author"
+    }];
+
+    // Table A.1
+    var irregularNouns = {
+      "beef": {
+        anglicized: "beefs",
+        classical: "beeves"
+      },
+      "brother": {
+        anglicized: "brothers",
+        classical: "brethren"
+      },
+      "child": {
+        anglicized: null,
+        classical: "children"
+      },
+      "cow": {
+        anglicized: null,
+        classical: "kine"
+      },
+      "ephemeris": {
+        anglicized: null,
+        classical: "ephemerides"
+      },
+      "genie": {
+        anglicized: null,
+        classical: "genii"
+      },
+      "money": {
+        anglicized: "moneys",
+        classical: "monies"
+      },
+      "mongoose": {
+        anglicized: "mongooses",
+        classical: null
+      },
+      "mythos": {
+        anglicized: null,
+        classical: "mythoi"
+      },
+      "octopus": {
+        anglicized: "octopuses",
+        classical: "octopodes"
+      },
+      "ox": {
+        anglicized: null,
+        classical: "oxen"
+      },
+      "soliloquy": {
+        anglicized: "soliloquies",
+        classical: null
+      },
+      "trilby": {
+        anglicized: "trilbys",
+        classical: null
+      }
+    };
+
+    var uninflectedSuffixes = ["fish", "ois", "sheep", "deer", "pox", "itis"];
+
+    // Table A.2
+    var uninflectedNouns = {
+      "bison": 1,
+      "flounder": 1,
+      "pliers": 1,
+      "bream": 1,
+      "gallows": 1,
+      "proceedings": 1,
+      "breeches": 1,
+      "graffiti": 1,
+      "rabies": 1,
+      "britches": 1,
+      "headquarters": 1,
+      "salmon": 1,
+      "carp": 1,
+      "herpes": 1,
+      "scissors": 1,
+      "chassis": 1,
+      "high-jinks": 1,
+      "sea-bass": 1,
+      "seabass": 1,
+      "clippers": 1,
+      "homework": 1,
+      "series": 1,
+      "cod": 1,
+      "innings": 1,
+      "shears": 1,
+      "contretemps": 1,
+      "jackanapes": 1,
+      "species": 1,
+      "corps": 1,
+      "mackerel": 1,
+      "swine": 1,
+      "debris": 1,
+      "measles": 1,
+      "trout": 1,
+      "diabetes": 1,
+      "mews": 1,
+      "tuna": 1,
+      "djinn": 1,
+      "mumps": 1,
+      "whiting": 1,
+      "eland": 1,
+      "news": 1,
+      "wildebeest": 1,
+      "elk": 1,
+      "pincers": 1,
+
+      "moose": 1,
+      "shrimp": 1,
+      "hoi polloi": 1,
+      "riffraff": 1,
+      "rabble": 1
+    };
+    var inflectionCategories = [{ // Table A.10
+      from: "a",
+      to: "ae",
+      words: ["alumna", "alga", "vertebra"]
+    }, {
+      // Table A.11
+      from: "a",
+      anglicized: "as",
+      classical: "ae",
+      words: ["abscissa", "amoeba", "antenna", "aurora", "formula", "hydra", "hyperbola", "lacuna", "medusa", "nebula", "nova", "parabola"]
+    }, {
+      // Table A.12
+      from: "a",
+      anglicized: "as",
+      classical: "ata",
+      words: ["anathema", "bema", "carcinoma", "charisma", "diploma", "dogma", "drama", "edema", "enema", "enigma", "gumma", "lemma", "lymphoma", "magma", "melisma", "miasma", "oedema", "sarcoma", "schema", "soma", "stigma", "stoma", "trauma"]
+    }, {
+      // Table A.13
+      from: "en",
+      anglicized: "ens",
+      classical: "ina",
+      words: ["stamen", "foramen", "lumen"]
+    }, {
+      // Table A.14
+      from: "ex",
+      to: "ices",
+      words: ["codex", "murex", "silex"]
+    }, {
+      // Table A.15
+      from: "ex",
+      anglicized: "exes",
+      classical: "ices",
+      words: ["apex", "cortex", "index", "latex", "pontifex", "simplex", "vertex", "vortex"]
+    }, {
+      // Table A.16
+      from: "is",
+      anglicized: "ises",
+      classical: "ides",
+      words: ["iris", "clitoris"]
+    }, {
+      // Table A.17
+      from: "o",
+      to: "os",
+      words: ["albino", "archipelago", "armadillo", "commando", "ditto", "dynamo", "embryo", "fiasco", "generalissimo", "ghetto", "guano", "inferno", "jumbo", "lingo", "lumbago", "magneto", "manifesto", "medico", "octavo", "photo", "pro", "quarto", "rhino", "stylo"]
+    }, {
+      // Table A.18
+      from: "o",
+      anglicized: "os",
+      classical: "i",
+      words: ["alto", "basso", "canto", "contralto", "crescendo", "solo", "soprano", "tempo"]
+    }, {
+      // Table A.19
+      from: "on",
+      to: "a",
+      words: ["aphelion", "asyndeton", "criterion", "hyperbaton", "noumenon", "organon", "perihelion", "phenomenon", "prolegomenon"]
+    }, {
+      // Table A.20
+      from: "um",
+      to: "a",
+      words: ["agendum", "bacterium", "candelabrum", "datum", "desideratum", "erratum", "extremum", "stratum", "ovum"]
+    }, {
+      // Table A.21
+      from: "um",
+      anglicized: "ums",
+      classical: "a",
+      words: ["aquarium", "compendium", "consortium", "cranium", "curriculum", "dictum", "emporium", "enconium", "gymnasium", "honorarium", "interregnum", "lustrum", "maximum", "medium", "memorandum", "millenium", "minimum", "momentum", "optimum", "phylum", "quantum", "rostrum", "spectrum", "speculum", "stadium", "trapezium", "ultimatum", "vacuum", "velum"]
+    }, {
+      // Table A.22
+      from: "us",
+      anglicized: "uses",
+      classical: "i",
+      words: ["focus", "fungus", "genius", "incubus", "nimbus", "nucleolus", "radius", "stylus", "succubus", "torus", "umbilicus", "uterus"]
+    }, {
+      // Table A.23
+      from: "us",
+      anglicized: "uses",
+      classical: "us",
+      words: ["apparatus", "cantus", "coitus", "hiatus", "impetus", "nexus", "plexus", "prospectus", "sinus", "status"]
+    }, {
+      // Table A.24
+      from: "",
+      to: "i",
+      words: ["afreet", "afrit", "efreet"]
+    }, {
+      // Table A.25
+      from: "",
+      to: "im",
+      words: ["cherub", "goy", "geraph"]
+    }];
+
+    function suffix(text, s) {
+      return text.length >= s.length && text.substring(text.length - s.length) == s;
+    }
+
+    function capIfCap(s, s2) {
+      if(typeof s == "string") {
+        var isCap = s2.charAt(0).toLowerCase() != s2.charAt(0);
+        return isCap ? (s.charAt(0).toUpperCase() + s.substr(1)) : s;
+      } else {
+        var a = [];
+        for(var i in s) {
+          var s3 = s[i];
+          a.push(capIfCap(s3, s2));
+        }
+        return a;
+      }
+    }
+    function inflection(text, from, to) {
+      return text.substring(0, text.length - from.length) + to;
+    }
+    function isOneOf(c, chars) {
+      return chars.indexOf(c) >= 0;
+    }
+    function isVowel(c) {
+      return isOneOf(c, "aeiou");
+    }
+    var text2 = text.toLowerCase();
+    for(var o in userDefinedNouns) {
+      if(userDefinedNouns[o].p == text) {
+        return userDefinedNouns[o].s;
+      }
+    }
+    for(var singular in irregularNouns) {
+      var entry = irregularNouns[singular];
+      if(entry.anglicized === text2 || entry.classical === text2) {
+        return capIfCap(singular, text);
+      }
+    }
+    for(var s in uninflectedSuffixes) {
+      if(suffix(text2, s)) {
+        return text;
+      }
+    }
+    if(uninflectedNouns && uninflectedNouns[text2]) {
+      return text;
+    }
+    var checkWords = function(from, to, words) {
+      if(suffix(text, to)) {
+        var prefix = text.substring(text.length - to.length);
+        var text3 = prefix + entry.from;
+        for(var word in words) {
+          if(text3 === word) {
+            return capIfCap(text3, text);
+          }
+        }
+      }
+      return null;
+    }
+    for(var e in inflectionCategories) {
+      var entry = inflectionCategories[e];
+      var text3 = ("to" in entry && checkWords(entry.from, entry.to, entry.words)) || ("anglicized" in entry && checkWords(entry.from, entry.anglicized, entry.words)) || ("classical" in entry && checkWords(entry.from, entry.classical, entry.words));
+
+      if(text3 != null && typeof text3 == "string") {
+        return text3;
+      }
+    }
+    for(var prep in prepositions) {
+      var n = text.indexOf(" " + prep + " ");
+      if(n > 0) {
+        var prefix = text.substring(0, n);
+        var r = singularize(prefix);
+        if(r != null) {
+          return r + " " + prep + " " + text.substr(n + prep.length + 2);
+        } else {
+          return null;
+        }
+      }
+      n = text.indexOf("-" + prep + "-");
+      if(n > 0) {
+        var prefix = text.substring(0, n);
+        var r = singularize(prefix);
+        if(r != null) {
+          return r + "-" + prep + "-" + text.substr(n + prep.length + 2);
+        } else {
+          return null;
+        }
+      }
+    }
+    var j = text.lastIndexOf(" ");
+    if(j > 0) {
+      var r = singularize(text.substring(j + 1));
+      if(r != null) {
+        return text.substring(0, j + 1) + r;
+      } else {
+        return null;
+      }
+    }
+    if(suffix(text, "xes") || suffix(text, "ses")) {
+      return text.substring(0, text.length - 2);
+    }
+    if(suffix(text, "s") && !suffix(text, "ss")) {
+      return text.substring(0, text.length - 1);
+    }
+    return text;
+  }
+  //console.log(fns.singularize("george soros"));
+  //console.log(fns.singularize("mama cass"));
+
+
+  //by spencer kelly (@spencermountain)
+  fns.sentenceparser= function(text) {
+    var tmp = text.split(/(\S.+?[.])(?=\s+|$)/g);
+    var sentences = [];
+    //join acronyms, titles
+    for(var i in tmp) {
+      if(tmp[i]) {
+        tmp[i] = tmp[i].replace(/^\s+|\s+$/g, ''); //trim extra whitespace
+        //join common abbreviations + acronyms
+        if(tmp[i].match(/(^| )(mr|dr|llb|md|bl|phd|ma|ba|mrs|miss|misses|mister|sir|esq|mstr|jr|sr|st|lit|inc|fl|ex|eg|jan|feb|mar|apr|jun|aug|sept?|oct|nov|dec)\. ?$/i) || tmp[i].match(/[ |\.][a-z]\.?$/i)) {
+          tmp[parseInt(i) + 1] = tmp[i] + ' ' + tmp[parseInt(i) + 1];
+        } else {
+          sentences.push(tmp[i]);
+          tmp[i] = '';
+        }
+      }
+    }
+    //cleanup afterwards
+    var clean = [];
+    for(var i in sentences) {
+      sentences[i] = sentences[i].replace(/^\s+|\s+$/g, ''); //trim extra whitespace
+      if(sentences[i]) {
+        clean.push(sentences[i]);
+      }
+    }
+    return clean;
+  }
+  //console.log(fns.sentenceparser('Dr. calm is me. lkj'))
+
+  //remove objects with a duplicate field from json
+  fns.json_unique= function(x, field) {
+    var newArray = new Array();
+    label: for(var i = 0; i < x.length; i++) {
+      for(var j = 0; j < newArray.length; j++) {
+        if(newArray[j] && x[i] && newArray[j][field] == x[i][field]) continue label;
+      }
+      newArray[newArray.length] = x[i];
+    }
+    return newArray;
+  }
+
+
+
+  //handle rate-limited asynchronous freebase calls with a ending callback
+  fns.doit_async= function(arr, fn, options, done) {
+    //wrap them all in functions
+    var function_list = arr.map(function(r,i) {
+      return function(callback) {
+        fn(r, options, function(r) {
+          if(options.each_time){
+            options.each_time(r, i)
+          }
+          callback(null, r);
+        })
+      }
+    })
+    //groups of async tasks in a synchonous task
+    var all = fns.groups_of(function_list, async_max).map(function(f_group) {
+      return function(callback) {
+        async.parallel(f_group, callback);
+      }
+    })
+    async.series(all, function(err, result) {
+      //flatten it one level
+      result=result.reduce(function(a, b) {
+          return a.concat(b);
+      });
+      done(result)
+    });
+  }
+
+
+
+
+
+
+
+  //turn freebase's silly $00 encoding into unicode
+  fns.mql_unencode= function(x) {
+    x = x.replace(/\$([0-9A-Fa-f]{4})/g, function(a, b) {
+      return String.fromCharCode(parseInt(b, 16));
+    });
+    return x;
+  }
+  //console.log(fns.mql_unencode("K$00F6ppen_climate_classification"))
+
+
+  //turn an array into smaller groups of arrays
+  fns.groups_of= function(arr, group_length) {
+    var all = []
+    for(var i in arr) {
+      if(i % group_length == 0) {
+        all.push([arr[i]])
+      } else {
+        all[all.length - 1].push(arr[i])
+      }
+    }
+    return all
+  }
+
+  fns.parseurl= function(str) {
+    var o = {
+      strictMode: false,
+      key: ["source", "protocol", "authority", "userInfo", "user", "password", "host", "port", "relative", "path", "directory", "file", "query", "anchor"],
+      q: {
+        name: "queryKey",
+        parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+      },
+      parser: {
+        strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
+        loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+      }
+    },
+    m = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
+    uri = {},
+    i = 14;
+    while(i--) uri[o.key[i]] = m[i] || "";
+    uri[o.q.name] = {};
+    uri[o.key[12]].replace(o.q.parser, function($0, $1, $2) {
+      if($1) uri[o.q.name][$1] = $2;
+    });
+    return uri;
+  }
+
+  //turn options object into get paramaters
+  fns.set_params= function(o) {
+    var options=o;
+    if(!options) {
+      return ''
+    }
+    return Object.keys(options).map(function(v) {
+      var val=options[v];
+      if(_.isArray(options[v]) || _.isObject(options[v])) {
+        val = encodeURIComponent(JSON.stringify(options[v]));
+      }
+      return v + '=' + val
+    }).join('&')
+  }
+
+
+
+  fns.http= function(url, callback) {
+    if(!url) {
+      return callback({
+        error: "bad url"
+      })
+    }
+    request({
+      uri: url,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; rv:10.0) Gecko/20100101 Firefox/10.0"
+      }
+    }, function(error, response, body) {
+      try {
+        body = JSON.parse(body)
+      } catch(e) {
+        console.log(e)
+        process.exit(0)
+      }
+      if(error || response.statusCode != 200) {
+        console.log(error)
+        process.exit(0)
+        return callback({
+          error: error
+        })
+      }
+      return callback(body);
+    })
+  }
+
+  fns.isin= function(word, arr) {
+    return arr.some(function(v) {
+      return v == word
+    })
+  }
+
+module.exports=fns;
+});
+
+require.define("/lib/data.js",function(require,module,exports,__dirname,__filename,process,global){exports.data={
   "boring": [
     "/type/object/attribution",
     "/type/object/key",
@@ -28980,3 +34179,1683 @@ exports.data={
     "/soccer/football_roster_position/position"
   ]
 }
+
+});
+
+require.define("/freebase.js",function(require,module,exports,__dirname,__filename,process,global){var globals={
+  host:'https://www.googleapis.com/freebase/v1/',
+  image_host:"https://usercontent.googleapis.com/freebase/v1/image",
+  geosearch:'http://api.freebase.com/api/service/geosearch',
+  wikipedia_host:'http://en.wikipedia.org/w/api.php'
+}
+
+var request = require('request');
+var async = require('async');
+var _ =require('underscore');
+
+var fns=require('./lib/helpers');
+var data=require('./lib/data.js').data;
+var freebase={};
+
+//interface to freebase's mql api
+freebase.mqlread=function(query, options, callback){
+  callback=callback||console.log;
+  if(!query){return callback({})}
+  options=options||{};
+  options.uniqueness_failure=options.uniqueness_failure||"soft";
+  options.cursor=options.cursor||"";
+    //is it an array of sub-queries?
+  if(_.isArray(query) && query.length>1){
+    return fns.doit_async(query, freebase.mqlread, options, callback)
+  }
+  var params=fns.set_params(options)
+  var url= globals.host+'mqlread?query='+encodeURIComponent(JSON.stringify(query))+'&'+params;
+  fns.http(url, function(result){
+    return callback(result)
+  })
+}
+
+//turn a string into a confident topic id
+freebase.lookup=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.lookup, options, callback)
+  }
+  //if its a freebase-type object
+  if(_.isObject(q)){
+    if( (q.id!=null||q.mid!=null) && q.name!=null ){
+      return callback(q);
+    }else{
+      q=q.id||q.mid;
+    }
+   }
+  //if its a url
+  if(q.match(/^(https?:\/\/|www\.)/)){
+      return url_lookup(q, options, function(result){
+        if(result && result.result && result.result[0]){
+          return callback(result.result[0])
+        }
+        return callback({})
+      })
+    }
+  options.type=options.type||"/common/topic";
+  var url= globals.host+'search?limit=2&lang=en&type='+options.type+'&filter=';
+  url+=encodeURIComponent('(any name{full}:"'+q+'" alias{full}:"'+q+'" )'); //id:"'+q+'"
+  if(options.type=="/type/type" || options.type=="/type/property"){
+    url+="&scoring=schema&stemmed=true"
+  }
+  if(options.key){
+    url+='&key='+options.key;
+  }
+  fns.http(url, function(result){
+    if(!result || !result.result || !result.result[0] ){return callback({})}
+    //filter-out shit results
+    result=result.result||[]
+    result[0]=result[0]||{}
+    result[1]=result[1]||{}
+    //kill low-relevance
+    if( !result[0].score && result[0].score<30){
+      return callback({})
+    }
+    //kill if 2nd result is also notable
+    if(! ((result[0].score||0) * 0.7) > (result[1].score||0) ){
+      return callback({})
+    }
+    //kill if types are crap
+    var kill=["/music/track","/music/release_track", "/tv/tv_episode", "/music/recording", "/music/composition", "/book/book_edition"]
+    if(result[1] && result[0].notable && fns.isin( result[0].notable.id, kill)){
+      return callback({})
+    }
+    result[0].name= result[0].name||result[0].text||'';
+    return callback(result[0])
+  })
+}
+ //freebase.lookup(["/m/09jm8", "http://myspace.com/u2"])
+//freebase.lookup("toronto")
+
+
+//like freebase.lookup but only needs an id
+freebase.get_id=function(q, options, callback){
+  //if its a freebase-type object
+  if(_.isObject(q)){
+    q=q.id||q.mid||q.name;
+   }
+  //is an id
+  if(!q || (q.match(/\/.{1,12}\/.{3}/) !=null)){return callback({id:q})}
+  //is a normal search
+  freebase.lookup(q, options, function(result){
+    if(options.type="/type/type"){
+      return callback(result)
+    }
+    else if(result && result.mid){
+      result.id=result.id || result.mid;
+      return callback(result)
+    }
+    return callback({})
+  })
+}
+
+
+//topic api
+freebase.topic=function(q, options, callback){
+    callback=callback||console.log;
+    if(!q){return callback({})}
+    options=options||{};
+     //is it an array of sub-tasks?
+    if(_.isArray(q) && q.length>1){
+      return fns.doit_async(q, freebase.topic, options, callback)
+    }
+    freebase.get_id(q, options, function(topic){
+      var id=topic.id;
+      if(!id){return callback({})}
+      options.filter=options.filter||'all'
+      var url= globals.host+'topic'+id+'?'+fns.set_params(options)
+      // if(options.filter){url+='&filter='+encodeURIComponent(options.filter)}
+      // if(options.key){url+='&key='+options.key}
+      fns.http(url, function(result){
+        return callback(result)
+      })
+    })
+}
+ //freebase.topic("toronto", {filter:"allproperties"})
+
+
+//regular search api
+freebase.search=function(q, options, callback){
+      callback=callback||console.log;
+      if(!q && !options.filter){return callback([])}
+      options=options||{};
+       //is it an array of sub-tasks?
+      if(_.isArray(q) && q.length>1){
+        return fns.doit_async(q, freebase.search, options, callback)
+      }
+      options.query=q || '';
+      if(options.filter){
+        options.filter=encodeURIComponent(options.filter)
+      }
+      if(options.type=="/type/type" || options.type=="/type/property"){
+        url+="&scoring=schema&stemmed=true"
+      }
+      options.query=encodeURIComponent(options.query);
+      var params=fns.set_params(options)
+      var url= globals.host+'search/?'+params;
+      fns.http(url, function(result){
+        if(!result || !result.result || !result.result[0] ){return callback([])}
+        return callback(result.result)
+    })
+}
+//freebase.search("bill murray")
+
+//get all of the results to your query
+freebase.paginate=function(query, options, callback){
+  callback=callback||console.log;
+  if(!query){return callback([])}
+  options=options||{};
+  options.max=options.max||500;
+  //is it an array of sub-tasks?
+  if(_.isArray(query) && query.length>1){
+    return fns.doit_async(query, freebase.paginate, options, callback)
+  }
+ // if(_.isObject(query)){query=[query]}
+  var all=[];
+  //recursive mqlread until cursor is false, or maximum reached
+  iterate('')
+  function iterate(cursor){
+    options.cursor=cursor
+    freebase.mqlread(query, options, function(result){
+      if(!result||!result.result){return callback(all);}
+      all=all.concat(result.result);
+      if(result.cursor && (!options.max || all.length<options.max) ){
+        iterate(result.cursor)
+      }else{
+        return callback(all)
+      }
+    })
+  }
+}
+
+
+//get the proper pronoun to use for a topic eg. he/she/they/it
+freebase.grammar=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.pronoun, options, callback)
+  }
+   freebase.get_id(q, options, function(topic){
+     if(!topic || !topic.id){return callback({})}
+     var query=[{
+        "id":   topic.id,
+        "name": null,
+        "type": [],
+        "/people/person/gender": [{
+          "id":       null,
+          "optional": true
+        }],
+        "/fictional_universe/fictional_character/gender": [{
+          "id":       null,
+          "optional": true
+        }]
+      }]
+    freebase.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0]){return callback('')}
+      result=result.result[0];
+      var grammar={
+        plural:false,
+        gender:null,
+        article:"a",
+        pronoun:"it",
+        copula:"is"
+      }
+      //people grammar
+      if(fns.isin('/people/person', result.type) || fns.isin('/fictional_universe/fictional_character', result.type) ){
+        var gender = result["/people/person/gender"][0] || result["/fictional_universe/fictional_character/gender"][0];
+        if(gender) {
+          if(gender.id == "/en/male") { //male
+            grammar.gender = "male";
+            grammar.pronoun = "he";
+          } else if(gender.id == "/en/female") { //female
+            grammar.gender = "female";
+            grammar.pronoun = "she";
+          }
+        } else { //no gender person
+          grammar.gender = "unknown";
+          grammar.pronoun = "they";
+        }
+      }else{ //not a person
+        //plural topics
+        if(_.intersection(data.plural_types, result.type).length >0){
+          grammar.plural=true;
+          grammar.pronoun="they";
+          grammar.copula="are"
+        }
+        //categories that need a 'the' instead of 'a'
+        if(_.intersection(data.definate_articles, result.type).length >0){
+          grammar.article="the";
+        }
+      }
+      return callback(grammar);
+    })
+  })
+}
+//freebase.grammar("toronto maple leafs")
+//freebase.grammar("wayne gretzky")
+//freebase.grammar("ron weasley")
+
+//turns a url into a freebase topic and list its same:as links
+freebase.same_as_links=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  options.filter=options.filter||"/common/topic"
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.same_as_links, options, callback)
+  }
+  var url= globals.host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q);
+  if(options.key){
+    url+='&key='+options.key;
+  }
+  fns.http(url, function(result){
+    if(!result || !result.result || !result.result[0]){
+      return callback({})
+    }
+      //get its formatted links from the topic api
+    freebase.topic(result.result[0].mid , options, function(all){
+      var links=[];
+      //same-as ones
+      if(all.property['/common/topic/topic_equivalent_webpage']){
+       links=all.property['/common/topic/topic_equivalent_webpage'].values.map(function(v){
+          return {href:v.value, title: fns.parseurl(v.value).authority}
+        })
+      }
+      //webpage ones
+      if(all.property['/common/topic/topical_webpage']){
+       links=links.concat(all.property['/common/topic/topical_webpage'].values.map(function(v){
+          var host= fns.parseurl(v.value).authority || ''
+          return {href:v.value, title:host.replace(/^www\./,'')}
+        }))
+      }
+      var obj={topic:result.result[0], links:links}
+      return callback(obj)
+    })
+  })
+}
+
+//return specific language title for a topic
+freebase.translate=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.translate, options, callback)
+  }
+  if(!options.lang){options.lang="/lang/fr"}//defaulting to french is better than an error..?
+  if(!options.lang.match(/\/lang\//)){
+    options.lang='/lang/'+options.lang
+  }
+    freebase.get_id(q, options, function(topic){
+    if(!topic||!topic.id){return callback("")}
+    var query=[{
+      "id": topic.id,
+      "name": [{
+        "lang":  options.lang,
+        "value": null
+      }]
+    }]
+    freebase.mqlread(query, {}, function(result){
+      if(!result || !result.result || !result.result[0]){return callback('')}
+      var name=result.result[0].name||[{}]
+      name=name[0].value||'';
+      return callback(name)
+    })
+  })
+}
+
+
+
+//get a url for image href of on this topic
+freebase.image=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  options.maxheight=options.maxheight||250;
+  options.maxwidth=options.maxwidth||250;
+  options.errorid=options.errorid||"/m/0djw4wd"
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.image, options, callback)
+  }
+   freebase.get_id(q, options, function(topic){
+     if(!topic || !topic.id){return callback("")}
+     var query=[{
+        "id":   topic.id,
+        "name": null,
+        "/common/topic/image": [{
+          "id":     null
+        }]
+      }]
+    freebase.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0] || !result.result[0]["/common/topic/image"][0] ){
+        return callback('')
+      }
+      var url= globals.image_host+result.result[0]["/common/topic/image"][0].id;
+      var params=fns.set_params(options);
+      url+='?'+params;
+      return callback(url)
+    })
+  })
+}
+
+
+//get a text blurb from freebase
+freebase.description=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.description, options, callback)
+  }
+ freebase.get_id(q, options, function(topic){
+  if(!topic || !topic.id){return callback("")}
+  var url= globals.host+'text/'+topic.id;
+  if(options.key){
+    url+='?key='+options.key;
+  }
+  fns.http(url,function(result){
+    if(!result.result){return callback('')}
+    return callback(result.result)
+  })
+ });
+}
+
+//get a topics notable type
+freebase.notable=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.notable, options, callback)
+  }
+ freebase.topic(q, {filter:"/common/topic/notable_types"}, function(result){
+  if(!result || !result.property || !result.property['/common/topic/notable_types']){return callback({})}
+  var notable=result.property['/common/topic/notable_types'] || {values:[]};
+  notable.values[0].name=notable.values[0].text;
+  return callback(notable.values[0])
+ });
+}
+
+//get the first sentence of a topic description
+freebase.sentence=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.sentence, options, callback)
+  }
+  freebase.description(q, options, function(desc){
+    if(!desc){return callback("")}
+    desc=fns.sentenceparser(desc)||[]
+    desc=desc[0]||''
+    desc=desc.replace(/\(.*?\)/g,'')//remove birthdates
+    desc=desc.replace(/  /g,' ')
+    return callback(desc)
+  })
+}
+
+//get a list of topics in a type
+freebase.list=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  options.max=options.max || options.limit || 500;
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.list, options, callback)
+  }
+  //singularize it if it's a search query
+  if(!q.match(/\/.{1,12}\/.{3}/)){
+    q=fns.singularize(q);
+  }
+  //get its id
+  freebase.get_id(q, {type:"/type/type"}, function(topic){
+    if(!topic || !topic.id){return callback([])}
+      var query = [{
+        "type": topic.id,
+        "name": null,
+        "id": null,
+        "mid": null,
+        "limit": 100
+      }]
+    if(options.extend){
+      for(var i in options.extend){
+        query[0][i]=options.extend[i]
+      }
+    }
+    freebase.paginate(query, options, callback)
+   })
+}
+//freebase.list("hurricanes",{}, function(r){console.log('========================')})
+//freebase.list("/book/author")
+
+
+function list_category_like(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  q=fns.singularize(q);
+  freebase.topic(q, options, function(r){
+    if(!r || !r.property || !_.isObject(r.property) ){return callback([])}
+    var all=Object.keys(r.property).filter(function(v){
+      return fns.isin(v, data.category_like)
+    }).map(function(p){
+      //add the property
+      r.property[p].values=r.property[p].values.map(function(v){
+        v.property=p;
+        return v;
+      })
+      return r.property[p].values
+    })
+    all=_.flatten(all);
+    return callback(all)
+  })
+}
+//list_category_like("city")
+
+
+//from a geo-coordinate, get the town, province, country, and timezone for it
+freebase.place_data = function(geo, options, callback) {
+  callback = callback || console.log;
+  if(!geo) {
+    return callback({})
+  }
+  options = options || {};
+  //is it an array of sub-tasks?
+  if(_.isArray(geo) && geo.length > 1) {
+    return fns.doit_async(q, freebase.place_data, options, callback)
+  }
+  var location = {"coordinates":[ geo.lng , geo.lat ],"type":"Point"}
+  var out = [{
+    "mid": null,
+    "name": null,
+    "type": []
+  }]
+  var url = globals.geosearch + '?location=' + encodeURIComponent(JSON.stringify(location)) + '&order_by=distance&limit=1&type=/location/citytown&within=15&format=json&mql_output=' + encodeURIComponent(JSON.stringify(out))
+  fns.http(url, function(r) {
+    var all = {
+      city: null,
+      country: null,
+      province: null,
+      timezone: null
+    }
+    all.city = r.result.features[0].properties;
+    var query = [{
+      "name": null,
+      "id": r.result.features[0].properties.mid,
+      "/location/location/containedby": [{
+        "id": null,
+        "name": null,
+        "type": [],
+        "optional": true,
+        "/location/location/time_zones": [{
+          "/time/time_zone/offset_from_uct": null,
+          "id": null,
+          "name": null,
+          "optional": true
+        }],
+        "/location/location/containedby": [{
+          "id": null,
+          "name": null,
+          "type": [],
+          "optional": true,
+          "/location/location/time_zones": [{
+            "/time/time_zone/offset_from_uct": null,
+            "id": null,
+            "name": null,
+            "optional": true
+          }]
+        }]
+      }]
+    }]
+    freebase.mqlread(query, {}, function(r) {
+      //hunt for the most appropriate topics in 2 layers
+      for(var i in r.result[0]['/location/location/containedby']){
+        var v=r.result[0]['/location/location/containedby'][i]
+        if(v.type.filter(function(t) {return t == "/location/country"})[0]) {
+          all.country = {
+            id: v.id,
+            name: v.name
+          }
+        } else if(v.type.filter(function(t) {return t == "/location/administrative_division"})[0]) {
+          all.province = {
+            id: v.id,
+            name: v.name
+          }
+        }
+        if(v["/location/location/time_zones"][0] && v["/location/location/time_zones"].length==1) {
+          all.timezone = v["/location/location/time_zones"][0];
+        }
+        if(all.country) {
+          return callback(all)
+        }
+        //second layer looks good too
+        v['/location/location/containedby'].map(function(o) {
+          if(o.type.filter(function(t) {return t == "/location/country"})[0]) {
+            all.country = {
+              id: o.id,
+              name: o.name
+            }
+          } else if(!all.province && o.type.filter(function(t) { return t == "/location/administrative_division"})[0]) {
+            all.province = {
+              id: o.id,
+              name: o.name
+            }
+          }
+          if(!all.timezone && o["/location/location/time_zones"][0] && o["/location/location/time_zones"].length==1) {
+            all.timezone = o["/location/location/time_zones"][0];
+          }
+        })
+      }
+      return callback(all)
+    })
+
+  })
+}
+ // freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+
+
+//get any incoming data to this topic, //ignoring cvt types
+freebase.incoming=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.incoming, options, callback)
+  }
+  freebase.get_id(q, options, function(topic){
+    if(!topic || !topic.id){return callback([])}
+    var query=[{
+      "id": topic.id,
+      "/type/reflect/any_reverse": [{
+        "link": null,
+        "id":   null,
+        "name": null,
+        "type": "/common/topic",
+        "limit":170
+      }]
+    }]
+    //this technically doesn't paginate.
+    freebase.paginate(query, options, function(result){
+      if(!result || !result[0] || !result[0]['/type/reflect/any_reverse']){
+        return callback([])
+      }
+      return callback(result[0]['/type/reflect/any_reverse'])
+    })
+  })
+}
+
+//return all outgoing links for a topic, traversing cvt types
+freebase.outgoing=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.outgoing, options, callback)
+  }
+  freebase.lookup(q, options, function(topic){
+    if(!topic || !topic.mid){return callback([])}
+      freebase.topic(topic.mid, options, function(result){
+        var out=[];
+          //get rid of permissions and stuff..
+        result.property=kill_boring(result.property)
+        Object.keys(result.property).forEach(function(key){
+          var v=result.property[key];
+          //add topics
+          if(v.valuetype=="object"){
+            v.values=v.values.map(function(s){s.property=key; return s})
+            out=out.concat(v.values)
+          }
+          //add the topics from cvt values in the same manner
+          if(v.valuetype=="compound"){
+            v.values.forEach(function(c){
+              c.property=kill_boring(c.property);
+              Object.keys(c.property).forEach(function(key2){
+               if(c.property[key2].valuetype=="object"){
+                c.property[key2].values=c.property[key2].values.map(function(s){s.property=[key,key2]; return s})
+                out=out.concat(c.property[key2].values)
+               }
+              })
+            })
+          }
+        })
+        out=out.map(function(o){return {name:o.text, id:o.id, property:o.property }})
+        //add sentence-forms
+        out=out.map(function(o){
+          var property=o.property ||'';
+          if(_.isArray(o.property)){
+            property=o.property.join('');
+          }
+          o.sentence=topic.name +"'s " +_.last(property.split('/')).replace('_',' ') +" is "+ o.name; //ugly fallback
+          var grammar=data.sentence_grammars.filter(function(v){return v.property==property})[0]||{}
+          if(grammar["sentence form"] && topic.name && o.name){
+            o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
+          }
+          return o
+        })
+        return callback(out)
+      })
+    })
+}
+//freebase.outgoing("vancouver")
+
+//return all outgoing and incoming links for a topic
+freebase.graph=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.graph, options, callback)
+  }
+  freebase.lookup(q, options, function(topic){
+      if(!topic){return callback({})}
+        delete topic.score;
+        delete topic.lang;
+      options.filter="allproperties";
+      freebase.topic(topic.mid, options, function(r){
+        var incoming={};var outgoing ={};
+        Object.keys(r.property).forEach(function(k){
+          if(k.match(/^\!/)){
+            outgoing[k]=r.property[k]
+          }else{
+            incoming[k]=r.property[k]
+          }
+        })
+        incoming=parse_topic_api(incoming);
+        outgoing=parse_topic_api(outgoing);
+        var out=incoming.map(function(v){
+          return {subject:topic, property:{id:v.property}, object:v}
+        })
+        out=out.concat(outgoing.map(function(v){
+          return {object:topic, property:{id:v.property}, subject:v}
+        }))
+        //add the sentences
+        out=out.map(function(obj){
+          obj.property.id=obj.property.id.replace(/^\!/,'')
+          delete obj.subject.property
+          var grammar=data.sentence_grammars.filter(function(v){return v.property==obj.property.id})[0]||{}
+          obj.sentence=obj.subject.name +"'s " +_.last(obj.property.id.split('/')).replace('_',' ') +" is "+ obj.object.name;
+          if(grammar["sentence form"] && obj.subject.name && obj.object.name){
+            obj.sentence=grammar["sentence form"].replace(/\bsubj\b/, obj.subject.name).replace(/\bobj\b/, obj.object.name);
+         }
+          return obj
+        })
+        return callback(out)
+      })
+  })
+}
+//freebase.graph("toronto")
+
+
+function parse_topic_api(properties, options) {
+  var out = [];
+  properties = kill_boring(properties)
+  Object.keys(properties).forEach(function(key) {
+    var v = properties[key];
+    //add topics
+    if(v.valuetype == "object") {
+      v.values = v.values.map(function(s) {
+        s.property = key;
+        return s
+      })
+      out = out.concat(v.values)
+    }
+    //add the topics from cvt values in the same manner
+    if(v.valuetype == "compound") {
+      v.values.forEach(function(c) {
+        c.property = kill_boring(c.property);
+        Object.keys(c.property).forEach(function(key2) {
+          if(c.property[key2].valuetype == "object") {
+            c.property[key2].values = c.property[key2].values.map(function(s) {
+              s.property = [key, key2];
+              return s
+            })
+            out = out.concat(c.property[key2].values)
+          }
+        })
+      })
+    }
+  })
+  out = out.map(function(o) {
+    return {
+      name: o.text,
+      id: o.id,
+      property: o.property
+    }
+  })
+  out = out.map(function(o) {
+    if(_.isArray(o.property)) {
+      o.property = o.property.join('');
+    }
+    return o
+  })
+  return out;
+}
+
+
+
+//get similar topics to a topic
+freebase.related=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  options.max=options.max||25;
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.related, options, callback)
+  }
+  var all=[];
+  //pluck relevant connected topics from outgoing links
+  freebase.outgoing(q, options, function(result){
+    all=result.filter(function(v){
+      return fns.isin(v.property, data.related_properties)
+    })
+    //randomize the results
+    all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
+    all=all.map(function(v){
+      if(!v.sentence){
+        v.sentence=v.name +" is related to "+result.name
+      }
+      return v
+    })
+    all=fns.json_unique(all, "id")
+    if(all.length >= options.max){
+      return callback(all)
+    }
+    //else, append topics that share the notable type
+    freebase.notable(q, options, function(result){
+      if(result && result.id){
+        return freebase.list(result.id, {max:options.max}, function(r){
+          if(!r){return callback(all)}
+          r=r.map(function(v){
+            v.sentence=v.name + " is also a " +result.name;
+            return v
+          })
+          all=all.concat(r)
+          all=fns.json_unique(all, "id")
+          all=all.sort(function(a,b){return (Math.round(Math.random())-0.5);})
+          return callback(all)
+        })
+      }else{
+        return callback(all)
+      }
+    })
+  })
+}
+// freebase.related("toronto", {key:"AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI"}, function(r){
+//   console.log(JSON.stringify(r, null, 2));
+// })
+
+//get a list of identifiers for a topic
+freebase.is_a=function(q, property, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  options.max=options.max||25;
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.is_a, options, callback)
+  }
+  freebase.topic(q, options, function(r){
+    var types=r.property["/type/object/type"] || {}
+    types=types.values || []
+    types=types.filter(function(v){return !v.text.match(/Topic/)})
+    types=types.map(function(v){
+      return {name:v.text, id:v.id, property:"/type/object/type"}
+    })
+    r=parse_topic_api(r.property)
+    r=r.filter(function(v){return fns.isin(v.property, data.is_a)})
+    r=r.concat(types)
+    return callback(r)
+  })
+}
+//freebase.is_a("toronto")
+
+
+freebase.question=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q || !options.property){return callback([])}
+  options=options||{};
+  options.max=options.max||25;
+  var property=options.property;
+  var type=property.match(/\/.*?\/.*?\//)
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.question, options, callback)
+  }
+  //straight-up id search
+  if(property.match(/^\/.{1,12}\/.{3}/)){
+    return freebase.topic(q, {}, function(r){
+      if(!r || !r.property[property]){return callback([])}
+      return callback(r.property[property].values)
+    })
+  }
+  var candidate_metaschema=metaschema_lookup(property);
+  if(candidate_metaschema){
+    options.filter='(all '+candidate_metaschema+':"'+q+'")'
+    freebase.search('', options, function(result){
+      return callback(result)
+    })
+  }else{
+    freebase.property_lookup(property, {}, function(candidate_properties){
+      var candidate_properties=property_lookup(property);
+      if(candidate_properties.length==0){return callback([])}
+      options.filter=type;
+       //look for these properties in the topic api
+      freebase.topic(q, options, function(result){
+        var all=[];
+        candidate_properties.forEach(function(p){
+          if(result.property[p.id]){
+           all=all.concat(result.property[p.id].values)
+          }
+        })
+        all=fns.json_unique(all, "id")
+        return callback(all)
+      })
+    })
+  }
+}
+// freebase.question("keanu reeves", {property:"children"})
+ //freebase.question("thom yorke", "produced")
+ //freebase.question("pulp fiction", {property:"/film/film/initial_release_date"})
+
+// console.log(data.properties.filter(function(v){return v.cvt}))
+//freebase.question("keanu reeves","films")
+
+
+//transitive query on a specific property, maximum 3-ply
+freebase.dig=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q || !options.property){return callback([])}
+  options=options||{};
+  options.max=options.max||25;
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return freebase.dig(q[0], options, callback)
+  }
+  var all=[];
+  freebase.question(q, options, function(r){
+    if(!r || !_.isArray(r) || r.length==0){return callback(all)}
+      all=all.concat(r);
+      r=r.slice(0, options.max).map(function(v){return v.id})
+      return fns.doit_async(r, freebase.question, options, function(big){
+        if(!big || !_.isArray(big) || big.length==0){return callback(all)}
+        all=all.concat(_.flatten(big,'shallow'))
+        all=fns.json_unique(all, "id")
+        fns.doit_async(r, freebase.question, options, function(big){
+          if(!big || !_.isArray(big) || big.length==0){return callback(all)}
+          all=all.concat(_.flatten(big,'shallow'))
+          all=fns.json_unique(all, "id")
+          return callback(all)
+        })
+      })
+  })
+}
+// freebase.dig('/en/bovid', {property:'/biology/organism_classification/lower_classifications'}, function(r){
+//   console.log(r.length)
+// })
+// freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){
+//   console.log(r)
+// })
+
+//list of topics with images
+freebase.gallery=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.gallery, options, callback)
+  }
+  options.extend = {
+  "/common/topic/image": [{
+    "id": null,
+    "optional": "required"
+    }]
+   }
+  freebase.list(q, options, function(result){
+    result=result.map(function(obj){
+      obj.href=globals.image_host+_.last(obj["/common/topic/image"]).id;
+      obj.thumbnail=globals.image_host+_.last(obj["/common/topic/image"]).id
+      +'?mode=fillcropmid&maxwidth=150&maxheight=150&errorid=/m/0djw4wd';
+      obj=freebase.add_widget(obj)
+      return obj;
+    })
+    return callback(result)
+  })
+}
+// freebase.gallery('hurricanes')
+
+
+//query wordnet via freebase
+freebase.wordnet=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.wordnet, options, callback)
+  }
+  var query=[{
+    "id":            null,
+    "type":          "/base/wordnet/synset",
+    "gloss":         null,
+    "syntactic_category": null,
+    "sort": [
+      "syntactic_category",
+      "word.sense_number",
+      "a:word.word_number"
+    ],
+    "word": {
+      "sense_number": null,
+      "derivationally_related_forms": [{
+        "sense":{"name":null, "id":null},
+          "optional": true
+        }],
+        "word": {
+          "word": q
+        }
+      },
+      "a:word": [{
+        "word_number": null,
+        "word": {
+          "word": null
+        }
+      }]
+    }]
+    freebase.paginate(query, options, function(r){
+      return callback(r)
+    })
+}
+// freebase.wordnet(["bat","wood"])
+
+
+//do a transitive-query, like all rivers in canada, using freebase metaschema
+freebase.transitive=function transitive(q, property, options, callback){
+  callback=callback||console.log;
+  if(!q || !property){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, property, freebase.transitive, options, callback)
+  }
+  freebase.get_id(q, options, function(topic){
+    if(!topic || !topic.id){return callback({})}
+     var candidate_metaschema=metaschema_lookup(property);
+      if(candidate_metaschema){
+        options.filter='(all '+candidate_metaschema+':"'+topic.id+'")'
+        freebase.search('', options, function(result){
+          return callback(result)
+        })
+      }else{
+        return callback([])
+      }
+
+    })
+}
+
+
+//lat/long for a topic
+freebase.geolocation=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.geolocation, options, callback)
+  }
+  options.type=options.type||"/location/location";
+  freebase.get_id(q, options, function(topic){
+    if(!topic || !topic.id){return callback({})}
+    var query=[{
+      "id":topic.id,
+      "name":null,
+      "/location/location/geolocation": [{
+          "latitude": null,
+          "longitude": null,
+          "type": "/location/geocode",
+          "optional": true
+        }]
+      }]
+     freebase.mqlread(query, options, function(result){
+          if(result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]){
+            var geo=result.result[0]['/location/location/geolocation'][0];
+            delete geo.type
+            delete geo.optional
+            return callback(geo)
+          }
+          return callback({})
+        })
+   })
+}
+//freebase.geolocation("cn tower")
+
+//list of topics nearby a location
+freebase.nearby=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.nearby, options, callback)
+  }
+  freebase.geolocation(q, {}, function(geo){
+    if(!geo || !geo.latitude || !geo.longitude){return callback([])}
+         //use the *old* freebase api for this, as there's no alternative in the new one
+          var location='{"coordinates":['+geo.longitude+','+geo.latitude+'],"type":"Point"}'
+          options.within=options.within||5;
+          options.type=options.type||"/location/location";
+          var url=globals.geosearch+'?location='+encodeURIComponent(location)+'&order_by=distance&type='+options.type+'&within='+options.within+'&limit=200&format=json'
+          fns.http(url, function(r){
+            return callback(r.result.features)
+          })
+    })
+}
+//freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+
+
+//list of topics inside a location
+freebase.inside=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.inside, options, callback)
+  }
+  //handy to have their geocoordinates too
+  options.mql_output=options.mql_output || [{
+    "name": null,
+    "id": null,
+    "type":"/location/location",
+    "/location/location/geolocation": [{
+      "latitude": null,
+      "longitude": null,
+      "type": "/location/geocode",
+      "optional": true
+    }]
+  }]
+  freebase.transitive(q, "part_of", options, function(r){
+    return callback(r)
+  })
+}
+
+
+
+//get a url for dbpedia based on this topic
+freebase.dbpedia_page=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.dbpedia_page, options, callback)
+  }
+   freebase.get_id(q, options, function(topic){
+     if(!topic || !topic.id){return callback("")}
+     var query=[{
+        "id":   topic.id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    freebase.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0] || !result.result[0].key.value){
+        return callback('')
+      }
+      return callback('http://dbpedia.org/resource/'+encodeURIComponent(result.result[0].key.value))
+    })
+  })
+}
+//freebase.dbpedia_page("Köppen climate classification ")
+//http://dbpedia.org/resource/K%2400F6ppen_climate_classification
+
+
+//get all data from dbpedia for this topic
+freebase.dbpedia_data=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.dbpedia_data, options, callback)
+  }
+   freebase.get_id(q, options, function(topic){
+     if(!topic || !topic.id){return callback("")}
+     var query=[{
+        "id":   topic.id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    freebase.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0] || !result.result[0].key.value){return callback('')}
+      var subj='http://dbpedia.org/resource/'+fns.mql_unencode(result.result[0].key.value);
+      var url='http://dbpedia.org/data/'+encodeURIComponent(fns.mql_unencode(result.result[0].key.value))+'.json'
+      fns.http(url, function(result){
+        var all=Object.keys(result).map(function(i){
+          return {
+            subject:{dbpedia:subj, id:dbpedia_to_freebase(subj)},
+            property:{dbpedia:Object.keys(result[i])[0]},
+            object:{dbpedia:i, id:dbpedia_to_freebase(i)}
+          }
+        })
+        return callback(all)
+      })
+    })
+  })
+}
+//freebase.dbpedia_data("Köppen climate classification", {}, console.log)
+// freebase.dbpedia_data("Toronto", console.log)
+
+function dbpedia_to_freebase(url){
+  if(!url || !url.match(/https?:\/\/dbpedia\.org\/(page|data|resource)\//i) ){return ''}
+  url=url.replace(/https?:\/\/dbpedia\.org\/(page|data|resource)\//i,'') ||''
+  url=decodeURI(url)
+  return "/wikipedia/en/"+freebase.mql_encode(url.replace(/ /g,'_'));
+}
+
+//get a url for wikipedia based on this topic
+freebase.wikipedia_page=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.wikipedia_page, options, callback)
+  }
+   freebase.get_id(q, options, function(topic){
+     if(!topic || !topic.id){return callback("")}
+     var query=[{
+        "id":   topic.id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    freebase.mqlread(query, options, function(result){
+      if(!result || !result.result || !result.result[0]){return callback('')}
+      return callback(fns.mql_unencode(result.result[0].key.value))//'http://en.wikipedia.org/wiki/'
+    })
+  })
+}
+// freebase.wikipedia_page('toronto')
+
+freebase.wikipedia_categories=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback([])}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.wikipedia_categories, options, callback)
+  }
+  //if its not a wikipedia title, reuse get-topic logic for searches/ids
+  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
+    return freebase.wikipedia_page(q, options, function(r){
+      freebase.wikipedia_categories(r, options, callback)
+    })
+  }
+  var url=globals.wikipedia_host+'?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles='+encodeURIComponent(q);
+  fns.http(url, function(r){
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
+    var cats=r.query.pages[Object.keys(r.query.pages)[0]].categories ||[]
+    cats=cats.map(function(v){return v.title})
+    return callback(cats)
+  })
+}
+//freebase.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
+//freebase.wikipedia_categories("Thom Yorke", {}, console.log)
+
+//outgoing links from this wikipedia page, converted to freebase ids
+freebase.wikipedia_links=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.wikipedia_links, options, callback)
+  }
+  //if its not a wikipedia title, reuse get-topic logic for searches/ids
+  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
+    return freebase.wikipedia_page(q, options, function(r){
+      freebase.wikipedia_links(r, options, callback)
+    })
+  }
+  var url=globals.wikipedia_host+'?action=query&prop=links&format=json&plnamespace=0&pllimit=500&titles='+encodeURIComponent(q);
+  fns.http(url, function(r){
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
+    var links=r.query.pages[Object.keys(r.query.pages)[0]].links ||[]
+    //filter-out non-freebase topics
+    links=links.filter(function(v){return v.title.match(/^List of /i)==null})
+    links=links.map(function(o){
+      o.id="/wikipedia/en/"+freebase.mql_encode(o.title.replace(/ /g,'_'));
+      o.name=o.title
+      delete o.title
+      delete o.ns
+      return o
+    })
+    return callback(links)
+  })
+}
+//freebase.wikipedia_links("Toronto", {}, console.log)
+
+//outgoing links from this wikipedia page, converted to freebase ids
+freebase.wikipedia_external_links=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.wikipedia_external_links, options, callback)
+  }
+  //if its not a wikipedia title, reuse get-topic logic for searches/ids
+  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
+    return freebase.wikipedia_page(q, options, function(r){
+      freebase.wikipedia_external_links(r, options, callback)
+    })
+  }
+  var url=globals.wikipedia_host+'?action=query&prop=extlinks&format=json&plnamespace=0&pllimit=500&titles='+encodeURIComponent(q);
+  fns.http(url, function(r){
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){
+      return callback([])
+    }
+    var links=r.query.pages[Object.keys(r.query.pages)[0]].extlinks ||[]
+    links=links.filter(function(v){return v["*"].match(/^http/)})
+    links=links.map(function(v){
+      var box=fns.parseurl(v["*"]);
+      return {url:v["*"], domain:box.host}
+    })
+    return callback(links)
+  })
+}
+//freebase.wikipedia_external_links("/en/toronto", {}, console.log)
+
+
+//common lookups for types and properties
+freebase.schema_introspection=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.schema_introspection, options, callback)
+  }
+  //see if its a type
+  freebase.search(q, {type:"/type/type"}, function(r){
+    if(r && r[0] && r[0].id){
+     r=r[0]
+     var query=[{
+        "id": r.id,
+        "mid": null,
+        "name":null,
+        "properties": [{
+          "id": null,
+          "name": null,
+          "/type/property/reverse_property":[{
+            "id": null,
+            "name": null,
+            "optional":true
+          }]
+        }],
+        "/freebase/type_hints/mediator": null,
+        "/freebase/type_hints/included_types": [{
+          "id": null,
+          "name": null
+        }],
+        "/freebase/type_profile/published":null,
+        "/type/type/expected_by": [{
+          "id": null,
+          "name": null
+        }],
+        "/freebase/type_profile/instance_count": null,
+        "/freebase/type_profile/property_count": null,
+        "domain": {
+          "id": null,
+          "name": null
+        },
+        "/freebase/type_profile/equivalent_topic": {
+          "id": null,
+          "name": null
+        },
+        "type": "/type/type"
+      }]
+      freebase.mqlread(query, {}, function(r){
+        if(!r || !r.result || !r.result[0]){return callback({})}
+        r=r.result[0]
+        var obj={}
+        obj.domain=r.domain
+        obj.id=r.id
+        obj.included_types=r["/freebase/type_hints/included_types"]
+        obj.incoming_properties=r["/type/type/expected_by"]
+        obj.is_compound_value=r["/freebase/type_hints/mediator"]||false
+        obj.is_commons=r["/freebase/type_profile/published"]||false
+        obj.equivalent_topic=r["/freebase/type_profile/equivalent_topic"]
+        obj.topic_count=r["/freebase/type_profile/instance_count"]||0
+        obj.property_count=r["/freebase/type_profile/property_count"]||0;
+        //types that include this one
+        var query=[{
+          "id": null,
+          "name": null,
+          "s:name": {
+            "value": null,
+            "lang": "/lang/en",
+            "optional": "required"
+          },
+          "/freebase/type_hints/included_types": [{
+            "id": obj.id
+          }]
+        }]
+        freebase.mqlread(query,{},function(r){
+          if(!r || !r.result){return callback(obj)}
+          obj.included_by=r.result.map(function(v){return {id:v.id, name:v.name}})
+          return callback(obj)
+        })
+      })
+
+    }
+    else{
+      freebase.property_lookup(q,{},function(r){
+        if(!r || !r[0] || !r[0].id){
+          return callback({})
+        }
+        return freebase.property_inspection(r[0].id, {}, callback)
+      })
+    }
+  })
+}
+//freebase.schema_introspection("politician")
+//freebase.schema_introspection("/type/property/master_property")
+
+
+//common lookups for freebase property data
+freebase.property_introspection=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.property_introspection, options, callback)
+  }
+  var query=[{
+      "id": q,
+      "mid": null,
+      "name": null,
+      "type": "/type/property",
+      "reverse_property": [{
+        "id": null,
+        "name": null,
+        "optional": true
+      }],
+      "expected_type": [{
+        "id": null,
+        "name": null,
+        "optional": true,
+      }],
+      "unique": null,
+      "schema": {
+        "id":null,
+        "name":null,
+        "/freebase/type_profile/instance_count": null
+      },
+      "/common/topic/description": null
+    }]
+    freebase.mqlread(query,{},function(r){
+      var obj={}
+      if(!r || !r.result || !r.result[0]){return callback(obj)}
+      r=r.result[0]
+      obj.name=r.name
+      obj.id=r.id
+      obj.type=r.schema
+      obj.description=r["/common/topic/description"]
+      obj.unique=r.unique||false;
+      obj.reverse_property=r.reverse_property
+      obj.expected_type=r.expected_type
+
+      //get its metaschema
+      var query=[{
+        "name": null,
+        "type": "/base/fbontology/semantic_predicate",
+        "paths": {
+          "a:properties": q,
+          "b:properties":[{"id":null}]
+        }
+      }]
+      freebase.mqlread(query,{},function(r){
+        obj.meta=r.result
+        return callback(obj)
+      })
+    })
+  //   //get its property aliases
+  // var query=[{type:"/base/natlang/property_alias",
+  //   property:property,
+  //   alias:[]
+  //   }]
+}
+//freebase.property_introspection("/government/politician/party")
+
+
+//lookup soft property matches, like 'birthday' vs 'date of birth'
+freebase.property_lookup=function(q, options, callback){
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
+  //is it an array of sub-tasks?
+  if(_.isArray(q) && q.length>1){
+    return fns.doit_async(q, freebase.property_lookup, options, callback)
+  }
+  freebase.search(q, {type:"/type/property"}, function(candidate_properties){
+      //look up offline for property aliases
+    if(!q.match(/\/.*?\/.*?\//)){
+      q=q.toLowerCase();
+      q=q.replace(/  /,' ');
+      q=q.replace(/^\s+|\s+$/, '');
+      var property_singular=fns.singularize(q);
+      candidate_properties=candidate_properties.concat(data.properties.filter(function(v){
+        return v.name==q || v.name==property_singular
+      }))
+    }
+    return callback(candidate_properties)
+  })
+}
+// freebase.property_lookup.description="lookup soft property matches, like 'birthday' vs 'date of birth'"
+//freebase.property_lookup("albums")
+
+//lookup metaschema predicate matches offline..
+function metaschema_lookup(property){
+  property=property.toLowerCase();
+  property=property.replace(/\W(is|was|are|will be|has been)\W/,' ')
+  property=property.replace(/  /g,' ');
+  property=property.replace(/_/g,' ');
+  property=property.replace(/^\s+|\s+$/, '');
+  var candidate_properties=data.metaschema.filter(function(v){
+    v.aliases=v.aliases||[]
+    return v.id==property || v.name.toLowerCase()==property || fns.isin(property, v.aliases) || v.search_filter_operand.replace(/_/g,' ')==property
+  })[0]
+  candidate_properties=candidate_properties||{}
+  return candidate_properties.search_filter_operand;
+}
+//console.log(metaschema_lookup('built with'))
+
+
+//slightly different lookup when its a url
+function url_lookup(q, options, callback){
+  var url= globals.host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q);
+  if(options.key){
+    url+='&key='+options.key;
+  }
+  fns.http(url, function(result){
+    return callback(result)
+  })
+}
+
+
+//kill the freebase internal-properties that don't feel graphy
+function kill_boring(obj){
+  if(!obj){return {}}
+  data.boring.forEach(function(v){delete obj[v]})
+  return obj
+}
+
+
+  //  quote a unicode string to turn it into a valid mql /type/key/value
+  freebase.mql_encode= function(s) {
+    if(!s) {
+      return ''
+    }
+    s = s.replace(/  /, ' ');
+    s = s.replace(/^\s+|\s+$/, '');
+    s = s.replace(/ /g, '_');
+    var mqlkey_start = 'A-Za-z0-9';
+    var mqlkey_char = 'A-Za-z0-9_-';
+    var MQLKEY_VALID = new RegExp('^[' + mqlkey_start + '][' + mqlkey_char + ']*$');
+    var MQLKEY_CHAR_MUSTQUOTE = new RegExp('([^' + mqlkey_char + '])', 'g');
+    if(MQLKEY_VALID.exec(s)) // fastpath
+      return s;
+    var convert = function(a, b) {
+      var hex = b.charCodeAt(0).toString(16).toUpperCase();
+      if(hex.length == 2) hex = '00' + hex;
+      if(hex.length == 3) hex = '0' + hex;
+      return '$' + hex;
+    };
+    x = s.replace(MQLKEY_CHAR_MUSTQUOTE, convert);
+    if(x.charAt(0) == '-' || x.charAt(0) == '_') {
+      x = convert(x, x.charAt(0)) + x.substr(1);
+    }
+    return x;
+  }
+
+
+freebase.add_widget=function(obj){
+  var id=obj.mid|| obj.id;
+  if(!obj || !id){return obj}
+  var html='<a href="#" class="imagewrap" data-id="'+id+'" style="position:relative; width:200px; height:200px;">'
+    +'<img style="border-radius:5px;" src="'+globals.image_host
+    +id
+    +'?maxwidth=200&maxheight=200&errorid=/m/0djw4wd"/>'
+      if(obj.name){
+      html+='<div class="caption" style="position:absolute; opacity:0.5; background:black; bottom:10px; color:white; left:10px; border-radius: 5px; min-width:100px; padding:5px;">'
+         +obj.name
+      +'</div>'
+    }
+  html+='</a>'
+  obj.widget=html;
+  return obj;
+}
+
+
+//soften up the api so it will take these methods alternatively..
+var aliases={
+  mqlread:["query", "mql_read"],
+  topic:["topic_api","all_data","data","everything","get_data"],
+  paginate:["continue","all","each"],
+  same_as_links:["sameas","sameAs","sameaslinks","links","sameas_links","external_links","weblinks"],
+  translate:["translate_to","multilingual","i8n", "get_translation"],
+  image:["pic","photo","picture","get_image","image_url","image_src"],
+  description:["get_description","blurb","get_blurb","blurb_api","text","get_text"],
+  notable:["notable_type","notabletype","notable_for","notable_as","main_type","type"],
+  place_data:["city","country","province","place_info","location_info","location","whereis"],
+  incoming:["incoming_links", "incoming_nodes","inlinks"],
+  outgoing:["outgoing_links", "outgoing_nodes","outlinks"],
+  related:["related_topics","similar","related_to","get_related"],
+  gallery:["images","get_images"],
+  geolocation:["geo","geocoordinates","geo_location","lat_lng","location"],
+  nearby:["near", "close_to"],
+  inside:["inside_of","within","contained_by","contains"],
+  mql_encode:["encode","escape"]
+}
+for(var i in aliases){
+  aliases[i].map(function(v){
+    freebase[v]=freebase[i]
+   // freebase[v].is_alias=true
+  })
+}
+
+
+
+
+
+//
+freebase.documentation=function(f,options,callback){
+  callback=callback||console.log;
+  options=options||{};
+  var str=[];
+  var descriptions={
+    mqlread:["query freebase using the MQL"],
+    topic:["get all of a topic's data using the freebase topic api"],
+    paginate:["continue a query until it's done or hits your options.max "],
+    same_as_links:["get all of a topics weblinks"],
+    translate:["get translated names for a topic"],
+    image:["get a image href for a topic"],
+    description:["get a paragraph of text about a topic"],
+    notable:["get the main type for a topic"],
+    place_data:["get city, country, province, and timezone data for a geoco-ordinate"],
+    incoming:["all incoming nodes to a topic"],
+    outgoing:["all outgoing nodes to a topic"],
+    related:["list some similar or neighbouring topics for a topic"],
+    gallery:["list topics with images"],
+    geolocation:["get a topics lat_lng data"],
+    nearby:["topics geographicaly close to another topic"],
+    inside:["list topics inside_of this topic"],
+    mql_encode:["escape text to fit MQL queries and keys"]
+  }
+    str.push('Freebase.com nodejs-library')
+    str.push('--https://github.com/spencermountain/Freebase-nodejs--');
+    if(f){
+      if(freebase[f]){
+        str.push(" * "+f)
+        str.push(descriptions[f])
+      return
+      }else{
+        str.push("Couldn't find the function "+f+". Here are the available functions:")
+      }
+    }
+    Object.keys(freebase).map(function(f){
+      if(!freebase[f].is_alias){
+        str.push(" * "+f)
+        if(freebase[f].description){
+          str.push("   -"+descriptions[f])
+        }
+      }
+    })
+    if(options.html){
+      str=str.join('<br/>')
+    }
+    else{
+      str=str.join('\n')
+    }
+    callback(str)
+}
+//freebase.documentation()
+
+// console.log(Object.keys(freebase))
+module.exports =freebase;
+
+});
+require("/freebase.js");
+
