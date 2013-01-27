@@ -1,21 +1,18 @@
+
+var _ =require('underscore');
+
+var fns=require('./lib/helpers');
+var data=require('./lib/data.js').data;
 var globals={
   host:'https://www.googleapis.com/freebase/v1/',
   image_host:"https://usercontent.googleapis.com/freebase/v1/image",
   geosearch:'http://api.freebase.com/api/service/geosearch',
   wikipedia_host:'http://en.wikipedia.org/w/api.php'
 }
-
-var request = require('request');
-var async = require('async');
-var _ =require('underscore');
-
-var fns=require('./lib/helpers');
-var data=require('./lib/data.js').data;
-var metadata={}
 var freebase={};
 
-//interface to freebase's mql api
 freebase.mqlread=function(query, options, callback){
+  this.doc="interface to freebase's mql api"
   callback=callback||console.log;
   if(!query){return callback({})}
   options=options||{};
@@ -33,6 +30,7 @@ freebase.mqlread=function(query, options, callback){
 }
 
 freebase.lookup=function(q, options, callback){
+  this.doc="freebase search with filters to ensure only a confident, unambiguous result"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -50,7 +48,7 @@ freebase.lookup=function(q, options, callback){
    }
   //if its a url
   if(q.match(/^(https?:\/\/|www\.)/)){
-      return url_lookup(q, options, function(result){
+      return fns.url_lookup(q, options, function(result){
         if(result && result.result && result.result[0]){
           return callback(result.result[0])
         }
@@ -95,8 +93,11 @@ freebase.lookup=function(q, options, callback){
 //freebase.lookup("toronto")
 
 
-//like freebase.lookup but only needs an id
 freebase.get_id=function(q, options, callback){
+  this.doc="like freebase.lookup but satisfied with an id"
+  callback=callback||console.log;
+  if(!q){return callback({})}
+  options=options||{};
   //if its a freebase-type object
   if(_.isObject(q)){
     q=q.id||q.mid||q.name;
@@ -117,8 +118,8 @@ freebase.get_id=function(q, options, callback){
 }
 
 
-//topic api
 freebase.topic=function(q, options, callback){
+    this.doc="topic api"
     callback=callback||console.log;
     if(!q){return callback({})}
     options=options||{};
@@ -141,34 +142,35 @@ freebase.topic=function(q, options, callback){
  //freebase.topic("toronto", {filter:"allproperties"})
 
 
-//regular search api
 freebase.search=function(q, options, callback){
-      callback=callback||console.log;
-      if(!q && !options.filter){return callback([])}
-      options=options||{};
-       //is it an array of sub-tasks?
-      if(_.isArray(q) && q.length>1){
-        return fns.doit_async(q, freebase.search, options, callback)
-      }
-      options.query=q || '';
-      if(options.filter){
-        options.filter=encodeURIComponent(options.filter)
-      }
-      if(options.type=="/type/type" || options.type=="/type/property"){
-        url+="&scoring=schema&stemmed=true"
-      }
-      options.query=encodeURIComponent(options.query);
-      var params=fns.set_params(options)
-      var url= globals.host+'search/?'+params;
-      fns.http(url, function(result){
-        if(!result || !result.result || !result.result[0] ){return callback([])}
-        return callback(result.result)
-    })
+    this.doc="regular search api"
+    callback=callback||console.log;
+    options=options||{}
+    if(!q && !options.filter){return callback([])}
+    options=options||{};
+     //is it an array of sub-tasks?
+    if(_.isArray(q) && q.length>1){
+      return fns.doit_async(q, freebase.search, options, callback)
+    }
+    options.query=q || '';
+    if(options.filter){
+      options.filter=encodeURIComponent(options.filter)
+    }
+    if(options.type=="/type/type" || options.type=="/type/property"){
+      url+="&scoring=schema&stemmed=true"
+    }
+    options.query=encodeURIComponent(options.query);
+    var params=fns.set_params(options)
+    var url= globals.host+'search/?'+params;
+    fns.http(url, function(result){
+      if(!result || !result.result || !result.result[0] ){return callback([])}
+      return callback(result.result)
+  })
 }
 //freebase.search("bill murray")
 
-//get all of the results to your query
 freebase.paginate=function(query, options, callback){
+  this.doc="get all of the results to your query"
   callback=callback||console.log;
   if(!query){return callback([])}
   options=options||{};
@@ -196,8 +198,8 @@ freebase.paginate=function(query, options, callback){
 }
 
 
-//get the proper pronoun to use for a topic eg. he/she/they/it
 freebase.grammar=function(q, options, callback){
+  this.doc="get the proper pronoun to use for a topic eg. he/she/they/it"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -265,8 +267,8 @@ freebase.grammar=function(q, options, callback){
 //freebase.grammar("wayne gretzky")
 //freebase.grammar("ron weasley")
 
-//turns a url into a freebase topic and list its same:as links
 freebase.same_as_links=function(q, options, callback){
+  this.doc="turns a url into a freebase topic and list its same:as links"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -305,8 +307,8 @@ freebase.same_as_links=function(q, options, callback){
   })
 }
 
-//return specific language title for a topic
 freebase.translate=function(q, options, callback){
+  this.doc="return specific language title for a topic"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -338,8 +340,8 @@ freebase.translate=function(q, options, callback){
 
 
 
-//get a url for image href of on this topic
 freebase.image=function(q, options, callback){
+  this.doc="get a url for image href of on this topic"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -372,8 +374,8 @@ freebase.image=function(q, options, callback){
 }
 
 
-//get a text blurb from freebase
 freebase.description=function(q, options, callback){
+  this.doc="get a text blurb from freebase"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -394,8 +396,8 @@ freebase.description=function(q, options, callback){
  });
 }
 
-//get a topics notable type
 freebase.notable=function(q, options, callback){
+  this.doc="get a topic's notable type"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -411,8 +413,8 @@ freebase.notable=function(q, options, callback){
  });
 }
 
-//get the first sentence of a topic description
 freebase.sentence=function(q, options, callback){
+  this.doc="get the first sentence of a topic description"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -430,8 +432,8 @@ freebase.sentence=function(q, options, callback){
   })
 }
 
-//get a list of topics in a type
 freebase.list=function(q, options, callback){
+  this.doc="get a list of topics in a type"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -465,33 +467,11 @@ freebase.list=function(q, options, callback){
 //freebase.list("hurricanes",{}, function(r){console.log('========================')})
 //freebase.list("/book/author")
 
-/////*****************************
-function list_category_like(q, options, callback){
-  callback=callback||console.log;
-  if(!q){return callback({})}
-  options=options||{};
-  q=fns.singularize(q);
-  freebase.topic(q, options, function(r){
-    if(!r || !r.property || !_.isObject(r.property) ){return callback([])}
-    var all=Object.keys(r.property).filter(function(v){
-      return fns.isin(v, data.category_like)
-    }).map(function(p){
-      //add the property
-      r.property[p].values=r.property[p].values.map(function(v){
-        v.property=p;
-        return v;
-      })
-      return r.property[p].values
-    })
-    all=_.flatten(all);
-    return callback(all)
-  })
-}
-//list_category_like("city")
 
 
-//from a geo-coordinate, get the town, province, country, and timezone for it
+
 freebase.place_data = function(geo, options, callback) {
+  this.doc="from a geo-coordinate, get the town, province, country, and timezone for it"
   callback = callback || console.log;
   if(!geo) {
     return callback({})
@@ -591,8 +571,8 @@ freebase.place_data = function(geo, options, callback) {
  // freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 
-//get any incoming data to this topic, //ignoring cvt types
 freebase.incoming=function(q, options, callback){
+  this.doc="get any incoming data to this topic, ignoring cvt types"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -622,8 +602,8 @@ freebase.incoming=function(q, options, callback){
   })
 }
 
-//return all outgoing links for a topic, traversing cvt types
 freebase.outgoing=function(q, options, callback){
+  this.doc="return all outgoing links for a topic, traversing cvt types"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -636,7 +616,7 @@ freebase.outgoing=function(q, options, callback){
       freebase.topic(topic.mid, options, function(result){
         var out=[];
           //get rid of permissions and stuff..
-        result.property=kill_boring(result.property)
+        result.property=fns.kill_boring(result.property)
         Object.keys(result.property).forEach(function(key){
           var v=result.property[key];
           //add topics
@@ -647,7 +627,7 @@ freebase.outgoing=function(q, options, callback){
           //add the topics from cvt values in the same manner
           if(v.valuetype=="compound"){
             v.values.forEach(function(c){
-              c.property=kill_boring(c.property);
+              c.property=fns.kill_boring(c.property);
               Object.keys(c.property).forEach(function(key2){
                if(c.property[key2].valuetype=="object"){
                 c.property[key2].values=c.property[key2].values.map(function(s){s.property=[key,key2]; return s})
@@ -677,8 +657,8 @@ freebase.outgoing=function(q, options, callback){
 }
 //freebase.outgoing("vancouver")
 
-//return all outgoing and incoming links for a topic
 freebase.graph=function(q, options, callback){
+  this.doc="return all outgoing and incoming links for a topic"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -700,8 +680,8 @@ freebase.graph=function(q, options, callback){
             incoming[k]=r.property[k]
           }
         })
-        incoming=parse_topic_api(incoming);
-        outgoing=parse_topic_api(outgoing);
+        incoming=fns.parse_topic_api(incoming);
+        outgoing=fns.parse_topic_api(outgoing);
         var out=incoming.map(function(v){
           return {subject:topic, property:{id:v.property}, object:v}
         })
@@ -725,56 +705,11 @@ freebase.graph=function(q, options, callback){
 }
 //freebase.graph("toronto")
 
-//****************************
-function parse_topic_api(properties, options) {
-  var out = [];
-  properties = kill_boring(properties)
-  Object.keys(properties).forEach(function(key) {
-    var v = properties[key];
-    //add topics
-    if(v.valuetype == "object") {
-      v.values = v.values.map(function(s) {
-        s.property = key;
-        return s
-      })
-      out = out.concat(v.values)
-    }
-    //add the topics from cvt values in the same manner
-    if(v.valuetype == "compound") {
-      v.values.forEach(function(c) {
-        c.property = kill_boring(c.property);
-        Object.keys(c.property).forEach(function(key2) {
-          if(c.property[key2].valuetype == "object") {
-            c.property[key2].values = c.property[key2].values.map(function(s) {
-              s.property = [key, key2];
-              return s
-            })
-            out = out.concat(c.property[key2].values)
-          }
-        })
-      })
-    }
-  })
-  out = out.map(function(o) {
-    return {
-      name: o.text,
-      id: o.id,
-      property: o.property
-    }
-  })
-  out = out.map(function(o) {
-    if(_.isArray(o.property)) {
-      o.property = o.property.join('');
-    }
-    return o
-  })
-  return out;
-}
 
 
 
-//get similar topics to a topic
 freebase.related=function(q, options, callback){
+  this.doc="get similar topics to a topic"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -825,8 +760,8 @@ freebase.related=function(q, options, callback){
 //   console.log(JSON.stringify(r, null, 2));
 // })
 
-//get a list of identifiers for a topic
-freebase.is_a=function(q, property, options, callback){
+freebase.is_a=function(q, options, callback){
+  this.doc="get a list of identifiers for a topic"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -842,7 +777,7 @@ freebase.is_a=function(q, property, options, callback){
     types=types.map(function(v){
       return {name:v.text, id:v.id, property:"/type/object/type"}
     })
-    r=parse_topic_api(r.property)
+    r=fns.parse_topic_api(r.property)
     r=r.filter(function(v){return fns.isin(v.property, data.is_a)})
     r=r.concat(types)
     return callback(r)
@@ -852,6 +787,7 @@ freebase.is_a=function(q, property, options, callback){
 
 
 freebase.question=function(q, options, callback){
+  this.doc="give a topic and a property, and get a list of results"
   callback=callback||console.log;
   if(!q || !options.property){return callback([])}
   options=options||{};
@@ -869,7 +805,7 @@ freebase.question=function(q, options, callback){
       return callback(r.property[property].values)
     })
   }
-  var candidate_metaschema=metaschema_lookup(property);
+  var candidate_metaschema=fns.metaschema_lookup(property);
   if(candidate_metaschema){
     options.filter='(all '+candidate_metaschema+':"'+q+'")'
     freebase.search('', options, function(result){
@@ -901,8 +837,8 @@ freebase.question=function(q, options, callback){
 //freebase.question("keanu reeves","films")
 
 
-//transitive query on a specific property, maximum 3-ply
 freebase.dig=function(q, options, callback){
+  this.doc="transitive query on a specific property, maximum 3-ply"
   callback=callback||console.log;
   if(!q || !options.property){return callback([])}
   options=options||{};
@@ -936,8 +872,8 @@ freebase.dig=function(q, options, callback){
 //   console.log(r)
 // })
 
-//list of topics with images
 freebase.gallery=function(q, options, callback){
+  this.doc="list of topics with images"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -965,8 +901,8 @@ freebase.gallery=function(q, options, callback){
 // freebase.gallery('hurricanes')
 
 
-//query wordnet via freebase
 freebase.wordnet=function(q, options, callback){
+  this.doc="query wordnet via freebase"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -1008,18 +944,19 @@ freebase.wordnet=function(q, options, callback){
 // freebase.wordnet(["bat","wood"])
 
 
-//do a transitive-query, like all rivers in canada, using freebase metaschema
-freebase.transitive=function transitive(q, property, options, callback){
+freebase.transitive=function transitive(q, options, callback){
+  this.doc="do a transitive-query, like all rivers in canada, using freebase metaschema"
   callback=callback||console.log;
-  if(!q || !property){return callback([])}
   options=options||{};
+  var property=options.property;
+  if(!q || !property){return callback([])}
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return fns.doit_async(q, property, freebase.transitive, options, callback)
+    return fns.doit_async(q, freebase.transitive, options, callback)
   }
   freebase.get_id(q, options, function(topic){
     if(!topic || !topic.id){return callback({})}
-     var candidate_metaschema=metaschema_lookup(property);
+     var candidate_metaschema=fns.metaschema_lookup(property);
       if(candidate_metaschema){
         options.filter='(all '+candidate_metaschema+':"'+topic.id+'")'
         freebase.search('', options, function(result){
@@ -1028,13 +965,12 @@ freebase.transitive=function transitive(q, property, options, callback){
       }else{
         return callback([])
       }
-
     })
 }
 
 
-//lat/long for a topic
 freebase.geolocation=function(q, options, callback){
+ this.doc="lat/long for a topic"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1068,8 +1004,8 @@ freebase.geolocation=function(q, options, callback){
 }
 //freebase.geolocation("cn tower")
 
-//list of topics nearby a location
 freebase.nearby=function(q, options, callback){
+  this.doc="list of topics nearby a location"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -1092,8 +1028,8 @@ freebase.nearby=function(q, options, callback){
 //freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
 
 
-//list of topics inside a location
 freebase.inside=function(q, options, callback){
+  this.doc="list of topics inside a location"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -1120,8 +1056,8 @@ freebase.inside=function(q, options, callback){
 
 
 
-//get a url for wikipedia based on this topic
 freebase.wikipedia_page=function(q, options, callback){
+  this.doc="get a url for wikipedia based on this topic"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1148,6 +1084,7 @@ freebase.wikipedia_page=function(q, options, callback){
 // freebase.wikipedia_page('toronto')
 
 freebase.wikipedia_categories=function(q, options, callback){
+  this.doc="get the wikipedia categories for a topic"
   callback=callback||console.log;
   if(!q){return callback([])}
   options=options||{};
@@ -1172,8 +1109,8 @@ freebase.wikipedia_categories=function(q, options, callback){
 //freebase.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
 //freebase.wikipedia_categories("Thom Yorke", {}, console.log)
 
-//outgoing links from this wikipedia page, converted to freebase ids
 freebase.wikipedia_links=function(q, options, callback){
+  this.doc="outgoing links from this wikipedia page, converted to freebase ids"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1205,8 +1142,8 @@ freebase.wikipedia_links=function(q, options, callback){
 }
 //freebase.wikipedia_links("Toronto", {}, console.log)
 
-//outgoing links from this wikipedia page, converted to freebase ids
 freebase.wikipedia_external_links=function(q, options, callback){
+  this.doc="outgoing links from this wikipedia page, converted to freebase ids"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1237,8 +1174,8 @@ freebase.wikipedia_external_links=function(q, options, callback){
 //freebase.wikipedia_external_links("/en/toronto", {}, console.log)
 
 
-//common lookups for types and properties
 freebase.schema_introspection=function(q, options, callback){
+  this.doc="common lookups for types and properties"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1333,8 +1270,8 @@ freebase.schema_introspection=function(q, options, callback){
 //freebase.schema_introspection("/type/property/master_property")
 
 
-//common lookups for freebase property data
 freebase.property_introspection=function(q, options, callback){
+  this.doc="common lookups for freebase property data"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1399,9 +1336,8 @@ freebase.property_introspection=function(q, options, callback){
 }
 //freebase.property_introspection("/government/politician/party")
 
-///**************
-//lookup soft property matches, like 'birthday' vs 'date of birth'
 freebase.property_lookup=function(q, options, callback){
+  this.doc="lookup soft property matches, like 'birthday' vs 'date of birth'"
   callback=callback||console.log;
   if(!q){return callback({})}
   options=options||{};
@@ -1426,46 +1362,14 @@ freebase.property_lookup=function(q, options, callback){
 // freebase.property_lookup.description="lookup soft property matches, like 'birthday' vs 'date of birth'"
 //freebase.property_lookup("albums")
 
-///////**************
-//lookup metaschema predicate matches offline..
-function metaschema_lookup(property){
-  property=property.toLowerCase();
-  property=property.replace(/\W(is|was|are|will be|has been)\W/,' ')
-  property=property.replace(/  /g,' ');
-  property=property.replace(/_/g,' ');
-  property=property.replace(/^\s+|\s+$/, '');
-  var candidate_properties=data.metaschema.filter(function(v){
-    v.aliases=v.aliases||[]
-    return v.id==property || v.name.toLowerCase()==property || fns.isin(property, v.aliases) || v.search_filter_operand.replace(/_/g,' ')==property
-  })[0]
-  candidate_properties=candidate_properties||{}
-  return candidate_properties.search_filter_operand;
-}
-//console.log(metaschema_lookup('built with'))
-
-//*************
-//slightly different lookup when its a url
-function url_lookup(q, options, callback){
-  var url= globals.host+'search?type=/common/topic&limit=1&query='+encodeURIComponent(q);
-  if(options.key){
-    url+='&key='+options.key;
-  }
-  fns.http(url, function(result){
-    return callback(result)
-  })
-}
-
-//////*********
-//kill the freebase internal-properties that don't feel graphy
-function kill_boring(obj){
-  if(!obj){return {}}
-  data.boring.forEach(function(v){delete obj[v]})
-  return obj
-}
 
 
-  //  quote a unicode string to turn it into a valid mql /type/key/value
+
+
+
+
   freebase.mql_encode= function(s) {
+    this.doc="quote a unicode string to turn it into a valid mql /type/key/value"
     if(!s) {
       return ''
     }
@@ -1493,8 +1397,9 @@ function kill_boring(obj){
 
 
 freebase.add_widget=function(obj){
-  var id=obj.mid|| obj.id;
+  this.doc="add a generic html view of a topic"
   if(!obj || !id){return obj}
+  var id=obj.mid|| obj.id;
   var html='<a href="#" class="imagewrap" data-id="'+id+'" style="position:relative; width:200px; height:200px;">'
     +'<img style="border-radius:5px;" src="'+globals.image_host
     +id
@@ -1541,76 +1446,18 @@ freebase.add_widget=function(obj){
     mql_encode:["encode","escape"]
   }
 
-  var descriptions={
-    mqlread:["query freebase using the MQL"],
-    topic:["get all of a topic's data using the freebase topic api"],
-    paginate:["continue a query until it's done or hits your options.max "],
-    same_as_links:["get all of a topics weblinks"],
-    translate:["get translated names for a topic"],
-    image:["get a image href for a topic"],
-    description:["get a paragraph of text about a topic"],
-    notable:["get the main type for a topic"],
-    place_data:["get city, country, province, and timezone data for a geoco-ordinate"],
-    incoming:["all incoming nodes to a topic"],
-    outgoing:["all outgoing nodes to a topic"],
-    related:["list some similar or neighbouring topics for a topic"],
-    gallery:["list topics with images"],
-    geolocation:["get a topics lat_lng data"],
-    nearby:["topics geographicaly close to another topic"],
-    inside:["list topics inside_of this topic"],
-    mql_encode:["escape text to fit MQL queries and keys"],
-    lookup:["a freebase search with filtering to ensure reasonable confidence"],
-    get_id:["turn a string into a freebase id"],
-    search:["use freebase's search api"],
-    grammar:["get a topic's linguistic data, like tense, inflection, and gramatical gender"],
-    sentence:["get the first sentence of a topic's wikipedia article"],
-    list:["from a type, or a 'is a' topic, list out topics that fit the profile, eg. freebase.list('earthquakes')"],
-    graph:["generate subject-verb-object pairs for all a topic's data, including inside cvts"],
-    is_a:["list out a topics 'is_a' data, like its types, or professions"],
-    question:["given a topic and a property, answer the question. supports natural language lookups"],
-    dig:["given a transitive property like '/location/location/contained_by', iterate over the data as much as possible"],
-    wordnet:["look up a word in wordnet"],
-    transitive:["*"],
-    wikipedia_page:["get a topic's entire wikipedia article"],
-    wikipedia_categories:["get a topic's categories in wikipedia"],
-    wikipedia_links:["get the topics that this topic links to on wikipedia"],
-    wikipedia_external_links:["get the websites linked to from this topic's wikipedia page"],
-    schema_introspection:["get some common analysis from a type or property"],
-    property_introspection:["get some common analysis from a property"],
-    property_lookup:["search for a freebase property, using property aliases and inflection"],
-    add_widget:["get a html printout to render this topic"]
-  }
-//   var function_metadata={}
-//   Object.keys(freebase).forEach(function(v){
-//     function_metadata[v]={
-//       aliases:aliases[v],
-//       description:descriptions[v],
-//       code:{},
-//       tests:[]
-//     }
-//   });
-
-// for(var i in function_metadata){
-//   function_metadata[i].description=function_metadata[i].description[0]||""
-//   function_metadata[i].aliases=function_metadata[i].aliases||[]
-//   console.log('freebase.'+i+'=')
-//   console.log(JSON.stringify(function_metadata[i], null, 2));
-//   console.log('')
-// }
-
 //
-freebase.documentation=function(f,options,callback){
+var documentation=function(f,options,callback){
   callback=callback||console.log;
   options=options||{};
-
-
   var str=[];
     str.push('Freebase.com nodejs-library')
-    str.push('--https://github.com/spencermountain/Freebase-nodejs--');
+    str.push('https://github.com/spencermountain/Freebase-nodejs--');
     if(f){
       if(freebase[f]){
         str.push(" * "+f)
-        str.push(descriptions[f])
+        var f=new freebase[f]()
+        str.push(f.doc)
       return
       }else{
         str.push("Couldn't find the function "+f+". Here are the available functions:")
@@ -1618,9 +1465,8 @@ freebase.documentation=function(f,options,callback){
     }
     Object.keys(freebase).map(function(f){
         str.push(" * "+f)
-        if(descriptions[f]){
-          str.push("   -"+descriptions[f])
-        }
+        var f=new freebase[f](null,{},function(){})
+        str.push('     -'+f.doc)
     })
     if(options.html){
       str=str.join('<br/>')
@@ -1630,7 +1476,7 @@ freebase.documentation=function(f,options,callback){
     }
     callback(str)
 }
-//freebase.documentation()
+documentation()
 
 // console.log(Object.keys(freebase))
 module.exports =freebase;
