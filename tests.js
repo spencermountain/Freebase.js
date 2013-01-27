@@ -1,7 +1,7 @@
 var freebase=require('./freebase')
 var fns=require('./lib/helpers')
 var _=require('underscore');
-
+var test={}
 //failing
 
 // freebase.inside('toronto',{}, function(r){
@@ -11,22 +11,140 @@ var _=require('underscore');
  // 	console.log(r.length>3)
  // })
 
-//passing
-// freebase.lookup("http://toronto.ca", {}, function(r){console.log(r.id=="/en/toronto")})
-// freebase.lookup(["/m/09jm8", "http://myspace.com/u2"], {}, function(r){
-// 	console.log(r[1].name=="U2")
-// })
-// freebase.nearby("cn tower", {type:"/food/restaurant"}, function(r){
-// 	console.log(r.length>4)
-// })
-// freebase.wordnet(["bat","wood"],{}, function(r){console.log(r.length==2)})
+
+
+test.lookup=[
+  ["http://toronto.ca", {}, function(r){console.log(r.id=="/en/toronto")}],
+  [["/m/09jm8", "http://myspace.com/u2"], {}, function(r){console.log(r[1].name=="U2")	}],
+  ["australia",{type:"/film/film"}, function(r){console.log(r.mid=="/m/026qnh6")}]
+]
+
+test.mqlread=[
+  []
+]
+test.get_id=[
+  []
+]
+test.topic=[
+  []
+]
+test.search=[
+  []
+]
+test.paginate=[
+  []
+]
+test.grammar=[
+  []
+]
+test.same_as_links=function(){
+	freebase.same_as_links("http://www.geonames.org/6167865/", {}, function(r){console.log(r.links.length>3)})
+	freebase.same_as_links("toronto", {}, function(r){console.log(r.links.length>3)})
+	freebase.same_as_links("/m/0h7h6", {}, function(r){console.log(r.links.length>3)})
+}
+test.translate=function(){
+	freebase.translate("toronto",{lang:"zh"},function(r){console.log(r.match(/多伦多/i)!=null)})
+	freebase.translate("radiohead",{lang:"/lang/ko"},function(r){console.log(r.match(/라디오헤드/i)!=null)})
+}
+test.image=[
+  []
+]
+test.description=[
+  []
+]
+test.notable=[
+  []
+]
+test.sentence=function(){
+  freebase.sentence("thom yorke", {}, function(r){console.log(r.match(/radiohead/i)!=null)})
+  freebase.sentence("meatloaf", {type:"/food/food"}, function(r){console.log(r!=null)})
+}
+test.list=[
+  []
+]
+test.place_data=[
+  []
+]
+test.incoming=[
+  []
+]
+test.outgoing=[
+  []
+]
+test.graph=function(){
+	freebase.graph("paul ryan", {}, function(r){console.log(r[0].object.name=="Paul Ryan"|| r[0].subject.name=="Paul Ryan")})
+
+}
+test.related=[
+  []
+]
+test.is_a=[
+  []
+]
+test.question=[
+  []
+]
+test.dig=[
+  []
+]
+test.gallery=[
+  []
+]
+test.wordnet=function(){
+	freebase.wordnet(["bat","wood"],{}, function(r){console.log(r.length==2)})
+}
+test.transitive=[
+  []
+]
+test.geolocation=[
+  []
+]
+test.nearby=[
+  []
+]
+test.inside=[
+  []
+]
+test.wikipedia_page=[
+  []
+]
+test.wikipedia_categories=[
+  []
+]
+test.wikipedia_links=[
+  []
+]
+test.wikipedia_external_links=[
+  []
+]
+test.schema_introspection=[
+  []
+]
+test.property_introspection=[
+  []
+]
+test.property_lookup=[
+  []
+]
+test.mql_encode=[
+  []
+]
+test.add_widget=[
+  []
+]
+
+
+
+
+
+
+//
 // freebase.wikipedia_external_links("/en/toronto", {}, function(r){console.log(r.length>=3)})
 //freebase.wikipedia_links("Toronto", {}, function(r){console.log(r.length>=5)})
 
-//freebase.graph("paul ryan", {}, function(r){console.log(r[0].object.name=="Paul Ryan"|| r[0].subject.name=="Paul Ryan")})
-
-//  freebase.lookup("australia",{type:"/film/film"}, function(r){console.log(r.mid=="/m/026qnh6")})
-//   freebase.same_as_links("http://www.geonames.org/6167865/", {}, function(r){console.log(r.links.length>3)})
+//
+//
+//
 //  freebase.image("australia",{type:"/location/location"}, function(r){console.log(r.match(/maxheight/)!=null)})
 
 // freebase.grammar("toronto maple leafs",{},function(r){
@@ -76,8 +194,6 @@ var _=require('underscore');
 // freebase.lookup("thom yorke", {}, function(r){console.log(r.mid=="/m/01p0w_")})
 // freebase.lookup("tom green", {}, function(r){console.log(r.mid=="/m/017yxq")})
 
-// freebase.same_as_links("toronto", {}, function(r){console.log(r.links.length>3)})
-// freebase.same_as_links("/m/0h7h6", {}, function(r){console.log(r.links.length>3)})
 
 
 
@@ -98,10 +214,9 @@ var _=require('underscore');
 // freebase.description("mike myers", {}, function(r){console.log(r.match(/myers/i)!=null)})
 // //freebase.description("http://myspace.com/u2", {}, function(r){console.log(r.match(/u2/i)!=null)})
 
-// freebase.sentence("thom yorke", {}, function(r){console.log(r.match(/radiohead/i)!=null)})
 
-// freebase.translate("toronto",{lang:"zh"},function(r){console.log(r.match(/多伦多/i)!=null)})
-// freebase.translate("radiohead",{lang:"/lang/ko"},function(r){console.log(r.match(/라디오헤드/i)!=null)})
+
+
 
 // freebase.incoming("germany",{},function(r){console.log(r.length>20)})
 
@@ -109,4 +224,14 @@ var _=require('underscore');
 // freebase.notable("canada",{},function(r){console.log(r.id=='/location/country')})
 // freebase.wikipedia_page("tony hawk", {}, function(r){console.log(r=="Tony_Hawk")})
 
-// freebase.sentence("meatloaf", {type:"/food/food"}, function(r){console.log(r!=null)})
+
+
+
+
+//passing
+
+test.nearby=function(){
+ freebase.nearby("cn tower", {type:"/food/restaurant"}, function(r){
+ 	console.log(r.length>4)
+ })
+}
