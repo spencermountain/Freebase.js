@@ -645,9 +645,9 @@ freebase.outgoing=function(q, options, callback){
             property=o.property.join('');
           }
           o.sentence=topic.name +"'s " +_.last(property.split('/')).replace('_',' ') +" is "+ o.name; //ugly fallback
-          var grammar=data.sentence_grammars.filter(function(v){return v.property==property})[0]||{}
-          if(grammar["sentence form"] && topic.name && o.name){
-            o.sentence=grammar["sentence form"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
+          var grammar=data.sentence_grammars.filter(function(v){return v.id==property})[0]||{}
+          if(grammar["sen"] && topic.name && o.name){
+            o.sentence=grammar["sen"].replace(/\bsubj\b/, topic.name).replace(/\bobj\b/, o.name);
           }
           return o
         })
@@ -692,10 +692,10 @@ freebase.graph=function(q, options, callback){
         out=out.map(function(obj){
           obj.property.id=obj.property.id.replace(/^\!/,'');
           delete obj.subject.property;
-          var grammar=data.sentence_grammars.filter(function(v){return v.property==obj.property.id})[0]||{}
+          var grammar=data.sentence_grammars.filter(function(v){return v.id==obj.property.id})[0]||{}
           obj.sentence=obj.subject.name +"'s " +_.last(obj.property.id.split('/')).replace('_',' ') +" is "+ obj.object.name;
-          if(grammar["sentence form"] && obj.subject.name && obj.object.name){
-            obj.sentence=grammar["sentence form"].replace(/\bsubj\b/, obj.subject.name).replace(/\bobj\b/, obj.object.name);
+          if(grammar["sen"] && obj.subject.name && obj.object.name){
+            obj.sentence=grammar["sen"].replace(/\bsubj\b/, obj.subject.name).replace(/\bobj\b/, obj.object.name);
          }
           return obj
         })
@@ -1353,7 +1353,7 @@ freebase.property_lookup=function(q, options, callback){
       q=q.replace(/^\s+|\s+$/, '');
       var property_singular=fns.singularize(q);
       candidate_properties=candidate_properties.concat(data.properties.filter(function(v){
-        return v.name==q || v.name==property_singular
+        return v.n==q || v.n==property_singular
       }))
     }
     return callback(candidate_properties)
@@ -1476,7 +1476,7 @@ var documentation=function(f,options,callback){
     }
     callback(str)
 }
-documentation()
+//documentation()
 
 // console.log(Object.keys(freebase))
 module.exports =freebase;
