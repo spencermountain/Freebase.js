@@ -15,6 +15,7 @@ freebase.mqlread=function(query, options, callback){
   this.doc="interface to freebase's mql api"
   callback=callback||console.log;
   if(!query){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.uniqueness_failure=options.uniqueness_failure||"soft";
   options.cursor=options.cursor||"";
@@ -30,9 +31,11 @@ freebase.mqlread=function(query, options, callback){
 }
 
 freebase.lookup=function(q, options, callback){
-  this.doc="freebase search with filters to ensure only a confident, unambiguous result"
+  this.doc="freebase search with filters to ensure only a confident, unambiguous result";
+  this.reference="http://wiki.freebase.com/wiki/ApiSearch"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -97,6 +100,7 @@ freebase.get_id=function(q, options, callback){
   this.doc="like freebase.lookup but satisfied with an id"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //if its a freebase-type object
   if(_.isObject(q)){
@@ -122,6 +126,7 @@ freebase.topic=function(q, options, callback){
     this.doc="topic api"
     callback=callback||console.log;
     if(!q){return callback({})}
+    if(typeof options=="function"){callback=options;options={};}//flexible parameter
     options=options||{};
      //is it an array of sub-tasks?
     if(_.isArray(q) && q.length>1){
@@ -202,10 +207,11 @@ freebase.grammar=function(q, options, callback){
   this.doc="get the proper pronoun to use for a topic eg. he/she/they/it"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
-    return fns.doit_async(q, freebase.pronoun, options, callback)
+    return fns.doit_async(q, freebase.grammar, options, callback)
   }
    freebase.get_id(q, options, function(topic){
      if(!topic || !topic.id){return callback({})}
@@ -271,6 +277,7 @@ freebase.same_as_links=function(q, options, callback){
   this.doc="turns a url into a freebase topic and list its same:as links"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.filter=options.filter||"/common/topic"
   //is it an array of sub-tasks?
@@ -311,6 +318,7 @@ freebase.translate=function(q, options, callback){
   this.doc="return specific language title for a topic"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -339,11 +347,11 @@ freebase.translate=function(q, options, callback){
 }
 
 
-
 freebase.image=function(q, options, callback){
   this.doc="get a url for image href of on this topic"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.maxheight=options.maxheight||250;
   options.maxwidth=options.maxwidth||250;
@@ -378,6 +386,7 @@ freebase.description=function(q, options, callback){
   this.doc="get a text blurb from freebase"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -400,6 +409,7 @@ freebase.notable=function(q, options, callback){
   this.doc="get a topic's notable type"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -417,6 +427,7 @@ freebase.sentence=function(q, options, callback){
   this.doc="get the first sentence of a topic description"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//support lazy callback parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -436,6 +447,7 @@ freebase.list=function(q, options, callback){
   this.doc="get a list of topics in a type"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.max=options.max || options.limit || 500;
   //is it an array of sub-tasks?
@@ -575,6 +587,7 @@ freebase.incoming=function(q, options, callback){
   this.doc="get any incoming data to this topic, ignoring cvt types"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -606,6 +619,7 @@ freebase.outgoing=function(q, options, callback){
   this.doc="return all outgoing links for a topic, traversing cvt types"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -661,6 +675,7 @@ freebase.graph=function(q, options, callback){
   this.doc="return all outgoing and incoming links for a topic"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -712,6 +727,7 @@ freebase.related=function(q, options, callback){
   this.doc="get similar topics to a topic"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.max=options.max||25;
   //is it an array of sub-tasks?
@@ -764,6 +780,7 @@ freebase.is_a=function(q, options, callback){
   this.doc="get a list of identifiers for a topic"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.max=options.max||25;
   //is it an array of sub-tasks?
@@ -790,6 +807,7 @@ freebase.question=function(q, options, callback){
   this.doc="give a topic and a property, and get a list of results"
   callback=callback||console.log;
   if(!q || !options.property){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.max=options.max||25;
   var property=options.property;
@@ -841,6 +859,7 @@ freebase.dig=function(q, options, callback){
   this.doc="transitive query on a specific property, maximum 3-ply"
   callback=callback||console.log;
   if(!q || !options.property){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.max=options.max||25;
   //is it an array of sub-tasks?
@@ -876,6 +895,7 @@ freebase.gallery=function(q, options, callback){
   this.doc="list of topics with images"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -905,6 +925,7 @@ freebase.wordnet=function(q, options, callback){
   this.doc="query wordnet via freebase"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -950,6 +971,7 @@ freebase.transitive=function transitive(q, options, callback){
   options=options||{};
   var property=options.property;
   if(!q || !property){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
     return fns.doit_async(q, freebase.transitive, options, callback)
@@ -973,6 +995,7 @@ freebase.geolocation=function(q, options, callback){
  this.doc="lat/long for a topic"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1008,6 +1031,7 @@ freebase.nearby=function(q, options, callback){
   this.doc="list of topics nearby a location"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1032,6 +1056,7 @@ freebase.inside=function(q, options, callback){
   this.doc="list of topics inside a location"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1060,6 +1085,7 @@ freebase.wikipedia_page=function(q, options, callback){
   this.doc="get a url for wikipedia based on this topic"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1087,6 +1113,7 @@ freebase.wikipedia_categories=function(q, options, callback){
   this.doc="get the wikipedia categories for a topic"
   callback=callback||console.log;
   if(!q){return callback([])}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1113,6 +1140,7 @@ freebase.wikipedia_links=function(q, options, callback){
   this.doc="outgoing links from this wikipedia page, converted to freebase ids"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1146,6 +1174,7 @@ freebase.wikipedia_external_links=function(q, options, callback){
   this.doc="outgoing links from this wikipedia page, converted to freebase ids"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1178,6 +1207,7 @@ freebase.schema_introspection=function(q, options, callback){
   this.doc="common lookups for types and properties"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1274,6 +1304,7 @@ freebase.property_introspection=function(q, options, callback){
   this.doc="common lookups for freebase property data"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
@@ -1340,6 +1371,7 @@ freebase.property_lookup=function(q, options, callback){
   this.doc="lookup soft property matches, like 'birthday' vs 'date of birth'"
   callback=callback||console.log;
   if(!q){return callback({})}
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
