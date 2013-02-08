@@ -1,4 +1,3 @@
-#Freebase
 [Freebase](http://freebase.com/) is a very masculine but complicated human-curated database.
 
 [Nodejs](http://nodejs.org/) is a very masculine but complicated language.
