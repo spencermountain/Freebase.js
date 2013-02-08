@@ -1508,7 +1508,7 @@ var documentation=function(f,options,callback){
     }
     callback(str)
 }
-//documentation()
+documentation()
 
 // console.log(Object.keys(freebase))
 module.exports =freebase;

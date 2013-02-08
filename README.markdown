@@ -134,6 +134,81 @@ Encode a string for inclusion in a freebase id/key/whatever
 
     freebase.mql_encode("Aarno Yrjö-Koskinen") //"Aarno_Yrj$00F6-Koskinen"
 
+##Methods
+ * mqlread
+     -interface to freebase's mql api
+ * lookup
+     -freebase search with filters to ensure only a confident, unambiguous result
+ * get_id
+     -like freebase.lookup but satisfied with an id
+ * topic
+     -topic api
+ * search
+     -regular search api
+ * paginate
+     -get all of the results to your query
+ * grammar
+     -get the proper pronoun to use for a topic eg. he/she/they/it
+ * same_as_links
+     -turns a url into a freebase topic and list its same:as links
+ * translate
+     -return specific language title for a topic
+ * image
+     -get a url for image href of on this topic
+ * description
+     -get a text blurb from freebase
+ * notable
+     -get a topic's notable type
+ * sentence
+     -get the first sentence of a topic description
+ * list
+     -get a list of topics in a type
+ * place_data
+     -from a geo-coordinate, get the town, province, country, and timezone for it
+ * incoming
+     -get any incoming data to this topic, ignoring cvt types
+ * outgoing
+     -return all outgoing links for a topic, traversing cvt types
+ * graph
+     -return all outgoing and incoming links for a topic
+ * related
+     -get similar topics to a topic
+ * is_a
+     -get a list of identifiers for a topic
+ * question
+     -give a topic and a property, and get a list of results
+ * dig
+     -transitive query on a specific property, maximum 3-ply
+ * gallery
+     -list of topics with images
+ * wordnet
+     -query wordnet via freebase
+ * transitive
+     -do a transitive-query, like all rivers in canada, using freebase metaschema
+ * geolocation
+     -lat/long for a topic
+ * nearby
+     -list of topics nearby a location
+ * inside
+     -list of topics inside a location
+ * wikipedia_page
+     -get a url for wikipedia based on this topic
+ * wikipedia_categories
+     -get the wikipedia categories for a topic
+ * wikipedia_links
+     -outgoing links from this wikipedia page, converted to freebase ids
+ * wikipedia_external_links
+     -outgoing links from this wikipedia page, converted to freebase ids
+ * schema_introspection
+     -common lookups for types and properties
+ * property_introspection
+     -common lookups for freebase property data
+ * property_lookup
+     -lookup soft property matches, like 'birthday' vs 'date of birth'
+ * mql_encode
+     -quote a unicode string to turn it into a valid mql /type/key/value
+ * add_widget
+     -add a generic html view of a topic
 
 ## poo
 Creative Commons, MIT
