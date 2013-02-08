@@ -670,7 +670,7 @@ freebase.related=function(q, options, callback){
     })
   })
 }
-/*freebase.related("toronto", {key:"AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI"}, function(r){
+/*freebase.related("toronto", {}, function(r){
   console.log(JSON.stringify(r, null, 2));
 })*/
 
