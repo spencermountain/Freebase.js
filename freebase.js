@@ -580,7 +580,7 @@ freebase.place_data = function(geo, options, callback) {
 
   })
 }
- // freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+//  freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 
 freebase.incoming=function(q, options, callback){
@@ -969,9 +969,9 @@ freebase.transitive=function transitive(q, options, callback){
   this.doc="do a transitive-query, like all rivers in canada, using freebase metaschema"
   callback=callback||console.log;
   options=options||{};
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   var property=options.property;
   if(!q || !property){return callback([])}
-  if(typeof options=="function"){callback=options;options={};}//flexible parameter
   //is it an array of sub-tasks?
   if(_.isArray(q) && q.length>1){
     return fns.doit_async(q, freebase.transitive, options, callback)
@@ -1054,8 +1054,8 @@ freebase.nearby=function(q, options, callback){
 
 freebase.inside=function(q, options, callback){
   this.doc="list of topics inside a location"
-  callback=callback||console.log;
   if(!q){return callback([])}
+  callback=callback||console.log;
   if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   //is it an array of sub-tasks?
@@ -1074,11 +1074,12 @@ freebase.inside=function(q, options, callback){
       "optional": true
     }]
   }]
-  freebase.transitive(q, "part_of", options, function(r){
+  options.property="part_of"
+  freebase.transitive(q, options, function(r){
     return callback(r)
   })
 }
-
+// freebase.inside("montreal")
 
 
 freebase.wikipedia_page=function(q, options, callback){
@@ -1508,7 +1509,7 @@ var documentation=function(f,options,callback){
     }
     callback(str)
 }
-documentation()
+//documentation()
 
 // console.log(Object.keys(freebase))
 module.exports =freebase;
