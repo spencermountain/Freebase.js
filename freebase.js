@@ -870,10 +870,10 @@ freebase.transitive=function transitive(q, options, callback){
   if(!ps.valid){return ps.callback({});}
   freebase.get_id(ps.q, ps.options, function(topic){
     if(!topic || !topic.id){return ps.callback({})}
-     var candidate_metaschema=fns.metaschema_lookup(property);
+     var candidate_metaschema=fns.metaschema_lookup(ps.options.property);
       if(candidate_metaschema){
         options.filter='(all '+candidate_metaschema+':"'+topic.id+'")'
-        freebase.search('', options, function(result){
+        freebase.search('', ps.options, function(result){
           return ps.callback(result)
         })
       }else{
@@ -935,16 +935,11 @@ freebase.nearby=function(q, options, callback){
 
 freebase.inside=function(q, options, callback){
   this.doc="list of topics inside a location"
-  if(!q){return callback([])}
-  callback=callback||console.log;
-  if(typeof options=="function"){callback=options;options={};}//flexible parameter
-  options=options||{};
-  //handle an array
-  if(_.isArray(q) && q.length>1){
-    return fns.doit_async(q, freebase.inside, options, callback)
-  }
+  var ps=fns.settle_params(arguments, freebase.inside, {property:"part_of"});
+  if(ps.array){return fns.doit_async(o);}
+  if(!ps.valid){return ps.callback({});}
   //handy to have their geocoordinates too
-  options.mql_output=options.mql_output || [{
+  ps.options.mql_output=ps.options.mql_output || [{
     "name": null,
     "id": null,
     "type":"/location/location",
@@ -955,26 +950,20 @@ freebase.inside=function(q, options, callback){
       "optional": true
     }]
   }]
-  options.property="part_of"
-  freebase.transitive(q, options, function(r){
-    return callback(r)
+  freebase.transitive(ps.q, ps.options, function(r){
+    return ps.callback(r)
   })
 }
-// freebase.inside("montreal")
+ //freebase.inside("montreal")//***********
 
 
 freebase.wikipedia_page=function(q, options, callback){
   this.doc="get a url for wikipedia based on this topic"
-  callback=callback||console.log;
-  if(!q){return callback({})}
-  if(typeof options=="function"){callback=options;options={};}//flexible parameter
-  options=options||{};
-  //handle an array
-  if(_.isArray(q) && q.length>1){
-    return fns.doit_async(q, freebase.wikipedia_page, options, callback)
-  }
-   freebase.get_id(q, options, function(topic){
-     if(!topic || !topic.id){return callback("")}
+    var ps=fns.settle_params(arguments, freebase.wikipedia, {});
+    if(ps.array){return fns.doit_async(o);}
+    if(!ps.valid){return ps.callback({});}
+   freebase.get_id(ps.q, ps.options, function(topic){
+     if(!topic || !topic.id){return ps.callback("")}
      var query=[{
         "id":   topic.id,
         "name": null,
@@ -983,40 +972,63 @@ freebase.wikipedia_page=function(q, options, callback){
           "value":     null
         }
       }]
-    freebase.mqlread(query, options, function(result){
-      if(!result || !result.result || !result.result[0]){return callback('')}
-      return callback(fns.mql_unencode(result.result[0].key.value))//'http://en.wikipedia.org/wiki/'
+    freebase.mqlread(query, ps.options, function(result){
+      if(!result || !result.result || !result.result[0]){return ps.callback('')}
+      return ps.callback('http://en.wikipedia.org/wiki/'+fns.mql_unencode(result.result[0].key.value))
     })
   })
 }
-// freebase.wikipedia_page('toronto')
+ //freebase.wikipedia_page('toronto')
+
+ freebase.dbpedia_page=function(q, options, callback){
+  this.doc="get a url for dbpedia based on this topic"
+    var ps=fns.settle_params(arguments, freebase.dbpedia, {});
+    if(ps.array){return fns.doit_async(o);}
+    if(!ps.valid){return ps.callback({});}
+   freebase.get_id(ps.q, ps.options, function(topic){
+     if(!topic || !topic.id){return ps.callback("")}
+     var query=[{
+        "id":   topic.id,
+        "name": null,
+        "key": {
+          "namespace": "/wikipedia/en_title",
+          "value":     null
+        }
+      }]
+    freebase.mqlread(query, ps.options, function(result){
+      if(!result || !result.result || !result.result[0]){return ps.callback({})}
+      var key=fns.mql_unencode(result.result[0].key.value)
+      var obj={
+        html:'http://dbpedia.org/page/'+key,
+        json:'http://dbpedia.org/data/'+key+'.json',
+      }
+      return ps.callback(obj)
+    })
+  })
+}
+//freebase.dbpedia_page('toronto')
 
 freebase.wikipedia_categories=function(q, options, callback){
   this.doc="get the wikipedia categories for a topic"
-  callback=callback||console.log;
-  if(!q){return callback([])}
-  if(typeof options=="function"){callback=options;options={};}//flexible parameter
-  options=options||{};
-  //handle an array
-  if(_.isArray(q) && q.length>1){
-    return fns.doit_async(q, freebase.wikipedia_categories, options, callback)
-  }
+  var ps=fns.settle_params(arguments, freebase.wikipedia_categories, {});
+  if(ps.array){return fns.doit_async(o);}
+  if(!ps.valid){return ps.callback({});}
   //if its not a wikipedia title, reuse get-topic logic for searches/ids
-  if(q.match(/ /) || q.substr(0,1)==q.substr(0,1).toLowerCase() || q.match(/^\//)){
-    return freebase.wikipedia_page(q, options, function(r){
+  if(ps.q.match(/ /) || ps.q.substr(0,1)==ps.q.substr(0,1).toLowerCase() || ps.q.match(/^\//)){
+    return freebase.wikipedia_page(ps.q, options, function(r){
       freebase.wikipedia_categories(r, options, callback)
     })
   }
-  var url=globals.wikipedia_host+'?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles='+encodeURIComponent(q);
+  var url=globals.wikipedia_host+'?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles='+encodeURIComponent(ps.q);
   fns.http(url, ps.options, function(r){
     if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
     var cats=r.query.pages[Object.keys(r.query.pages)[0]].categories ||[]
     cats=cats.map(function(v){return v.title})
-    return callback(cats)
+    return ps.callback(cats)
   })
 }
 //freebase.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
-//freebase.wikipedia_categories("Thom Yorke", {}, console.log)
+freebase.wikipedia_categories("Thom Yorke", {}, console.log)
 
 freebase.wikipedia_links=function(q, options, callback){
   this.doc="outgoing links from this wikipedia page, converted to freebase ids"
