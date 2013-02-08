@@ -1,9 +1,9 @@
 #Freebase
-[Freebase](http://freebase.com/) is a very masculine, but complicated human-curated database.
+[Freebase](http://freebase.com/) is a very masculine but complicated human-curated database.
 
-[Nodejs](http://nodejs.org/) is a very masculine, but complicated language.
+[Nodejs](http://nodejs.org/) is a very masculine but complicated language.
 
-## Installation
+## Giddyup
 
     npm install freebase
 
@@ -12,26 +12,30 @@ then:
     var freebase=require('freebase');
     freebase.description('tom cruise', [options], [callback])
 
-## Showing off
+## Showin' off
 
-it's built to be as flexible as possible:
+it's built to be as flexible as possible. these all return the same thing:
 
-    freebase.sentence("/en/thom_yorke") //freebase link
-    freebase.sentence("thom yorke") //search term
-    freebase.sentence("http://www.myspace.com/thomyorkemusic") //weblink
-    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"}) //freebase object
-    freebase.sentence(["/en/radiohead","thom yorke"]) //array
-these all return the same thing.
+    //freebase link
+    freebase.sentence("/en/thom_yorke")
+    //search term
+    freebase.sentence("thom yorke")
+    //weblink
+    freebase.sentence("http://www.myspace.com/thomyorkemusic")
+    //freebase object
+    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"})
+    //array
+    freebase.sentence(["/en/radiohead","thom yorke"])
 
-you can also do this, which chunks asynchronous requests into groups of 10 for speed.
+this properly handles many asynchronous requests, rate-limiting them to 10-at-a-time.
 
     freebase.sentence(["johny greenwood", "thom yorke", "marvin gaye"], {max:10}, console.log)
 
-you can do this, which is pretty clever i'd say:
+this is pretty clever i'd say:
 
     freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
 
-you can do this, which is handy when you're hacking-away in the console:
+and when you're hacking in the console:
 
     freebase.sentence("thom yorke")
     freebase.wikipedia_links("thom yorke")
@@ -63,7 +67,7 @@ Hockey players named 'doug'
     freebase.search("doug",{type: "/ice_hockey/hockey_player"}, console.log)
 
 ####Description API
-The first paragraph of something's wikipedia article:
+The nicely-formatted first paragraph of the wikipedia article:
 
      freebase.description("mike myers", {}, console.log)
      freebase.description("http://myspace.com/u2", {}, console.log)
@@ -80,7 +84,7 @@ The most accurate, or notable type for a topic:
      freebase.notable("canada", {}, console.log)
      -> {id:"/location/country", name:"Country"}
 
-### Sugar
+## Sugar
 ####Grammar
 Which pronoun, tense, article and gender to use for this topic
 
@@ -181,7 +185,7 @@ Find-out relevant information for a type or property:
                   { name: 'Topic', id: '/common/topic' } ],
           ...
 
-###Wikipedia
+##Wikipedia
 
 ####Wikipedia-page
 Get the wikipedia link for a topic
@@ -214,7 +218,7 @@ Get the webpages linked-to from this topic's article
             domain: 'skateboarding.transworld.net' },
             ...
 
-###Geographical
+##Geographical
 ####Geolocation
   Get the lat/lng for a topic
 
@@ -233,7 +237,6 @@ Get the webpages linked-to from this topic's article
           }
           ...
 
-
 ####Inside
   List topics inside of this location
 
@@ -245,86 +248,79 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
     freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 ##Method-list
- * _mqlread_
+* **mqlread**
      -interface to freebase's mql api
-
- * _lookup_
+* **lookup**
      -freebase search with filters to ensure only a confident, unambiguous result
-
- * _get_id_
+* **get_id**
      -like freebase.lookup but satisfied with an id
-
- * _topic_
+* **topic**
      -topic api
-
- * _search_
+* **search**
      -regular search api
-
- * _paginate_
+* **paginate**
      -get all of the results to your query
-
- * _grammar_
+* **grammar**
      -get the proper pronoun to use for a topic eg. he/she/they/it
- * _same_as_links_
+* **same_as_links**
      -turns a url into a freebase topic and list its same:as links
- * _translate_
+* **translate**
      -return specific language title for a topic
- * _image_
+* **image**
      -get a url for image href of on this topic
- * _description_
+* **description**
      -get a text blurb from freebase
- * _notable_
+* **notable**
      -get a topic's notable type
- * _sentence_
+* **sentence**
      -get the first sentence of a topic description
- * _list_
+* **list**
      -get a list of topics in a type
- * _place_data_
+* **place_data**
      -from a geo-coordinate, get the town, province, country, and timezone for it
- * _incoming_
+* **incoming**
      -get any incoming data to this topic, ignoring cvt types
- * _outgoing_
+* **outgoing**
      -return all outgoing links for a topic, traversing cvt types
- * _graph_
+* **graph**
      -return all outgoing and incoming links for a topic
- * _related_
+* **related**
      -get similar topics to a topic
- * _is_a_
+* **is_a**
      -get a list of identifiers for a topic
- * _question_
+* **question**
      -give a topic and a property, and get a list of results
- * _dig_
+* **dig**
      -transitive query on a specific property, maximum 3-ply
- * _gallery_
+* **gallery**
      -list of topics with images
- * _wordnet_
+* **wordnet**
      -query wordnet via freebase
- * _transitive_
+* **transitive**
      -do a transitive-query, like all rivers in canada, using freebase metaschema
- * _geolocation_
+* **geolocation**
      -lat/long for a topic
- * _nearby_
+* **nearby**
      -list of topics nearby a location
- * _inside_
+* **inside**
      -list of topics inside a location
- * _wikipedia_page_
+* **wikipedia_page**
      -get a url for wikipedia based on this topic
- * _wikipedia_categories_
+* **wikipedia_categories**
      -get the wikipedia categories for a topic
- * _wikipedia_links_
+* **wikipedia_links**
      -outgoing links from this wikipedia page, converted to freebase ids
- * _wikipedia_external_links_
+* **wikipedia_external_links**
      -outgoing links from this wikipedia page, converted to freebase ids
- * _schema_introspection_
+* **schema_introspection**
      -common lookups for types and properties
- * _property_introspection_
+* **property_introspection**
      -common lookups for freebase property data
- * _property_lookup_
+* **property_lookup**
      -lookup soft property matches, like 'birthday' vs 'date of birth'
- * _mql_encode_
+* **mql_encode**
      -quote a unicode string to turn it into a valid mql /type/key/value
- * _add_widget_
+* **add_widget**
      -add a generic html view of a topic
-
 ## poo
 Creative Commons, MIT
