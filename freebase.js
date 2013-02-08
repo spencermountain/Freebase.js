@@ -1497,7 +1497,7 @@ var documentation=function(f,options,callback){
       }
     }
     Object.keys(freebase).map(function(f){
-        str.push(" * "+f)
+        str.push(" * _"+f+'_ ')
         var f=new freebase[f](null,{},function(){})
         str.push('     -'+f.doc)
     })

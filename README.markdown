@@ -1,5 +1,7 @@
 #Freebase
-[Freebase](http://freebase.com/) is a very masculine, but complicated human-curated database. [Nodejs](http://nodejs.org/) is a very masculine, but complicated software platform.
+[Freebase](http://freebase.com/) is a very masculine, but complicated human-curated database.
+
+[Nodejs](http://nodejs.org/) is a very masculine, but complicated language.
 
 ## Installation
 
@@ -116,7 +118,7 @@ Which pronoun, tense, article and gender to use for this topic
 Similar topics to this topic
 
     freebase.related("toronto", {}, function(r){
-        r.forEach(function(v){return console.log(v.name)})
+        console.log(r.map(function(v){return v.name}))
       })
       ->  Toronto FC
           Toronto Maple Leafs
@@ -162,26 +164,27 @@ Translated names for topics:
 ####Encoding
 Encode a string for inclusion in a freebase id/key/whatever
 
-    freebase.mql_encode("Aarno Yrjö-Koskinen") //"Aarno_Yrj$00F6-Koskinen"
+    freebase.mql_encode("Aarno Yrjö-Koskinen")
+    ->"Aarno_Yrj$00F6-Koskinen"
 
 ####Schema introspection
 Find-out relevant information for a type or property:
 
      freebase.schema_introspection("politician", {}, console.log)
      -> { domain: { name: 'Government', id: '/government' },
-          included_types: [ { name: 'Person', id: '/people/person' },
-                            { name: 'Topic', id: '/common/topic' } ],
           is_compound_value: false,
           is_commons: 'Published',
           equivalent_topic: { name: 'Politician', id: '/en/politician' },
           topic_count: 90971,
           property_count: 0,
+          included_types: [ { name: 'Person', id: '/people/person' },
+                  { name: 'Topic', id: '/common/topic' } ],
           ...
 
 ###Wikipedia
 
 ####Wikipedia-page
-Get the wikipedia article linkfor a topic
+Get the wikipedia link for a topic
 
      freebase.wikipedia_page("tony hawk", {}, console.log)
      -> http://en.wikipedia/wiki/Tony_Hawk
@@ -192,15 +195,24 @@ Get the wikipedia categories for this topic's article
      freebase.wikipedia_categories("tony hawk", {}, console.log)
 
 ####Wikipedia topic-links
-Get the freebase topics linked-to in this topic's article
+Get the freebase topics linked-to in this topic's wikipedia article
 
      freebase.wikipedia_links("tony hawk", {}, console.log)
+      -> [{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
+          { id: '/wikipedia/en/Bam_Margera', name: 'Bam Margera' },
+          { id: '/wikipedia/en/Barting_Over', name: 'Barting Over' },
+          { id: '/wikipedia/en/Blink-182', name: 'Blink-182' },
+          ...
 
 ####Wikipedia external-links
 Get the webpages linked-to from this topic's article
 
      freebase.wikipedia_external_links("tony hawk", {}, console.log)
-
+      -> [{ url: 'http://skate.quiksilver.com/riders-detail/',
+            domain: 'skate.quiksilver.com' },
+          { url: 'http://skateboarding.transworld.net/1000095781/news/tony-hawk-on-theeve-trucks/',
+            domain: 'skateboarding.transworld.net' },
+            ...
 
 ###Geographical
 ####Geolocation
@@ -213,9 +225,18 @@ Get the webpages linked-to from this topic's article
   List topics near this geolocation
 
     freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+      -> [{id: '/en/sneaky_dees',
+           name: 'Sneaky Dee\'s',
+          },
+          {id: '/en/keg_mansion',
+           name: 'Keg Mansion',
+          }
+          ...
+
 
 ####Inside
   List topics inside of this location
+
     freebase.inside("montreal")
 
 ####Place-data
@@ -224,79 +245,85 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
     freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 ##Method-list
- * mqlread
-    -interface to freebase's mql api
- * lookup
+ * _mqlread_
+     -interface to freebase's mql api
+
+ * _lookup_
      -freebase search with filters to ensure only a confident, unambiguous result
- * get_id
+
+ * _get_id_
      -like freebase.lookup but satisfied with an id
- * topic
+
+ * _topic_
      -topic api
- * search
+
+ * _search_
      -regular search api
- * paginate
+
+ * _paginate_
      -get all of the results to your query
- * grammar
+
+ * _grammar_
      -get the proper pronoun to use for a topic eg. he/she/they/it
- * same_as_links
+ * _same_as_links_
      -turns a url into a freebase topic and list its same:as links
- * translate
+ * _translate_
      -return specific language title for a topic
- * image
+ * _image_
      -get a url for image href of on this topic
- * description
+ * _description_
      -get a text blurb from freebase
- * notable
+ * _notable_
      -get a topic's notable type
- * sentence
+ * _sentence_
      -get the first sentence of a topic description
- * list
+ * _list_
      -get a list of topics in a type
- * place_data
+ * _place_data_
      -from a geo-coordinate, get the town, province, country, and timezone for it
- * incoming
+ * _incoming_
      -get any incoming data to this topic, ignoring cvt types
- * outgoing
+ * _outgoing_
      -return all outgoing links for a topic, traversing cvt types
- * graph
+ * _graph_
      -return all outgoing and incoming links for a topic
- * related
+ * _related_
      -get similar topics to a topic
- * is_a
+ * _is_a_
      -get a list of identifiers for a topic
- * question
+ * _question_
      -give a topic and a property, and get a list of results
- * dig
+ * _dig_
      -transitive query on a specific property, maximum 3-ply
- * gallery
+ * _gallery_
      -list of topics with images
- * wordnet
+ * _wordnet_
      -query wordnet via freebase
- * transitive
+ * _transitive_
      -do a transitive-query, like all rivers in canada, using freebase metaschema
- * geolocation
+ * _geolocation_
      -lat/long for a topic
- * nearby
+ * _nearby_
      -list of topics nearby a location
- * inside
+ * _inside_
      -list of topics inside a location
- * wikipedia_page
+ * _wikipedia_page_
      -get a url for wikipedia based on this topic
- * wikipedia_categories
+ * _wikipedia_categories_
      -get the wikipedia categories for a topic
- * wikipedia_links
+ * _wikipedia_links_
      -outgoing links from this wikipedia page, converted to freebase ids
- * wikipedia_external_links
+ * _wikipedia_external_links_
      -outgoing links from this wikipedia page, converted to freebase ids
- * schema_introspection
+ * _schema_introspection_
      -common lookups for types and properties
- * property_introspection
+ * _property_introspection_
      -common lookups for freebase property data
- * property_lookup
+ * _property_lookup_
      -lookup soft property matches, like 'birthday' vs 'date of birth'
- * mql_encode
+ * _mql_encode_
      -quote a unicode string to turn it into a valid mql /type/key/value
- * add_widget
+ * _add_widget_
      -add a generic html view of a topic
 
 ## poo
