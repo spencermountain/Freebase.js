@@ -1,4 +1,5 @@
-var freebase=require('./freebase')
+var freebase=require('./freebase');
+var async=require('async');
 var fns=require('./lib/helpers')
 var _=require('underscore');
 var test={}
@@ -22,11 +23,10 @@ test.lookup=[
 ]
 
 test.mqlread=[
-  [[{id:"/en/toronto", name:null},{id:"/en/radsdfiohead", name:null},{id:"/en/thom_yorke", name:null}, {id:"/en/tony_hawk", name:null} ], {}, function(r){console.log(r.length==4)}],
   [{ "type": "/music/album", "id": "/en/keep_it_turned_on", "artist" : null},{}, function(r){console.log(r.result.artist=='Rick Astley')}]
 ]
 test.get_id=[
-  ["/en/tony_hawk",{},function(r){console.log(r=="/en/tony_hawk")}]
+  ["/en/tony_hawk",{},function(r){console.log(r.id=="/en/tony_hawk")}]
 ]
 test.topic=[
  ['radiohead',{},function(r){console.log(r.id=='/m/09jm8' && r.property['/music/artist/origin']!=null) } ]
@@ -63,7 +63,7 @@ test.translate=[
 	["radiohead",{lang:"/lang/ko"},function(r){console.log(r.match(/라디오헤드/i)!=null)}]
 ]
 test.image=[
-  ["australia",{type:"/location/location"}, function(r){console.log(r.match(/maxheight/)!=null)}]
+  ["australia",{type:"/location/location"}, function(r){console.log(r);console.log(r.match(/maxheight/)!=null)}]
 ]
 test.description=[
  ["mike myers", {}, function(r){console.log(r.match(/myers/i)!=null)}],
@@ -151,7 +151,9 @@ test.mql_encode=[
 ]
 test.add_widget=[
 ]
-//testit('sentence')
+
+
+testit('sentence')
   function testit(v){
     var all=[]
     console.log('========')
@@ -162,3 +164,8 @@ test.add_widget=[
       })
     })
   }
+
+// f='sentence'
+//   async.mapLimit(test[f],2,function(v){
+//     console.log(freebase[f][v][0])
+//   }, function(){console.log('done')})
