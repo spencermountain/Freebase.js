@@ -8,7 +8,8 @@ var globals={
   host:'https://www.googleapis.com/freebase/v1/',
   image_host:"https://usercontent.googleapis.com/freebase/v1/image",
   geosearch:'http://api.freebase.com/api/service/geosearch',
-  wikipedia_host:'http://en.wikipedia.org/w/api.php'
+  wikipedia_host:'http://en.wikipedia.org/w/api.php',
+  rdf:"http://rdf.freebase.com/rdf"
 }
 var freebase={};
 
@@ -33,6 +34,29 @@ freebase.mqlread=function(query, options, callback){
 }
 //freebase.mqlread([{id:"/en/radiohead",name:null}])
 
+freebase.search=function(q, options, callback){
+    this.doc="regular search api";
+    this.reference="http://wiki.freebase.com/wiki/ApiSearch";
+    var ps=fns.settle_params(arguments, freebase.search, {});
+    if(ps.array){return fns.doit_async(ps);}
+    if(!ps.valid){return ps.callback({});}
+    //craft search url
+    if(ps.options.filter){
+      ps.options.filter=encodeURIComponent(ps.options.filter)
+    }
+    if(ps.options.type=="/type/type" || ps.options.type=="/type/property"){
+      url+="&scoring=schema&stemmed=true"
+    }
+    ps.options.query=encodeURIComponent(ps.q);
+    var params=fns.set_params(ps.options)
+    var url= globals.host+'search/?'+params;
+    fns.http(url, ps.options, function(result){
+      if(!result || !result.result || !result.result[0] ){return ps.callback([])}
+      return ps.callback(result.result)
+  })
+}
+//freebase.search("bill murray")
+// freebase.search("/m/01sh40")
 
 freebase.lookup=function(q, options, callback){
   this.doc="freebase search with filters to ensure only a confident, unambiguous result";
@@ -45,6 +69,16 @@ freebase.lookup=function(q, options, callback){
       return fns.url_lookup(ps.q, ps.options, function(result){
         if(result && result.result && result.result[0]){
           return ps.callback(result.result[0]);
+        }
+        return ps.callback({})
+      })
+    }
+      //if its an id
+  if(ps.q.match(/\/.*?\/.*?/)){
+      ps.options.limit=1;
+      return freebase.search(ps.q, ps.options, function(result){
+        if(result){
+          return ps.callback(result);
         }
         return ps.callback({})
       })
@@ -78,7 +112,7 @@ freebase.lookup=function(q, options, callback){
   })
 }
 // freebase.lookup(["/en/radiohead", "http://myspace.com/u2"])
-//freebase.lookup("toronto")
+//freebase.lookup("/m/01sh40")
 
 
 freebase.get_id=function(q, options, callback){
@@ -124,28 +158,6 @@ freebase.topic=function(q, options, callback){
 // freebase.topic("toronto", {filter:"allproperties"})
 
 
-freebase.search=function(q, options, callback){
-    this.doc="regular search api";
-    this.reference="http://wiki.freebase.com/wiki/ApiSearch";
-    var ps=fns.settle_params(arguments, freebase.search, {});
-    if(ps.array){return fns.doit_async(ps);}
-    if(!ps.valid){return ps.callback({});}
-    //craft search url
-    if(ps.options.filter){
-      ps.options.filter=encodeURIComponent(ps.options.filter)
-    }
-    if(ps.options.type=="/type/type" || ps.options.type=="/type/property"){
-      url+="&scoring=schema&stemmed=true"
-    }
-    ps.options.query=encodeURIComponent(ps.options.q);
-    var params=fns.set_params(ps.options)
-    var url= globals.host+'search/?'+params;
-    fns.http(url, ps.options, function(result){
-      if(!result || !result.result || !result.result[0] ){return callback([])}
-      return callback(result.result)
-  })
-}
-//freebase.search("bill murray")
 
 freebase.paginate=function(query, options, callback){
   this.doc="get all of the results to your query";
@@ -653,7 +665,7 @@ freebase.related=function(q, options, callback){
     })
     all=fns.json_unique(all, "id")
     if(all.length >= options.max){
-      return callback(all)
+      return ps.callback(all)
     }
     //else, append topics that share the notable type
     freebase.notable(ps.q, ps.options, function(result){
@@ -775,7 +787,7 @@ freebase.dig=function(q, options, callback){
   if(!ps.valid){return ps.callback({});}
   var all=[];
   freebase.question(ps.q, ps.options, function(r){
-    if(!r || !_.isArray(r) || r.length===0){return callback(all)}
+    if(!r || !_.isArray(r) || r.length===0){return ps.callback(all)}
       all=all.concat(r);
       r=r.slice(0, ps.options.max).map(function(v){return v.id})
       return fns.doit_async({
@@ -894,7 +906,7 @@ freebase.geolocation=function(q, options, callback){
   if(ps.array){return fns.doit_async(ps);}
   if(!ps.valid){return ps.callback({});}
   freebase.get_id(ps.q, ps.options, function(topic){
-    if(!topic || !topic.id){return callback({})}
+    if(!topic || !topic.id){return ps.callback({})}
     var query=[{
       "id":topic.id,
       "name":null,
@@ -1021,12 +1033,12 @@ freebase.wikipedia_categories=function(q, options, callback){
   //if its not a wikipedia title, reuse get-topic logic for searches/ids
   if(ps.q.match(/ /) || ps.q.substr(0,1)==ps.q.substr(0,1).toLowerCase() || ps.q.match(/^\//)){
     return freebase.wikipedia_page(ps.q, options, function(r){
-      freebase.wikipedia_categories(r, options, callback)
+      freebase.wikipedia_categories(r, options, ps.callback)
     })
   }
   var url=globals.wikipedia_host+'?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles='+encodeURIComponent(ps.q);
   fns.http(url, ps.options, function(r){
-    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return callback([])}
+    if(!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]){return ps.callback([])}
     var cats=r.query.pages[Object.keys(r.query.pages)[0]].categories ||[]
     cats=cats.map(function(v){return v.title})
     return ps.callback(cats)
@@ -1433,6 +1445,25 @@ freebase.wikipedia_subcategories=function(q, options, callback){
 //freebase.wikipedia_subcategories("Category:Enzymes",{depth:20},function(r){console.log(JSON.stringify(r))})
 //freebase.wikipedia_subcategories(["Category:Toronto","Category:Vancouver"])
 
+
+//http://rdf.freebase.com/rdf/en/blade_runner
+freebase.rdf=function(q, options, callback){
+    this.doc="RDF api"
+    this.reference="http://wiki.freebase.com/wiki/RDF"
+    var ps=fns.settle_params(arguments, freebase.topic, {});
+    if(ps.array){return fns.doit_async(ps);}
+    if(!ps.valid){return ps.callback({});}
+    freebase.get_id(ps.q, ps.options, function(topic){
+      var id=topic.id;
+      if(!id){return ps.callback({})}
+      ps.options.filter=ps.options.filter||'all'
+      var url= globals.rdf+id//+'?'+fns.set_params(ps.options)
+      fns.http(url, ps.options, function(result){
+        return ps.callback(result.body||'')
+      })
+    })
+}
+//freebase.rdf("toronto")
 
 freebase.wikipedia_to_freebase=function(q, options, callback){
   this.doc="turn a wikipedia title or url into a freebase topic"
