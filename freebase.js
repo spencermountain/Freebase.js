@@ -1288,12 +1288,14 @@ freebase.property_introspection=function(q, options, callback){
         "id": null,
         "name": null,
         "optional": true,
+        "/freebase/type_hints/mediator": null
       }],
       "unique": null,
       "schema": {
         "id":null,
         "name":null,
-        "/freebase/type_profile/instance_count": null
+        "/freebase/type_profile/instance_count": null,
+        "/freebase/type_hints/mediator": null
       },
       "/common/topic/description": null
     }]
