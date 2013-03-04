@@ -1299,7 +1299,7 @@ freebase.property_introspection=function(q, options, callback){
       },
       "/common/topic/description": null
     }]
-    freebase.mqlread(query,{},function(r){
+    freebase.mqlread(query,options,function(r){
       var obj={}
       if(!r || !r.result || !r.result[0]){return callback(obj)}
       r=r.result[0]
@@ -1320,7 +1320,7 @@ freebase.property_introspection=function(q, options, callback){
           "b:properties":[{"id":null}]
         }
       }]
-      freebase.mqlread(query,{},function(r){
+      freebase.mqlread(query,options,function(r){
         obj.meta=r.result
         return callback(obj)
       })
