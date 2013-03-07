@@ -18,10 +18,10 @@ then:
 it's built to be as flexible as possible. all methods can handle the same things:
 ```javascript
     freebase.sentence("/en/thom_yorke")//freebase link
-    freebase.sentence("thom yorke")//search term
-    freebase.sentence("http://www.myspace.com/thomyorkemusic")//weblink
-    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"})//freebase object
-    freebase.sentence(["/en/radiohead","thom yorke"])//array of stuff
+    freebase.aliases("thom yorke")//search term
+    freebase.wikipedia_categorie("http://www.myspace.com/thomyorkemusic")//weblink
+    freebase.search({"name":"thom yorke", "id":"/en/thom_yorke"})//freebase object
+    freebase.notable(["/en/radiohead","thom yorke"])//array of stuff
 ```
 this properly handles many asynchronous requests, rate-limiting them to 10-at-a-time.
 ```javascript
@@ -32,9 +32,8 @@ this is pretty clever i'd say:
     freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
 ```
 and when you're hacking in the console:
-```javascript
-    freebase.sentence("thom yorke")
-    freebase.wikipedia_links("thom yorke")
+```shell
+$ freebase sentence "thom yorke"
 ```
 ### Freebase methods
 
