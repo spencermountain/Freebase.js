@@ -1,6 +1,6 @@
 [Freebase](http://freebase.com/) is a very masculine but complicated human-curated database.
 
-[Nodejs](http://nodejs.org/) is a very masculine but complicated language.
+[Nodejs](http://nodejs.org/) is a straight-talkin language that takes no guff
 
 ## Giddyup
 ```javascript
@@ -18,14 +18,14 @@ then:
 it's built to be as flexible as possible. all methods can handle the same things:
 ```javascript
     freebase.sentence("/en/thom_yorke")//freebase link
-    freebase.aliases("thom yorke")//search term
-    freebase.wikipedia_categorie("http://www.myspace.com/thomyorkemusic")//weblink
+    freebase.weblinks("thom yorke")//search term
+    freebase.wikipedia_categories("http://www.myspace.com/thomyorkemusic")//weblink
     freebase.search({"name":"thom yorke", "id":"/en/thom_yorke"})//freebase object
     freebase.notable(["/en/radiohead","thom yorke"])//array of stuff
 ```
 this properly handles many asynchronous requests, rate-limiting them to 10-at-a-time.
 ```javascript
-    freebase.sentence(["johny greenwood", "thom yorke", "marvin gaye"], {max:10}, console.log)
+    freebase.images(["johny greenwood", "thom yorke", "marvin gaye"], {max:10}, console.log)
 ```
 this is pretty clever i'd say:
 ```javascript
