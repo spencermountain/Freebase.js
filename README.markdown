@@ -3,98 +3,91 @@
 [Nodejs](http://nodejs.org/) is a very masculine but complicated language.
 
 ## Giddyup
-
+```javascript
     npm install freebase
+```
 
 then:
-
+```javascript
     var freebase=require('freebase');
     freebase.description('tom cruise', [options], [callback])
-
+    //"Tom Cruise, is an American film actor.."
+```
 ## Showin' off
 
-it's built to be as flexible as possible. these all return the same thing:
-
-    //freebase link
-    freebase.sentence("/en/thom_yorke")
-    //search term
-    freebase.sentence("thom yorke")
-    //weblink
-    freebase.sentence("http://www.myspace.com/thomyorkemusic")
-    //freebase object
-    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"})
-    //array
-    freebase.sentence(["/en/radiohead","thom yorke"])
-
+it's built to be as flexible as possible. all methods can handle the same things:
+```javascript
+    freebase.sentence("/en/thom_yorke")//freebase link
+    freebase.sentence("thom yorke")//search term
+    freebase.sentence("http://www.myspace.com/thomyorkemusic")//weblink
+    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"})//freebase object
+    freebase.sentence(["/en/radiohead","thom yorke"])//array of stuff
+```
 this properly handles many asynchronous requests, rate-limiting them to 10-at-a-time.
-
+```javascript
     freebase.sentence(["johny greenwood", "thom yorke", "marvin gaye"], {max:10}, console.log)
-
+```
 this is pretty clever i'd say:
-
+```javascript
     freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
-
+```
 and when you're hacking in the console:
-
+```javascript
     freebase.sentence("thom yorke")
     freebase.wikipedia_links("thom yorke")
-
+```
 ### Freebase methods
 
 ####MQLread API
 Books about planets:
-
+```javascript
     var query=[{
                 "type":  "/astronomy/planet",
                 "name":  null,
                 "/book/book_subject/works": []
                }]​
     freebase.mqlread(query, {}, function(r){console.log(r)})
+```
 
 ####Pagination
 Every Tornado, ever
-
+```javascript
       query=[{
               "type":"/base/disaster2/tornado",
               "name":null
              }]
       freebase.paginate(query, {max:400}, console.log)
-
+```
 ####Search API
 Hockey players named 'doug'
-
+```javascript
     freebase.search("doug",{type: "/ice_hockey/hockey_player"}, console.log)
-
+```
 ####Description API
 The nicely-formatted first paragraph of the wikipedia article:
-
+```javascript
      freebase.description("mike myers", {}, console.log)
      freebase.description("http://myspace.com/u2", {}, console.log)
-
+```
 ####Topic API
 A nicely treated output of all of a topic's data:
-
+```javascript
      freebase.topic("mike myers", {}, console.log)
      freebase.topic("http://myspace.com/u2", {}, console.log)
-
+```
 ####Notable-types
 The most accurate, or notable type for a topic:
-
+```javascript
      freebase.notable("canada", {}, console.log)
      -> {id:"/location/country", name:"Country"}
-
+```
 ## Sugar
 ####Grammar
 Which pronoun, tense, article and gender to use for this topic
-
+```javascript
     freebase.grammar("banana", {}, console.log)
-       -> { plural: true,
-            gender: null,
-            article: 'a',
-            pronoun: 'they',
-            copula: 'are' }
     freebase.grammar(["prince harry", "miranda july"], {}, console.log)
-       -> [ { plural: false,
+       /* [ { plural: false,
               gender: 'male',
               article: 'a',
               pronoun: 'he',
@@ -110,71 +103,66 @@ Which pronoun, tense, article and gender to use for this topic
             article: 'a',
             pronoun: 'they',
             copula: 'are' }
-    freebase.grammar("cheddar", {type:"/food/food"}, console.log)
-       -> { plural: false,
-            gender: null,
-            article: 'a',
-            pronoun: 'it',
-            copula: 'is' }
-
+            */
+```
 ####Related Topics
 Similar topics to this topic
-
+```javascript
     freebase.related("toronto", {}, function(r){
         console.log(r.map(function(v){return v.name}))
       })
-      ->  Toronto FC
+      -> /* Toronto FC
           Toronto Maple Leafs
           Toronto Argonauts
           North York
-          Toronto Marlies
-
+          Toronto Marlies*/
+```
 ####Safe-Lookup
 A common-sense search that only matches when confident:
-
+```javascript
     freebase.lookup("tom green", {}, console.log)
     freebase.lookup(["toronto","suddenly susan"], {}, console.log)
-
+```
 ####SameAs links
 sameAs weblinks for a topic, or url
-
+```javascript
     freebase.same_as_links("toronto", {}, console.log)
     freebase.same_as_links("http://toronto.ca", {}, console.log)
-
+```
 ####First Sentence
 The first sentence from a wikipedia article:
-
+```javascript
     freebase.sentence("tokyo", {}, console.log)
-
+```
 ####Graph-analysis
 Graph-type queries on topics, dancing over tough values and mediators:
-
+```javascript
       freebase.graph("ubuntu", {}, console.log )
       freebase.outgoing("ubuntu", {}, console.log )
       freebase.incoming("ubuntu", {}, console.log )
-
+```
 ####Schema-agnostic queries
 A list of topics in a 'is-a' type of collection:
-
+```javascript
      freebase.list("earthquakes", {}, console.log)
-
+```
 ####Translation
 Translated names for topics:
-
+```javascript
      freebase.translate("radiohead", {lang:"/lang/ko"}, console.log)
      -> 라디오헤드
-
+```
 ####Encoding
 Encode a string for inclusion in a freebase id/key/whatever
-
+```javascript
     freebase.mql_encode("Aarno Yrjö-Koskinen")
     ->"Aarno_Yrj$00F6-Koskinen"
-
+```
 ####Schema introspection
 Find-out relevant information for a type or property:
-
+```javascript
      freebase.schema_introspection("politician", {}, console.log)
-     -> { domain: { name: 'Government', id: '/government' },
+     ->/* { domain: { name: 'Government', id: '/government' },
           is_compound_value: false,
           is_commons: 'Published',
           equivalent_topic: { name: 'Politician', id: '/en/politician' },
@@ -182,70 +170,70 @@ Find-out relevant information for a type or property:
           property_count: 0,
           included_types: [ { name: 'Person', id: '/people/person' },
                   { name: 'Topic', id: '/common/topic' } ],
-          ...
-
+          ...*/
+```
 ##Wikipedia
 
 ####Wikipedia-page
 Get the wikipedia link for a topic
-
+```javascript
      freebase.wikipedia_page("tony hawk", {}, console.log)
-     -> http://en.wikipedia/wiki/Tony_Hawk
-
+     ->// http://en.wikipedia/wiki/Tony_Hawk
+```
 ####Wikipedia categories
 Get the wikipedia categories for this topic's article
-
+```javascript
      freebase.wikipedia_categories("tony hawk", {}, console.log)
-
+```
 ####Wikipedia topic-links
 Get the freebase topics linked-to in this topic's wikipedia article
-
+```javascript
      freebase.wikipedia_links("tony hawk", {}, console.log)
-      -> [{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
+      -> /*[{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
           { id: '/wikipedia/en/Bam_Margera', name: 'Bam Margera' },
           { id: '/wikipedia/en/Barting_Over', name: 'Barting Over' },
           { id: '/wikipedia/en/Blink-182', name: 'Blink-182' },
-          ...
-
+          ...*/
+```
 ####Wikipedia external-links
 Get the webpages linked-to from this topic's article
-
+```javascript
      freebase.wikipedia_external_links("tony hawk", {}, console.log)
-      -> [{ url: 'http://skate.quiksilver.com/riders-detail/',
+      -> /*[{ url: 'http://skate.quiksilver.com/riders-detail/',
             domain: 'skate.quiksilver.com' },
           { url: 'http://skateboarding.transworld.net/1000095781/news/tony-hawk-on-theeve-trucks/',
             domain: 'skateboarding.transworld.net' },
-            ...
-
+            ...*/
+```
 ##Geographical
 ####Geolocation
   Get the lat/lng for a topic
-
+```javascript
     freebase.geolocation("calgary", {}, console.log)
-    -> { latitude: 51.0544444444, longitude: -114.066944444 }
-
+    -> //{ latitude: 51.0544444444, longitude: -114.066944444 }
+```
 ####Nearby
   List topics near this geolocation
-
+```javascript
     freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
-      -> [{id: '/en/sneaky_dees',
+      -> /*[{id: '/en/sneaky_dees',
            name: 'Sneaky Dee\'s',
           },
           {id: '/en/keg_mansion',
            name: 'Keg Mansion',
           }
-          ...
-
+          ...*/
+```
 ####Inside
   List topics inside of this location
-
+```javascript
     freebase.inside("montreal")
-
+```
 ####Place-data
 From a geo-coordinate, find out its City, Province, Country, and timezone
-
+```javascript
     freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
-
+```
 ##Method-list
 * **mqlread**
      -interface to freebase's mql api
