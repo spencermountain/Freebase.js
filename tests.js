@@ -35,10 +35,9 @@ test.topic=[
 test.search=[
   ["franklin",{},function(r){console.log(r.length>2)}]
 ]
-// test.paginate=[
-// []
-// //  [[{"type":"/astronomy/moon","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
-// ]
+ test.paginate=[
+   [[{"type":"/astronomy/moon","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
+ ]
 test.grammar=[
   ["toronto maple leafs",{},function(r){
        console.log(_.isEqual(r, { plural: true,

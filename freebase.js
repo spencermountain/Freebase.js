@@ -21,14 +21,8 @@ freebase.mqlread=function(query, options, callback){
   if(typeof options=="function"){callback=options;options={};}//flexible parameter
   options=options||{};
   options.uniqueness_failure=options.uniqueness_failure||"soft";
-  options.cursor=options.cursor||"";
-    //handle an array
-  // if(_.isArray(query) && query.length>1){
-  //   return fns.doit_async(query, freebase.mqlread, options, callback)
-  // }
-  var params=fns.set_params(options)
-  var url= globals.host+'mqlread?query='+encodeURIComponent(JSON.stringify(query))+'&'+params;
-  fns.http(url, options, function(result){
+  options.cursor=options.cursor||true;
+  fns.post(query, options, function(result){
     return callback(result)
   })
 }
@@ -213,27 +207,27 @@ freebase.topic=function(q, options, callback){
 freebase.paginate=function(query, options, callback){
   this.doc="get all of the results to your query";
   this.reference="http://wiki.freebase.com/wiki/MQL";
+  if(typeof options=="function"){callback=options;options={};}//flexible parameter
+  options=options||{}
+  callback=callback||console.log
   options.max=options.max||2000;
-  var ps={options:options, callback:callback}
- // var ps=fns.settle_params(arguments, freebase.paginate, {max:500});
-//  if(ps.array){return fns.doit_async(ps);}
-//  if(!ps.valid){return ps.callback({});}
   var all=[];
   //recursive mqlread until cursor is false, or maximum reached
   var iterate=function(cursor){
-    ps.options.cursor=cursor
-    freebase.mqlread(query, ps.options, function(result){
-      if(!result||!result.result){return ps.callback(all);}
+    options.cursor=cursor
+    freebase.mqlread(query, options, function(result){
+      if(!result||!result.result){return callback(all);}
       all=all.concat(result.result);
-      if(result.cursor && (!ps.options.max || all.length<ps.options.max) ){
+      if(result.cursor && (!options.max || all.length<options.max) ){
         iterate(result.cursor)
       }else{
-        return ps.callback(all)
+        return callback(all)
       }
     })
   }
   iterate('')
 }
+// freebase.paginate([{"type":"/astronomy/moon","name":null, limit:1}],{max:10})
 
 freebase.description=function(q, options, callback){
   this.doc="get a text blurb from freebase";
