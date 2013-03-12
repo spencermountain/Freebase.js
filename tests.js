@@ -1,5 +1,6 @@
 var freebase=require('./freebase');
 var async=require('async');
+var slow=require('slow');
 var fns=require('./lib/helpers')
 var _=require('underscore');
 var test={}
@@ -34,9 +35,10 @@ test.topic=[
 test.search=[
   ["franklin",{},function(r){console.log(r.length>2)}]
 ]
-test.paginate=[
-  [[{"type":"/base/disaster2/tornado","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
-]
+// test.paginate=[
+// []
+// //  [[{"type":"/astronomy/moon","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
+// ]
 test.grammar=[
   ["toronto maple leafs",{},function(r){
        console.log(_.isEqual(r, { plural: true,
@@ -131,10 +133,10 @@ test.wikipedia_links=[
 test.wikipedia_external_links=[
   ["/en/toronto", {}, function(r){console.log(r.length>=3)}]
 ]
-test.schema_introspection=[
- ["person",{},function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
- ["/people/person",{},function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
-]
+// test.schema_introspection=[
+//  ["person",{},function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
+//  ["/people/person",{},function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
+// ]
 test.property_introspection=[
 ]
 test.property_lookup=[
@@ -153,11 +155,17 @@ test.add_widget=[
 ]
 
 
-testit('sentence')
-  function testit(v){
+//testit('sentence')
+
+
+function done(r){
+  console.log('===========done========')
+}
+
+
+  function testone(v){
     var all=[]
-    console.log('========')
-    console.log(v)
+    console.log('========'+v+'=========')
     test[v].map(function(t){
       freebase[v](t[0],t[1],function(r){
         t[2](r)
@@ -165,7 +173,27 @@ testit('sentence')
     })
   }
 
-// f='sentence'
-//   async.mapLimit(test[f],2,function(v){
-//     console.log(freebase[f][v][0])
-//   }, function(){console.log('done')})
+//apply same thing to all functions
+function broadly(x, obj){
+  slow.walk(Object.keys(test), doit, done)
+  function doit(t){
+    console.log('------'+t+'------')
+    obj[t](x, function(r){
+      console.log(r)
+    })
+  }
+}
+
+function coverage(fn, tests){
+  fn=Object.keys(fn)
+  tests=Object.keys(test)
+  return {missing:_.difference(fn,tests),
+    has:_.union(fn,tests).length,
+    doesnt:_.difference(fn,tests).length,
+    dangling_tests:_.difference(tests,fn)
+  }
+}
+console.log(coverage(freebase, test))
+broadly(null,freebase)
+
+//slow.walk(Object.keys(test), testone, done)

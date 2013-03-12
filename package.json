@@ -15,5 +15,8 @@
     "async": "0.2.3",
     "underscore": "1.4.2"
   },
-  "preferGlobal": true
+  "preferGlobal": true,
+  "scripts":{
+    "test":"node tests.js"
+  }
 }
