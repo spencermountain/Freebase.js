@@ -35,7 +35,24 @@ and when you're hacking in the console:
 ```shell
 $ freebase sentence "thom yorke"
 ```
-### Freebase methods
+
+## In the friggin broswer
+```javascript
+  <script src="http://code.jquery.com/jquery-latest.js"></script>
+  <script src="https://raw.github.com/caolan/async/master/lib/async.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
+  <script src="https://raw.github.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
+  <script>
+  $(document).ready(function(){
+    function show(r){
+      $('body').append(r)
+    }
+    $.freebase.sentence("tony hawk",{},show)
+  })
+</script>
+```
+
+### Basic methods
 
 ####MQLread API
 Books about planets:
@@ -63,7 +80,7 @@ Hockey players named 'doug'
     freebase.search("doug",{type: "/ice_hockey/hockey_player"}, console.log)
 ```
 ####Description API
-The nicely-formatted first paragraph of the wikipedia article:
+First paragraph of the wikipedia article:
 ```javascript
      freebase.description("mike myers", {}, console.log)
      freebase.description("http://myspace.com/u2", {}, console.log)
@@ -84,7 +101,12 @@ The most accurate, or notable type for a topic:
 ####Grammar
 Which pronoun, tense, article and gender to use for this topic
 ```javascript
-    freebase.grammar("banana", {}, console.log)
+    freebase.grammar("washing machine", {}, console.log)
+       -> { plural: true,
+            gender: null,
+            article: 'a',
+            pronoun: 'they',
+            copula: 'are' }
     freebase.grammar(["prince harry", "miranda july"], {}, console.log)
        /* [ { plural: false,
               gender: 'male',
@@ -96,12 +118,6 @@ Which pronoun, tense, article and gender to use for this topic
               article: 'a',
               pronoun: 'she',
               copula: 'is' } ]
-    freebase.grammar("washing machine", {}, console.log)
-       -> { plural: true,
-            gender: null,
-            article: 'a',
-            pronoun: 'they',
-            copula: 'are' }
             */
 ```
 ####Related Topics
@@ -308,5 +324,6 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
      -quote a unicode string to turn it into a valid mql /type/key/value
 * **add_widget**
      -add a generic html view of a topic
+
 ## poo
 Creative Commons, MIT
