@@ -6,10 +6,10 @@ module.exports = function(grunt) {
     concat: {
       options: {
            banner: '/*! <%= pkg.name %> \n by @spencermountain\n <%= grunt.template.today("yyyy-mm-dd") %> */\n',
-           footer:"\n\n  })()\n})()"
+           footer:"\n\n return freebase; })()\n})(jQuery)"
          },
       dist: {
-        src: ['./lib/grunt_header.js','./helpers/http.js', './helpers/data.js', './helpers/helpers.js',  './freebase.js'],
+        src: ['./helpers/grunt_header.js','./helpers/http.js', './helpers/data.js', './helpers/helpers.js',  './index.js'],
         dest: './client_side/freebase.js'
       }
     },

@@ -1,5 +1,10 @@
-
-//
+//if nodejs, load these modules
+if (typeof module !== 'undefined' && module.exports) {
+  var _ = require('underscore');
+  var async = require('async');
+  var data = require('./data.js').data;
+  var http = require('./http.js');
+}
 
 var fns= (function(){
 
