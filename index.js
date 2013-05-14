@@ -40,7 +40,8 @@ var freebase = (function() {
     options = options || {};
     options.uniqueness_failure = options.uniqueness_failure || "soft";
     options.cursor = options.cursor || true;
-    fns.post(query, options, function(result) {
+    var url=globals.host+'mqlread?query='+JSON.stringify(query)
+    fns.http(url, options, function(result) {
       return callback(result)
     })
   }
@@ -78,15 +79,17 @@ var freebase = (function() {
       return ps.callback({});
     }
     if (ps.is_id) {
-      return freebase.lookup_id(ps.q, ps.options, ps.callback);
+      return freebase.lookup_id(ps.q, ps.options, function(r){
+         ps.callback([r])
+      });
     }
     //if its a url
     if (ps.url) {
       return freebase.url_lookup(ps.q, ps.options, function(result) {
         if (result && result.result && result.result[0]) {
-          return ps.callback(result.result[0]);
+          return ps.callback(result.result);
         }
-        return ps.callback({})
+        return ps.callback([])
       })
     }
     //if its an id
@@ -617,7 +620,7 @@ var freebase = (function() {
     }
     options = options || {};
     //handle an array
-    if (_.isArray(geo) && geo.length > 1) {
+    if (fns.isarray(geo) && geo.length > 1) {
       return fns.doit_async(geo, freebase.place_data, options, callback)
     }
     var location = {
@@ -812,7 +815,7 @@ var freebase = (function() {
         //add sentence-forms
         out = out.map(function(o) {
           var property = o.property || '';
-          if (_.isArray(o.property)) {
+          if (fns.isarray(o.property)) {
             property = o.property.join('');
           }
           o.sentence = topic.name + "'s " + _.last(property.split('/')).replace('_', ' ') + " is " + o.name; //ugly fallback
@@ -1097,7 +1100,7 @@ var freebase = (function() {
     }
     var all = [];
     freebase.question(ps.q, ps.options, function(r) {
-      if (!r || !_.isArray(r) || r.length === 0) {
+      if (!r || !fns.isarray(r) || r.length === 0) {
         return ps.callback(all)
       }
       all = all.concat(r);
@@ -1109,13 +1112,13 @@ var freebase = (function() {
         options: ps.options,
         method: freebase.question,
         callback: function(big) {
-          if (!big || !_.isArray(big) || big.length === 0) {
+          if (!big || !fns.isarray(big) || big.length === 0) {
             return ps.callback(all)
           }
           all = all.concat(_.flatten(big, 'shallow'))
           all = fns.json_unique(all, "id")
           fns.doit_async(r, freebase.question, ps.options, function(big) {
-            if (!big || !_.isArray(big) || big.length === 0) {
+            if (!big || !fns.isarray(big) || big.length === 0) {
               return ps.callback(all)
             }
             all = all.concat(_.flatten(big, 'shallow'))
@@ -1438,7 +1441,7 @@ var freebase = (function() {
     } //flexible parameter
     options = options || {};
     //handle an array
-    if (_.isArray(q) && q.length > 1) {
+    if (fns.isarray(q) && q.length > 1) {
       return fns.doit_async(q, freebase.wikipedia_links, options, callback)
     }
     //if its not a wikipedia title, reuse get-topic logic for searches/ids
@@ -1481,7 +1484,7 @@ var freebase = (function() {
     } //flexible parameter
     options = options || {};
     //handle an array
-    if (_.isArray(q) && q.length > 1) {
+    if (fns.isarray(q) && q.length > 1) {
       return fns.doit_async(q, freebase.wikipedia_external_links, options, callback)
     }
     //if its not a wikipedia title, reuse get-topic logic for searches/ids
@@ -1524,7 +1527,7 @@ var freebase = (function() {
     } //flexible parameter
     options = options || {};
     //handle an array
-    if (_.isArray(q) && q.length > 1) {
+    if (fns.isarray(q) && q.length > 1) {
       return fns.doit_async(q, freebase.schema, options, callback)
     }
     //see if its a type
@@ -1635,9 +1638,10 @@ var freebase = (function() {
       options = {};
     } //flexible parameter
     options = options || {};
+    var ps = fns.settle_params(arguments, freebase.property_introspection);
     //handle an array
-    if (_.isArray(q) && q.length > 1) {
-      return fns.doit_async(q, freebase.property_introspection, options, callback)
+    if (fns.isarray(q) && q.length > 1) {
+      return fns.doit_async(ps)
     }
     var query = [{
       "id": q,
@@ -1984,6 +1988,8 @@ var freebase = (function() {
   //     freebase[v].is_alias=true
   //   })
   // }
+
+
 
   //
   freebase.documentation = function(f, options, callback) {
