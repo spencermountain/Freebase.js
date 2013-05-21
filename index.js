@@ -621,7 +621,8 @@ var freebase = (function() {
     options = options || {};
     //handle an array
     if (fns.isarray(geo) && geo.length > 1) {
-      return fns.doit_async(geo, freebase.place_data, options, callback)
+      var ps = fns.settle_params(arguments, freebase.place_data, {});
+      return fns.doit_async(ps)
     }
     var location = {
       "coordinates": [geo.lng, geo.lat],
@@ -1117,6 +1118,7 @@ var freebase = (function() {
           }
           all = all.concat(_.flatten(big, 'shallow'))
           all = fns.json_unique(all, "id")
+         //todo: fix
           fns.doit_async(r, freebase.question, ps.options, function(big) {
             if (!big || !fns.isarray(big) || big.length === 0) {
               return ps.callback(all)
@@ -1442,7 +1444,8 @@ var freebase = (function() {
     options = options || {};
     //handle an array
     if (fns.isarray(q) && q.length > 1) {
-      return fns.doit_async(q, freebase.wikipedia_links, options, callback)
+       var ps = fns.settle_params(arguments, freebase.wikipedia_links, {});
+      return fns.doit_async(ps)
     }
     //if its not a wikipedia title, reuse get-topic logic for searches/ids
     if (q.match(/ /) || q.substr(0, 1) == q.substr(0, 1).toLowerCase() || q.match(/^\//)) {
@@ -1485,7 +1488,8 @@ var freebase = (function() {
     options = options || {};
     //handle an array
     if (fns.isarray(q) && q.length > 1) {
-      return fns.doit_async(q, freebase.wikipedia_external_links, options, callback)
+       var ps = fns.settle_params(arguments, freebase.wikipedia_external_links, {});
+      return fns.doit_async(ps)
     }
     //if its not a wikipedia title, reuse get-topic logic for searches/ids
     if (q.match(/ /) || q.substr(0, 1) == q.substr(0, 1).toLowerCase() || q.match(/^\//)) {
@@ -1514,117 +1518,6 @@ var freebase = (function() {
   }
   //freebase.wikipedia_external_links("/en/toronto", {}, console.log)
 
-
-  freebase.schema = function(q, options, callback) {
-    this.doc = "common lookups for types and properties"
-    callback = callback || console.log;
-    if (!q) {
-      return callback({})
-    }
-    if (typeof options == "function") {
-      callback = options;
-      options = {};
-    } //flexible parameter
-    options = options || {};
-    //handle an array
-    if (fns.isarray(q) && q.length > 1) {
-      return fns.doit_async(q, freebase.schema, options, callback)
-    }
-    //see if its a type
-    freebase.search(q, {
-      type: "/type/type"
-    }, function(r) {
-      if (r && r[0] && r[0].id) {
-        r = r[0]
-        var query = [{
-          "id": r.id,
-          "mid": null,
-          "name": null,
-          "properties": [{
-            "id": null,
-            "name": null,
-            "/type/property/reverse_property": [{
-              "id": null,
-              "name": null,
-              "optional": true
-            }]
-          }],
-          "/freebase/type_hints/mediator": null,
-          "/freebase/type_hints/included_types": [{
-            "id": null,
-            "name": null
-          }],
-          "/freebase/type_profile/published": null,
-          "/type/type/expected_by": [{
-            "id": null,
-            "name": null
-          }],
-          "/freebase/type_profile/instance_count": null,
-          "/freebase/type_profile/property_count": null,
-          "domain": {
-            "id": null,
-            "name": null
-          },
-          "/freebase/type_profile/equivalent_topic": {
-            "id": null,
-            "name": null
-          },
-          "type": "/type/type"
-        }]
-        freebase.mqlread(query, {}, function(r) {
-          if (!r || !r.result || !r.result[0]) {
-            return callback({})
-          }
-          r = r.result[0]
-          var obj = {}
-          obj.domain = r.domain
-          obj.id = r.id
-          obj.included_types = r["/freebase/type_hints/included_types"]
-          obj.incoming_properties = r["/type/type/expected_by"]
-          obj.is_compound_value = r["/freebase/type_hints/mediator"] || false
-          obj.is_commons = r["/freebase/type_profile/published"] || false
-          obj.equivalent_topic = r["/freebase/type_profile/equivalent_topic"]
-          obj.topic_count = r["/freebase/type_profile/instance_count"] || 0
-          obj.property_count = r["/freebase/type_profile/property_count"] || 0;
-          //types that include this one
-          var query = [{
-            "id": null,
-            "name": null,
-            "s:name": {
-              "value": null,
-              "lang": "/lang/en",
-              "optional": "required"
-            },
-            "/freebase/type_hints/included_types": [{
-              "id": obj.id
-            }]
-          }]
-          freebase.mqlread(query, {}, function(r) {
-            if (!r || !r.result) {
-              return callback(obj)
-            }
-            obj.included_by = r.result.map(function(v) {
-              return {
-                id: v.id,
-                name: v.name
-              }
-            })
-            return callback(obj)
-          })
-        })
-
-      } else {
-        freebase.property_lookup(q, {}, function(r) {
-          if (!r || !r[0] || !r[0].id) {
-            return callback({})
-          }
-          return freebase.property_inspection(r[0].id, {}, callback)
-        })
-      }
-    })
-  }
-  //freebase.schema("politician")
-  //freebase.schema("/type/property/master_property")
 
 
   freebase.property_introspection = function(q, options, callback) {
@@ -1705,6 +1598,122 @@ var freebase = (function() {
     //   }]
   }
   //freebase.property_introspection("/government/politician/party")
+
+
+  freebase.schema = function(q, options, callback) {
+    this.doc = "common lookups for types and properties"
+    callback = callback || console.log;
+    if (!q) {
+      return callback({})
+    }
+    if (typeof options == "function") {
+      callback = options;
+      options = {};
+    } //flexible parameter
+    options = options || {};
+    //handle an array
+    if (fns.isarray(q) && q.length > 1) {
+      var ps = fns.settle_params(arguments, freebase.schema, {});
+      return fns.doit_async(ps)
+    }
+    //see if its a type
+    options.type="/type/type"
+    freebase.search(q, options, function(r) {
+      if (r && r[0] && r[0].id) {
+
+        r = r[0]
+        var query = [{
+          "id": r.id,
+          "mid": null,
+          "name": null,
+          "properties": [{
+            "id": null,
+            "name": null,
+            "/type/property/reverse_property": [{
+              "id": null,
+              "name": null,
+              "optional": true
+            }]
+          }],
+          "/freebase/type_hints/mediator": null,
+          "/freebase/type_hints/included_types": [{
+            "id": null,
+            "name": null,
+            "optional":true
+          }],
+          "/freebase/type_profile/published": null,
+          "/type/type/expected_by": [{
+            "id": null,
+            "name": null,
+            "optional":true
+          }],
+          "/freebase/type_profile/instance_count": null,
+          "/freebase/type_profile/property_count": null,
+          "domain": {
+            "id": null,
+            "name": null
+          },
+          "/freebase/type_profile/equivalent_topic": {
+            "id": null,
+            "name": null,
+            "optional":true
+          },
+          "type": "/type/type"
+        }]
+        freebase.mqlread(query, options, function(r) {
+          if (!r || !r.result || !r.result[0]) {
+            return callback({})
+          }
+          r = r.result[0]
+          var obj = {}
+          obj.domain = r.domain
+          obj.id = r.id
+          obj.included_types = r["/freebase/type_hints/included_types"]
+          obj.incoming_properties = r["/type/type/expected_by"]
+          obj.is_compound_value = r["/freebase/type_hints/mediator"] || false
+          obj.is_commons = r["/freebase/type_profile/published"] || false
+          obj.equivalent_topic = r["/freebase/type_profile/equivalent_topic"]
+          obj.topic_count = r["/freebase/type_profile/instance_count"] || 0
+          obj.property_count = r["/freebase/type_profile/property_count"] || 0;
+          //types that include this one
+          var query = [{
+            "id": null,
+            "name": null,
+            "s:name": {
+              "value": null,
+              "lang": "/lang/en",
+              "optional": "required"
+            },
+            "/freebase/type_hints/included_types": [{
+              "id": obj.id
+            }]
+          }]
+          freebase.mqlread(query, options, function(r) {
+            if (!r || !r.result) {
+              return callback(obj)
+            }
+            obj.included_by = r.result.map(function(v) {
+              return {
+                id: v.id,
+                name: v.name
+              }
+            })
+            return callback(obj)
+          })
+        })
+
+      } else {
+        freebase.property_lookup(q, options, function(r) {
+          if (!r || !r[0] || !r[0].id) {
+            return callback({})
+          }
+          return freebase.property_introspection(r[0].id, {}, callback)
+        })
+      }
+    })
+  }
+  //freebase.schema("politician")
+  //freebase.schema("/type/property/master_property")
 
 
   //
@@ -2008,8 +2017,8 @@ var freebase = (function() {
         str.push("Couldn't find the function " + f + ". Here are the available functions:")
       }
     }
-    Object.keys(freebase).map(function(f) {
-      str.push("* **" + f + '** ')
+    Object.keys(freebase).filter(function(v){return v!="documentation"}).map(function(f) {
+      str.push("==" + f + '==')
       var f = new freebase[f](null, {}, function() {})
       str.push('     -' + f.doc)
     })

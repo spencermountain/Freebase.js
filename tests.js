@@ -1,7 +1,7 @@
-var freebase=require('./freebase');
+var freebase=require('./index');
 var async=require('async');
 var slow=require('slow');
-var fns=require('./lib/helpers')
+var fns=require('./helpers/helpers')
 var _=require('underscore');
 var test={}
 //failing
@@ -35,9 +35,9 @@ test.topic=[
 test.search=[
   ["franklin",{},function(r){console.log(r.length>2)}]
 ]
- test.paginate=[
-   [[{"type":"/astronomy/moon","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
- ]
+ // test.paginate=[
+ //   [[{"type":"/astronomy/moon","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
+ // ]
 test.grammar=[
   ["toronto maple leafs",{},function(r){
        console.log(_.isEqual(r, { plural: true,
@@ -162,7 +162,7 @@ function done(r){
 }
 
 
-  function testone(v){
+  function testone(v, callback){
     var all=[]
     console.log('========'+v+'=========')
     test[v].map(function(t){
@@ -170,6 +170,7 @@ function done(r){
         t[2](r)
       })
     })
+    callback('done')
   }
 
 //apply same thing to all functions
@@ -193,6 +194,6 @@ function coverage(fn, tests){
   }
 }
 console.log(coverage(freebase, test))
-broadly(null,freebase)
+//broadly(null,freebase)
 
-//slow.walk(Object.keys(test), testone, done)
+slow.patient(Object.keys(test), testone, done)

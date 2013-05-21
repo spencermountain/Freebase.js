@@ -17,10 +17,35 @@ var fns = {}
 var globals = {
   host: 'https://www.googleapis.com/freebase/v1/',
   image_host: "https://usercontent.googleapis.com/freebase/v1/image",
-  geosearch: 'http://api.freebase.com/api/service/geosearch',
   wikipedia_host: 'http://en.wikipedia.org/w/api.php'
 }
 
+fns.isarray=function(x){
+    return toString.call(x) == '[object Array]';
+}
+
+fns.isobject=function(obj){
+    return obj === Object(obj);
+  }
+
+  fns.flatten = function(input, shallow, output) {
+    input.each(function(value) {
+      if (fns.isarray(value)) {
+        shallow ? push.apply(output, value) : flatten(value, shallow, output);
+      } else {
+        output.push(value);
+      }
+    });
+    return output;
+  };
+
+  fns.last=function(arr){
+    return arr[arr.length]
+  }
+
+  fns.compact=function(arr){
+    return arr.filter(function(v){return v})
+  }
 
 //compact even empty objects
 fns.compact_strong = function(arr) {
@@ -53,7 +78,7 @@ fns.settle_params = function(params, method, defaults) {
     }
   }
   //handle an array
-  if (_.isArray(o.q)) {
+  if (fns.isarray(o.q)) {
     if (o.q.length > 1) {
       o.q = fns.compact_strong(o.q);
       o.valid = true;
@@ -172,7 +197,7 @@ fns.parse_topic_api = function(properties, options) {
     }
   })
   out = out.map(function(o) {
-    if (_.isArray(o.property)) {
+    if (fns.isarray(o.property)) {
       o.property = o.property.join('');
     }
     return o
@@ -751,7 +776,7 @@ fns.set_params = function(o) {
   }
   return Object.keys(options).map(function(v) {
     var val = options[v];
-    if (_.isArray(options[v]) || _.isObject(options[v])) {
+    if (fns.isarray(options[v]) || _.isObject(options[v])) {
       val = encodeURIComponent(JSON.stringify(options[v]));
     }
     return v + '=' + val
@@ -775,7 +800,7 @@ fns.post = function(query, options, callback) {
     key: options.key,
     cursor: options.cursor
   })
-  http.post('http://api.freebase.com/api/service/mqlread', body, callback);
+  http.post('https://www.googleapis.com/freebase/v1/mqlread', body, callback);
 }
 //fns.post([{"id":"/en/radiohead","name":null}],{},console.log)
 
