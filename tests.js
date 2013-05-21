@@ -3,50 +3,51 @@ var async=require('async');
 var slow=require('slow');
 var fns=require('./helpers/helpers')
 var _=require('underscore');
+var options={key:"AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI"};//please don't abuse my key
 var test={}
 //failing
 
-// freebase.inside('toronto',{}, function(r){
+// freebase.inside('toronto',options, function(r){
 // 	console.log(r.length>3)
 // })
- // freebase.transitive("barrie", "part_of", {}, function(r){
+ // freebase.transitive("barrie", "part_of", options, function(r){
  // 	console.log(r.length>3)
  // })
 
+test.search=[
+  ["franklin", {}, function(r){console.log(r.length>2)}]
+]
 
 test.lookup=[
-  ["http://toronto.ca", {}, function(r){console.log(r.id=="/en/toronto")}],
-  [["/m/09jm8", "http://myspace.com/u2"], {}, function(r){console.log(r[1].name=="U2")	}],
+  ["http://toronto.ca", options, function(r){console.log(r.id=="/en/toronto")}],
+  [["/m/09jm8", "http://myspace.com/u2"], options, function(r){console.log(r[1].name=="U2") }],
   ["australia",{type:"/film/film"}, function(r){console.log(r.mid=="/m/026qnh6")}],
-  ["thom yorke", {}, function(r){console.log(r.mid=="/m/01p0w_")}],
-  ["tom green", {}, function(r){console.log(r.mid=="/m/017yxq")}],
-  [["toronto","suddenly susan"],{},function(r){console.log(r.length==2)}]
+  ["thom yorke", options, function(r){console.log(r.mid=="/m/01p0w_")}],
+  ["tom green", options, function(r){console.log(r.mid=="/m/017yxq")}],
+  [["toronto","suddenly susan"],options,function(r){console.log(r.length==2)}]
 ]
 
 test.mqlread=[
-  [{ "type": "/music/album", "id": "/en/keep_it_turned_on", "artist" : null},{}, function(r){console.log(r.result.artist=='Rick Astley')}]
+  [{ "type": "/music/album", "id": "/en/keep_it_turned_on", "artist" : null},options, function(r){console.log(r.result.artist=='Rick Astley')}]
 ]
 test.get_id=[
-  ["/en/tony_hawk",{},function(r){console.log(r.id=="/en/tony_hawk")}]
+  ["/en/tony_hawk",options,function(r){console.log(r.id=="/en/tony_hawk")}]
 ]
 test.topic=[
- ['radiohead',{},function(r){console.log(r.id=='/m/09jm8' && r.property['/music/artist/origin']!=null) } ]
+ ['radiohead',options,function(r){console.log(r.id=='/m/09jm8' && r.property['/music/artist/origin']!=null) } ]
 ]
-test.search=[
-  ["franklin",{},function(r){console.log(r.length>2)}]
-]
- // test.paginate=[
- //   [[{"type":"/astronomy/moon","name":null}], {max:20}, function(r){console.log(r.length>20)} ],
- // ]
+ test.paginate=[
+   [[{"type":"/astronomy/moon","name":null}], options, function(r){console.log(r.length>20)} ],
+ ]
 test.grammar=[
-  ["toronto maple leafs",{},function(r){
+  ["toronto maple leafs",options,function(r){
        console.log(_.isEqual(r, { plural: true,
                  gender: null,
                  article: 'a',
                  pronoun: 'they',
                  copula: 'are' }))
       }],
-  ["ron weasley",{},function(r){
+  ["ron weasley",options,function(r){
      console.log(_.isEqual(r, { plural: false,
                      gender: 'male',
                      article: 'a',
@@ -55,9 +56,9 @@ test.grammar=[
     }]
 ]
 test.same_as_links=[
-	["http://www.geonames.org/6167865/", {}, function(r){console.log(r.links.length>3)}],
-	["toronto", {}, function(r){console.log(r.links.length>3)}],
-	["/m/0h7h6", {}, function(r){console.log(r.links.length>3)}]
+	["http://www.geonames.org/6167865/", options, function(r){console.log(r.links.length>3)}],
+	["toronto", options, function(r){console.log(r.links.length>3)}],
+	["/m/0h7h6", options, function(r){console.log(r.links.length>3)}]
 ]
 test.translate=[
 	["toronto",{lang:"zh"},function(r){console.log(r.match(/多伦多/i)!=null)}],
@@ -67,52 +68,52 @@ test.image=[
   ["australia",{type:"/location/location"}, function(r){console.log(r);console.log(r.match(/maxheight/)!=null)}]
 ]
 test.description=[
- ["mike myers", {}, function(r){console.log(r.match(/myers/i)!=null)}],
- ["http://myspace.com/u2", {}, function(r){console.log(r.match(/u2/i)!=null)}]
+ ["mike myers", options, function(r){console.log(r.match(/myers/i)!=null)}],
+ ["http://myspace.com/u2", options, function(r){console.log(r.match(/u2/i)!=null)}]
 ]
 test.notable=[
-  ["canada",{},function(r){console.log(r.id=='/location/country')}]
+  ["canada",options,function(r){console.log(r.id=='/location/country')}]
 ]
 test.sentence=[
-  ["thom yorke", {}, function(r){console.log(r.match(/radiohead/i)!=null)}],
+  ["thom yorke", options, function(r){console.log(r.match(/radiohead/i)!=null)}],
   ["meatloaf", {type:"/food/food"}, function(r){console.log(r!=null)}],
-  [[{name:"toronto"},{id:"/en/radiohead",name:"radiohead"}],{},function(r){console.log(r.length==2)}]
+  [[{name:"toronto"},{id:"/en/radiohead",name:"radiohead"}],options,function(r){console.log(r.length==2)}]
 ]
 test.list=[
-  ["earthquakes", {}, function(r){console.log(r.length>20)}]
+  ["earthquakes", options, function(r){console.log(r.length>20)}]
 ]
 test.place_data=[
-  [{lat:43.64806,lng:-79.40417}, {}, function(r){
+  [{lat:43.64806,lng:-79.40417}, options, function(r){
    console.log(r.city.name=="Toronto")
   }],
-   [{lat:52.05375719395869,lng:5.9511566162109375}, {}, function(r){
+   [{lat:52.05375719395869,lng:5.9511566162109375}, options, function(r){
    console.log(r.country.name=="Netherlands")
   }],
-  [{lat:47.9991410647952,lng:14.172706604003906}, {}, function(r){
+  [{lat:47.9991410647952,lng:14.172706604003906}, options, function(r){
    console.log(r.country.name=="Austria")
   }]
 ]
 test.incoming=[
-  ["germany",{},function(r){console.log(r.length>20)}]
+  ["germany",options,function(r){console.log(r.length>20)}]
 ]
 test.outgoing=[
-  ["ubuntu",{},function(r){console.log(r.length>15)} ]
+  ["ubuntu",options,function(r){console.log(r.length>15)} ]
 ]
-test.graph=function(){
-	["paul ryan", {}, function(r){console.log(r[0].object.name=="Paul Ryan"|| r[0].subject.name=="Paul Ryan")}]
-}
+test.graph=[
+	["paul ryan", options, function(r){console.log(r[0].object.name=="Paul Ryan"|| r[0].subject.name=="Paul Ryan")}]
+]
 test.related=[
-  ["radiohead",{},function(r){console.log(r.length>4 && r[2].id!=null)}]
+  ["radiohead",options,function(r){console.log(r.length>4 && r[2].id!=null)}]
 ]
 test.gallery=[
-  ["hurricanes",{},function(r){console.log(r.length>20)}]
+  ["hurricanes",options,function(r){console.log(r.length>20)}]
 ]
 test.wordnet=[
-   [["bat","wood"],{}, function(r){console.log(r.length==2)}],
-   ["wood",{}, function(r){console.log(r.length==4) }]
+   [["bat","wood"],options, function(r){console.log(r.length==2)}],
+   ["wood",options, function(r){console.log(r.length==4) }]
 ]
 test.geolocation=[
- ["toronto", {}, function(r){  console.log(r.latitude!=null)  }]
+ ["toronto", options, function(r){  console.log(r.latitude!=null)  }]
 ]
 test.nearby=[
   ["cn tower", {type:"/food/restaurant"}, function(r){console.log(r.length>4)}]
@@ -121,20 +122,20 @@ test.inside=[
   ["toronto", {type:"/locaton/citytown"}, function(r){console.log(r.length>4)}]
 ]
 test.wikipedia_page=[
-  ["tony hawk", {}, function(r){console.log(r=="Tony_Hawk")}]
+  ["tony hawk", options, function(r){console.log(r=="Tony_Hawk")}]
 ]
 test.wikipedia_categories=[
   ["meatloaf",{type:"/food/food"},function(r){console.log(r.length>4 && r[3].match(/^Category/)!=null)}]
 ]
 test.wikipedia_links=[
-  ["Toronto", {}, function(r){console.log(r.length>=5)}]
+  ["Toronto", options, function(r){console.log(r.length>=5)}]
 ]
 test.wikipedia_external_links=[
-  ["/en/toronto", {}, function(r){console.log(r.length>=3)}]
+  ["/en/toronto", options, function(r){console.log(r.length>=3)}]
 ]
 // test.schema_introspection=[
-//  ["person",{},function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
-//  ["/people/person",{},function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
+//  ["person",options,function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
+//  ["/people/person",options,function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
 // ]
 test.property_introspection=[
 ]
@@ -164,13 +165,12 @@ function done(r){
 
   function testone(v, callback){
     var all=[]
-    console.log('========'+v+'=========')
-    test[v].map(function(t){
-      freebase[v](t[0],t[1],function(r){
+    test[v].patient(function(t){
+      freebase[v](t[0], t[1], function(r){
+        console.log('========'+v+'=========')
         t[2](r)
       })
-    })
-    callback('done')
+    },function(){callback('done')})
   }
 
 //apply same thing to all functions
@@ -193,7 +193,10 @@ function coverage(fn, tests){
     dangling_tests:_.difference(tests,fn)
   }
 }
-console.log(coverage(freebase, test))
-//broadly(null,freebase)
+//console.log(coverage(freebase, test))
+// broadly(null,freebase)
 
-slow.patient(Object.keys(test), testone, done)
+Object.keys(test).patient(testone, done)
+
+
+  //freebase.search("franklin",options,console.log)

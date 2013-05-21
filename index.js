@@ -71,6 +71,7 @@ var freebase = (function() {
   freebase.search = function(q, options, callback) {
     this.doc = "regular search api";
     this.reference = "http://wiki.freebase.com/wiki/ApiSearch";
+
     var ps = fns.settle_params(arguments, freebase.search, {});
     if (ps.array) {
       return fns.doit_async(ps);
