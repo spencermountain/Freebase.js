@@ -52,6 +52,17 @@ $ freebase sentence "thom yorke"
 </script>
 ```
 
+## MQLwrite
+```shell
+  cd mqlwrite
+  npm install googleapis request
+```
+add your client ID and Client Secret to the file
+```shell
+  node mqlwrite_example.js
+```
+this will take you through the steps of authenticating and making a write to freebase.
+
 ### Basic methods
 
 ####MQLread API
