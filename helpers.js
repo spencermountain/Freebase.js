@@ -1,5 +1,5 @@
 if (typeof module !== 'undefined' && module.exports) {
-  var freebase = require("./index");
+  //var freebase = require("./freebase");
   var request = require("request");
  }
 
@@ -71,6 +71,13 @@ fns.unique = function(x,field) {
       return newArray;
     }
   }
+
+fns.extend = function(bad, good) {
+    for (var i in good) {
+      bad[i] = good[i];
+    }
+    return bad;
+  };
 
 fns.parseurl = function(str) {
   var o = {

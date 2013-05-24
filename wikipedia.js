@@ -1,6 +1,6 @@
 if (typeof module !== 'undefined' && module.exports) {
   var fns = require('./helpers');
-	var freebase = require("./index");
+	var freebase = require("./freebase");
 	var request = require("request");
 }
 
@@ -85,7 +85,7 @@ var wikipedia = (function() {
       options.already = fns.compact_strong(fns.flatten(options.already.concat(cats)));
       if (options.depth > 1 && cats.length > 0) {
         poptions.depth = options.depth - 1;
-        return freebase.wikipedia_subcategories(cats, options, function(r) {
+        return cat.subcategories(cats, options, function(r) {
           options.already = options.already.concat(r)
           var done=fns.compact_strong(fns.flatten(options.already)).map(function(v){
           	return new Category(v)
@@ -107,14 +107,14 @@ var wikipedia = (function() {
 
 
 
-	cat = new Category("http://en.wikipedia.org/wiki/Category:International_friendship_associations")
-	// cat.pages(function(data){
-	// 	topics=new freebase.TopicList(data.)
-	// 	console.log(topics.ids)
-	// })
-cat.subcategories(function(data){
-	console.log(data.map(function(v){return v.nice_title}))
-})
+// 	cat = new Category("http://en.wikipedia.org/wiki/Category:International_friendship_associations")
+// 	// cat.pages(function(data){
+// 	// 	topics=new freebase.TopicList(data.)
+// 	// 	console.log(topics.ids)
+// 	// })
+// cat.subcategories(function(data){
+// 	console.log(data.map(function(v){return v.nice_title}))
+// })
 
 
 
