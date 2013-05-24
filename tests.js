@@ -1,23 +1,23 @@
-var freebase=require('./freebase')
+var freebase = require('./freebase')
 
-exports.topic_synchronous = function(test){
- radiohead=new freebase.Topic("/en/radiohead")
-  test.equal(radiohead.mid, "/en/radiohead", "mid and id logic")
-  test.done()
+exports.topic_synchronous = function(test) {
+	radiohead = new freebase.Topic("/en/radiohead")
+	test.equal(radiohead.mid, "/en/radiohead", "mid and id logic")
+	test.done()
 }
 
-exports.topic_filter = function(test){
- radiohead=new freebase.Topic("/en/radiohead")
- radiohead.get("/type/object/type", function(o) {
-   //test.deepEqual(Object.keys(o), ["/type/object/type"], "topic api filter works")
-   test.done()
-  })
+exports.topic_filter = function(test) {
+	radiohead = new freebase.Topic("/en/radiohead")
+	radiohead.get("/type/object/type", function(o) {
+		//test.deepEqual(Object.keys(o), ["/type/object/type"], "topic api filter works")
+		test.done()
+	})
 }
 
-exports.search_api = function(test){
-	freebase.search_api("toronto",function(topics){
-	  test.equal(topics.data()[0].id, "/en/toronto","search is sane")
-	  test.done()
+exports.search_api = function(test) {
+	freebase.search_api("toronto", function(topics) {
+		test.equal(topics.data[0].id, "/en/toronto", "search is sane")
+		test.done()
 	})
 }
 

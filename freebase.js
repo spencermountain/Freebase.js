@@ -3,17 +3,19 @@ if (typeof module !== 'undefined' && module.exports) {
   var request = require("request");
   var fns = require('./helpers');
   var data = require('./data');
+  var wikipedia = require('./wikipedia');
+  var slow = require('./slow');
 }
-
 
 
 var freebase = (function() {
 
-  var freebase = this;
+  var freebase = {};
   freebase.api_key = "AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI" //please don't abuse my key
   freebase.host = "https://www.googleapis.com/freebase/v1" //production
   //freebase.host = "https://www.googleapis.com/freebase/v1sandbox"  //sandbox
   freebase.data=data;
+  freebase.wikipedia=wikipedia
   freebase.default_callback = console.log
 
   //
@@ -38,19 +40,42 @@ var freebase = (function() {
     }
     topic.id = data.id || data.mid;
     topic.mid = data.mid || data.id;
-    topic.name = data.name || data.text;
+    topic.name = data.name || data.text || data.title;
     topic.get = function(property, callback, options) {
-      options=new Option(options)
+      options=new freebase.Option(options)
       callback=callback||freebase.default_callback;
       freebase.reconcile_property(property, function(p){
         options.property=p.id;
         freebase.topic_api(topic, function(result){
-          return callback(result.property[options.property])
+          return callback(render_results(result.property[options.property]))
         },options)
       },options)
     }
-    //topic=fns.extend(topic, data)
+    topic=fns.extend(topic, data)
   }
+
+function render_results(results){
+  results=results||{}
+  if(results.valuetype=="string"|| results.valuetype=="uri"|| results.valuetype=="int"){
+    return results.values.map(function(v){
+      return v.text
+    })
+  }
+  if(results.valuetype=="datetime"){
+    return results.values.map(function(v){
+      return fns.parsedate(v.text)
+    })
+  }
+  if(results.valuetype=="object"){
+    return results.values.map(function(v){
+      return {
+        id:v.id,
+        name:v.text
+      }
+    })
+  }
+  return results.values
+}
 
 
   freebase.Property = function(data) {
@@ -84,22 +109,18 @@ var freebase = (function() {
     if (type == "null") {
       return {}
     }
-    list.data = function(){
-      return data.map(function(v) {
+    list.data = data.map(function(v) {
         return new freebase.Topic(v)
       })
-    }
-    list.ids = function(){
-      return list.data().map(function(t) {
-       return t.id
-      })
-    }
     list.get = function(property, callback, options){
-      return list.data().map(function(t) {
-       return t.get(property, callback, options)
-      })
+      var doit=function(t, cb){
+        t.get(property, cb, options)
+      }
+      slow(list.data, doit, {}, callback)
     }
-    //list=fns.extend(list, data)
+    list.set=function(){}
+    list.select=function(){}
+    list.reject=function(){}
 }
 
 
@@ -145,7 +166,7 @@ var freebase = (function() {
   freebase.fetch=function(topic, callback, options){
     this.description="lookup a specific property in the topic api"
     callback=callback||freebase.default_callback;
-    options = new Option(options);
+    options = new freebase.Option(options);
     freebase.topic_api(topic, function(result){
       return callback(result.property)
     }, options)
@@ -154,7 +175,7 @@ var freebase = (function() {
 
   freebase.topic_api=function(topic, callback, options) {
     this.description="call the freebase topic api"
-    options = new Option(options);
+    options = new freebase.Option(options);
     callback=callback||freebase.default_callback;
     var filter = options.property || options.type || "all";
     var url = freebase.host + '/topic' + topic.mid + '?key=' + (options.key || '') + '&filter=' + (filter || "all")
@@ -165,7 +186,7 @@ var freebase = (function() {
 
   freebase.search_api=function(str, callback, options) {
     this.description="call the freebase search api"
-    options = new Option(options);
+    options = new freebase.Option(options);
     callback=callback||freebase.default_callback;
     var url = freebase.host + '/search?query=' + encodeURIComponent(str) + '&key=' + (options.key || '')
     fns.http(url, function(r) {
@@ -205,8 +226,8 @@ var freebase = (function() {
 //   console.log(JSON.stringify(o, null, 2));
 // })
 
-// freebase.search_api("toronto",function(topics){
-//   topics.get("name",function(names){
-//      console.log(names)
-//    })
-// })
+freebase.search_api("toronto",function(topics){
+  topics.get("type",function(names){
+    console.log(JSON.stringify(names, null, 2));
+   })
+})

@@ -8,7 +8,41 @@ var fns= (function() {
 
   var fns = {};
 
-  fns.flatten = function(arr) {
+
+
+  fns.mql_encode = function(s) {
+    this.doc = "quote a unicode string to turn it into a valid mql /type/key/value"
+    if (!s) {
+      return ''
+    }
+    s = s.replace(/  /, ' ');
+    s = s.replace(/^\s+|\s+$/, '');
+    s = s.replace(/ /g, '_');
+    var mqlkey_start = 'A-Za-z0-9';
+    var mqlkey_char = 'A-Za-z0-9_-';
+    var MQLKEY_VALID = new RegExp('^[' + mqlkey_start + '][' + mqlkey_char + ']*$');
+    var MQLKEY_CHAR_MUSTQUOTE = new RegExp('([^' + mqlkey_char + '])', 'g');
+    if (MQLKEY_VALID.exec(s)) // fastpath
+      return s;
+    var convert = function(a, b) {
+      var hex = b.charCodeAt(0).toString(16).toUpperCase();
+      if (hex.length == 2) hex = '00' + hex;
+      if (hex.length == 3) hex = '0' + hex;
+      return '$' + hex;
+    };
+    var x = s.replace(MQLKEY_CHAR_MUSTQUOTE, convert);
+    if (x.charAt(0) == '-' || x.charAt(0) == '_') {
+      x = convert(x, x.charAt(0)) + x.substr(1);
+    }
+    return x;
+  }
+
+fns.parsedate=function(input) {
+  var parts = input.match(/(\d+)/g);
+  return new Date(parts[0], parts[1]-1, parts[2]);   // new Date(year, month [, date [, hours[, minutes[, seconds[, ms]]]]])
+}
+
+ fns.flatten = function(arr) {
     return arr.reduce(function(a, b) {
         return a.concat(b);
     },[]);

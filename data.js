@@ -2,7 +2,7 @@
 
 var data = (function() {
 
-  var data = this;
+  var data = {};
 
 
 
