@@ -39,9 +39,6 @@ var slow = (function() {
 					}
 					//think about ending
 					if (at_once <= 0) {
-						if (options.verbose) {
-							all = make_verbose(arr, all);
-						}
 						done(all);
 					}
 				})

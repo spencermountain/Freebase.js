@@ -52,7 +52,7 @@ fns.parsedate=function(input) {
     request({
       uri: url,
     }, function(error, response, body) {
-      if (response.statusCode == 200) {
+      if (response && response.statusCode == 200) {
         callback(JSON.parse(body))
       } else {
         console.log("===" + response.statusCode + " error==")

@@ -47,7 +47,11 @@ var freebase = (function() {
       freebase.reconcile_property(property, function(p){
         options.property=p.id;
         freebase.topic_api(topic, function(result){
-          return callback(render_results(result.property[options.property]))
+          if(!result.property || result.property.length==0){
+            callback([])
+          }else{
+            return callback(render_results(result.property[options.property]))
+          }
         },options)
       },options)
     }
@@ -116,7 +120,13 @@ function render_results(results){
       var doit=function(t, cb){
         t.get(property, cb, options)
       }
-      slow(list.data, doit, {}, callback)
+      slow(list.data, doit, {}, function(r){
+        list.data=list.data.map(function(l,i){
+          l[property]=r[i]
+          return l
+        })
+        callback(list.data)
+      })
     }
     list.set=function(){}
     list.select=function(){}
@@ -226,8 +236,8 @@ function render_results(results){
 //   console.log(JSON.stringify(o, null, 2));
 // })
 
-freebase.search_api("toronto",function(topics){
-  topics.get("type",function(names){
-    console.log(JSON.stringify(names, null, 2));
-   })
-})
+// freebase.search_api("toronto",function(topics){
+//   topics.get("type",function(names){
+//     console.log(JSON.stringify(names, null, 2));
+//    })
+// })
