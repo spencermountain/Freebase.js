@@ -9,8 +9,9 @@
 // (and dont commit this file)
 //profit!
 
+//enter your data from https://code.google.com/apis/console:
 exports.data={
- CLIENT_ID:"",
- CLIENT_SECRET:"",
- REDIRECT_URL:""
+ CLIENT_ID: "", //should end in ".apps.googleusercontent.com"
+ CLIENT_SECRET: "", //a hash
+ REDIRECT_URL: "" //can be anything (like http://www.blankwebsite.com)
 }
