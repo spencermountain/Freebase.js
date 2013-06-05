@@ -3,7 +3,18 @@ if (typeof module !== 'undefined' && module.exports) {
   var fns = require('./helpers');
   var data = require('./data');
   var wikipedia = require('./wikipedia');
-  var slow = require('./slow');
+  //var slow = require('slow');
+  var slow=require('./slow');
+  var request = require('request');
+  var googleapis = require('googleapis');
+  var OAuth2Client = googleapis.OAuth2Client;
+  var fs=require("fs")
+  var path=require('path');
+  var file=path.resolve(path.dirname(require.main.filename),"oauth_data.json")
+  var oauth_data={}
+  if(fs.existsSync(file)){
+      oauth_data=JSON.parse(fs.readFileSync(file))
+  }
 }
 
 
@@ -17,11 +28,49 @@ var freebase = (function() {
   freebase.wikipedia = wikipedia
   freebase.default_callback = function(r){console.log(JSON.stringify(r, null, 2));}
 
+
+  freebase.authenticate=function(callback){
+
+    callback=callback||console.log;
+    var now=new Date().getTime()
+    if(oauth_data && oauth_data.token && oauth_data.token.alive_until > now ){
+      var minutes=((oauth_data.token.alive_until  - now )/1000)/60
+      console.log("your token is good for another "+parseInt(minutes)+" minutes")
+      freebase.access_token=oauth_data.token.access_token
+      callback()
+      return
+    }
+    var oauth2Client = new OAuth2Client(oauth_data.CLIENT_ID, oauth_data.CLIENT_SECRET, oauth_data.REDIRECT_URL);
+    var url = oauth2Client.generateAuthUrl({
+      scope: 'https://www.googleapis.com/auth/freebase'
+    });
+    console.log("please visit this url to get your code: ")
+    console.log(url)
+    console.log(" ")
+    fns.command_line_ask("what is the 'code' parameter on the page you redirected to?", /.+/, function(code) {
+        oauth2Client.getToken(code, function(err, token) {
+          if (err) {console.log(err)}
+          var now=new Date()
+          token.alive_until=now.setSeconds(now.getSeconds() + token.expires_in);
+          freebase.access_token=token.access_token
+          oauth_data.token=token
+          var str=JSON.stringify(oauth_data, null, 4)
+          fs.writeFile(file, str, function(err) {
+              if(err) { console.log(err); }
+              callback()
+              return
+          });
+        })
+    })
+  }
   //
   //Freebase classes
   //
   freebase.Topic = function(data) {
     var topic = this;
+    if(topic instanceof freebase.Topic){
+      return topic
+    }
     var type = fns.jstype(data);
     if (type == "null") {
       return {}
@@ -138,7 +187,7 @@ freebase.Topiclist = function(data) {
   if (type == "null") {
     return {}
   }
-  list.data = data.map(function(v) {
+  list.data = list.data || data.map(function(v) {
     return new freebase.Topic(v)
   })
   list.get = function(property, callback, options) {
@@ -162,7 +211,7 @@ freebase.Topiclist = function(data) {
       method(t,cb)
     }
     done=done||freebase.default_callback
-    slow(list.data, doit, done)
+    slow.quick(list.data, doit, {debug:true}, done)
   }
 }
 
@@ -219,6 +268,8 @@ freebase.fetch = function(topic, callback, options) {
 freebase.topic_api = function(topic, callback, options) {
   this.description = "call the freebase topic api"
   options = new freebase.Option(options);
+  topic=new freebase.Topic(topic)
+  console.log(topic)
   callback = callback || freebase.default_callback;
   var filter = options.property || options.type || "all";
   var url = freebase.host + '/topic' + topic.mid + '?key=' + (options.key || '') + '&filter=' + (filter || "all")
@@ -252,7 +303,7 @@ freebase.mqlwrite = function(query, callback, options) {
   this.description = "call the freebase mql api"
   options = new freebase.Option(options);
   callback = callback || freebase.default_callback;
-  options.oauth_token = options.oauth_token || options.oauth || options.token
+  options.oauth_token = options.oauth_token || freebase.access_token || options.oauth || options.token
   var url = freebase.host + '/mqlwrite?query=' + encodeURIComponent(JSON.stringify(query)) + "&oauth_token=" + (options.oauth_token || "")
   fns.http(url, callback)
 }
@@ -285,6 +336,19 @@ freebase.reconcile_property = function(str, callback, options) {
   } else if (freebase.data.properties[str]) {
     callback(new freebase.Property(freebase.data.properties[str]))
   }
+}
+
+freebase.test_write = function(callback) {
+  var query = {
+    "id": "/en/radiohead",
+    "type": {
+      "id": "/music/artist",
+      "connect": "insert"
+    }
+  }
+  freebase.mqlwrite(query, function(r) {
+    return callback(r && r.result && r.result.type && r.result.type.connect == "insert")
+  })
 }
 
 // export for AMD / RequireJS
@@ -343,3 +407,12 @@ return freebase;
 //   t.add_type("/people/person",cb, options)
 // }, end)
 //list.each()
+
+
+// freebase.authenticate()
+
+freebase.topic_api("/en/radiohead", function(r){
+  console.log(r)
+})
+radiohead = new freebase.Topic("/en/radiohead")
+console.log(radiohead instanceof freebase.Topic)

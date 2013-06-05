@@ -5,13 +5,20 @@ var http = (function() {
 
   //client-side environment
   if (typeof window != 'undefined' && window.screen) {
-console.log('clientside')
+    console.log('clientside')
+
     http.get = function(url, callback) {
       callback = callback || defaultcallback;
-      $.get(url, function(result) {
-        callback(trytoparse(result))
-      }).fail(function(e) {
-        callback(e.statusText || "error")
+      window.jsonpcallback = callback
+      url += "&callback=window.jsonpcallback"
+      $.ajax({
+        url: url,
+        type: "GET",
+        dataType: 'jsonp',
+        async: 'false',
+        success: function(data) {
+          callback(data)
+        }
       });
     }
 
@@ -40,20 +47,25 @@ console.log('clientside')
   }
   //server-side environment
   else if (typeof module !== 'undefined' && module.exports) {
-    console.log('serverside')
-
     var request = require('request');
 
     http.get = function(url, callback) {
       callback = callback || console.log;
-      console.log("hi")
-      console.log(url)
       request({
         uri: url
       }, function(error, response, body) {
-        callback(trytoparse(body))
+        if (response && response.statusCode == 200) {
+          callback(JSON.parse(body))
+        } else {
+          console.log("===" + response.statusCode + " error==")
+          console.log(body)
+          callback({
+            error: body
+          })
+        }
       })
     }
+
 
     http.post = function(url, data, callback) {
       callback = callback || console.log;

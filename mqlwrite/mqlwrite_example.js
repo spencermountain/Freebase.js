@@ -15,6 +15,7 @@ try{
 	var request = require('request');
 	var googleapis = require('googleapis');
 	var OAuth2Client = googleapis.OAuth2Client;
+	var fns = require('../helpers');
 }catch(e){
 	console.log("to run this script, first run 'npm install googleapis request'. it's easy.")
 	console.log("exiting.")
@@ -43,13 +44,13 @@ console.log("  thats it.  you can do it")
 console.log("  ")
 console.log("  ")
 
-command_line_ask("So, on the google api console, what is your OAuth 'Client ID'? (it should end in '.googleusercontent.com')", /.+/, function(CLIENT_ID ) {
+fns.command_line_ask("So, on the google api console, what is your OAuth 'Client ID'? (it should end in '.googleusercontent.com')", /.+/, function(CLIENT_ID ) {
   console.log("  ")
   console.log("great.")
-  command_line_ask("what is the OAuth 'Client Secret' from this page? (it should be a bunch of characters)", /.+/, function(CLIENT_SECRET) {
+  fns.command_line_ask("what is the OAuth 'Client Secret' from this page? (it should be a bunch of characters)", /.+/, function(CLIENT_SECRET) {
   	console.log("  ")
 		console.log("great.")
-    command_line_ask("Now, in 'edit settings', add any Redirect URL, and paste it in here:\n  (I use \"http://www.blankwebsite.com/\" and it works fine)", /.+/, function(REDIRECT_URL) {
+    fns.command_line_ask("Now, in 'edit settings', add any Redirect URL, and paste it in here:\n  (I use \"http://www.blankwebsite.com/\" and it works fine)", /.+/, function(REDIRECT_URL) {
 			var oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 			var url = oauth2Client.generateAuthUrl({
 				scope: 'https://www.googleapis.com/auth/freebase'
@@ -61,7 +62,7 @@ command_line_ask("So, on the google api console, what is your OAuth 'Client ID'?
 			console.log("  ")
 			console.log("  ")
 
-			command_line_ask("what is the 'code' parameter on the page you redirected to?", /.+/, function(code) {
+			fns.command_line_ask("what is the 'code' parameter on the page you redirected to?", /.+/, function(code) {
 
 				oauth2Client.getToken(code, function(err, tokens) {
 					if (err) {
@@ -137,22 +138,6 @@ command_line_ask("So, on the google api console, what is your OAuth 'Client ID'?
 
 
 
-
-function command_line_ask(question, format, callback) {
-	var stdin = process.stdin,
-		stdout = process.stdout;
-	stdin.resume();
-	console.log(question + ": ");
-	stdin.once('data', function(data) {
-		data = data.toString().trim();
-		if (format.test(data)) {
-			callback(data);
-		} else {
-			stdout.write("paste in the data and press enter ;)\n");
-			ask(question, format, callback);
-		}
-	});
-}
 
 function success_unicorn(){
 	console.log("*********************************************")

@@ -1,15 +1,9 @@
 var slow = (function() {
 
 	var slow = function(arr, fn, options, done) {
-		this.doc = "keep a steady amount of things going at once"
-		this.aliases = ["flow", "waterfall", "steadfast"]
 		var i = -1;
 		var all = [];
 		var at_once = 0;
-		if (typeof options == "function") { //flexible paramaters
-			done = options;
-			options = {};
-		}
 		done = done || console.log;
 		options = options || {};
 		options.max = Math.abs(options.max) || 5;
@@ -20,7 +14,6 @@ var slow = (function() {
 		}
 
 		function iterate() {
-			(function() { //wrap scope
 				i++;
 				var spot = i;
 				at_once++;
@@ -28,21 +21,17 @@ var slow = (function() {
 					console.log("sending #" + i + " - (" + at_once + " going at once)");
 				}
 				fn(arr[i], function(result) {
-					if (options.monitor) {
-						options.monitor(result, spot);
-					}
+					console.log(result)
 					at_once -= 1;
 					all[spot] = result;
 					if (i < arr.length - 1) {
-						iterate();
-						return;
+						return iterate();
 					}
 					//think about ending
 					if (at_once <= 0) {
-						done(all);
+						return done(all);
 					}
 				})
-			})()
 		}
 		//get initial functions going
 		for (var x = 0;
