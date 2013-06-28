@@ -1,14 +1,30 @@
 if (typeof module !== 'undefined' && module.exports) {
   //var freebase = require("./freebase");
-  var request = require("request");
- }
+  //var request = require("request");
+  var http = require("./http");
+}
 
 
-var fns= (function() {
+var fns = (function() {
 
   var fns = {};
 
 
+  fns.command_line_ask = function(question, format, callback) {
+    var stdin = process.stdin,
+      stdout = process.stdout;
+    stdin.resume();
+    console.log(question + ": ");
+    stdin.once('data', function(data) {
+      data = data.toString().trim();
+      if (format.test(data)) {
+        callback(data);
+      } else {
+        stdout.write("paste in the data and press enter ;)\n");
+        ask(question, format, callback);
+      }
+    });
+  }
 
   fns.mql_encode = function(s) {
     this.doc = "quote a unicode string to turn it into a valid mql /type/key/value"
@@ -37,54 +53,48 @@ var fns= (function() {
     return x;
   }
 
-fns.parsedate=function(input) {
-  var parts = input.match(/(\d+)/g);
-  return new Date(parts[0], parts[1]-1, parts[2]);   // new Date(year, month [, date [, hours[, minutes[, seconds[, ms]]]]])
-}
+  fns.parsedate = function(input) {
+    var parts = input.match(/(\d+)/g);
+    return new Date(parts[0], parts[1] - 1, parts[2]); // new Date(year, month [, date [, hours[, minutes[, seconds[, ms]]]]])
+  }
 
- fns.flatten = function(arr) {
+  fns.flatten = function(arr) {
     return arr.reduce(function(a, b) {
-        return a.concat(b);
-    },[]);
+      return a.concat(b);
+    }, []);
   }
 
-  fns.http=function(url, callback) {
-    request({
-      uri: url,
-    }, function(error, response, body) {
-      if (response && response.statusCode == 200) {
-        callback(JSON.parse(body))
-      } else {
-        console.log("===" + response.statusCode + " error==")
-        console.log(body)
-        callback(JSON.parse(body))
-      }
-    });
+  fns.http = function(url, callback) {
+    http.get(url, callback)
   }
 
-fns.isin=function(word,arr){
-  return arr.some(function(v){return v==word})
-}
-
-  fns.compact=function(arr){
-    return arr.filter(function(v){return v})
+  fns.isin = function(word, arr) {
+    return arr.some(function(v) {
+      return v == word
+    })
   }
 
-fns.compact_strong = function(arr) {
-  return fns.unique(fns.compact(arr)).filter(function(v) {
-    return fns.isEmpty(v) == false
-  })
-}
+  fns.compact = function(arr) {
+    return arr.filter(function(v) {
+      return v
+    })
+  }
 
-fns.isEmpty = function(obj) {
+  fns.compact_strong = function(arr) {
+    return fns.unique(fns.compact(arr)).filter(function(v) {
+      return fns.isEmpty(v) == false
+    })
+  }
+
+  fns.isEmpty = function(obj) {
     if (obj == null) return true;
-    if (fns.jstype(obj)=="array" || fns.jstype(obj)=="string" ) return obj.length === 0;
-    for (var key in obj) if (obj[key]!=undefined) return false;
+    if (fns.jstype(obj) == "array" || fns.jstype(obj) == "string") return obj.length === 0;
+    for (var key in obj) if (obj[key] != undefined) return false;
     return true;
   };
 
 
-fns.unique = function(x,field) {
+  fns.unique = function(x, field) {
     if (!field) {
       var newArray = new Array();
       label: for (var i = 0; i < x.length; i++) {
@@ -106,65 +116,65 @@ fns.unique = function(x,field) {
     }
   }
 
-fns.extend = function(bad, good) {
+  fns.extend = function(bad, good) {
     for (var i in good) {
       bad[i] = good[i];
     }
     return bad;
   };
 
-fns.parseurl = function(str) {
-  var o = {
-    strictMode: false,
-    key: ["source", "protocol", "authority", "userInfo", "user", "password", "host", "port", "relative", "path", "directory", "file", "query", "anchor"],
-    q: {
-      name: "queryKey",
-      parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+  fns.parseurl = function(str) {
+    var o = {
+      strictMode: false,
+      key: ["source", "protocol", "authority", "userInfo", "user", "password", "host", "port", "relative", "path", "directory", "file", "query", "anchor"],
+      q: {
+        name: "queryKey",
+        parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+      },
+      parser: {
+        strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
+        loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+      }
     },
-    parser: {
-      strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
-      loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+      m = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
+      uri = {},
+      i = 14;
+    while (i--) uri[o.key[i]] = m[i] || "";
+    uri[o.q.name] = {};
+    uri[o.key[12]].replace(o.q.parser, function($0, $1, $2) {
+      if ($1) uri[o.q.name][$1] = $2;
+    });
+    return uri;
+  }
+
+
+  //does it look like a freebase id?
+  fns.isid = function(str) {
+    if (str.match(/^\/[^ ]*?\/[^ ]*?$/)) {
+      return true;
     }
-  },
-  m = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
-    uri = {},
-    i = 14;
-  while (i--) uri[o.key[i]] = m[i] || "";
-  uri[o.q.name] = {};
-  uri[o.key[12]].replace(o.q.parser, function($0, $1, $2) {
-    if ($1) uri[o.q.name][$1] = $2;
-  });
-  return uri;
-}
-
-
-//does it look like a freebase id?
-fns.isid=function(str) {
-  if (str.match(/^\/[^ ]*?\/[^ ]*?$/)) {
-    return true;
+    return false
   }
-  return false
-}
 
-//get the generic javascript class of a variable
+  //get the generic javascript class of a variable
 
-fns.jstype=function(obj) {
-  var classToType, myClass, name, _i, _len, _ref;
-  if (obj === void 0 || obj === null) {
-    return "null";
-  }
-  classToType = new Object;
-  _ref = "Boolean Number String Function Array Date RegExp".split(" ");
-  for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-    name = _ref[_i];
-    classToType["[object " + name + "]"] = name.toLowerCase();
-  }
-  myClass = Object.prototype.toString.call(obj);
-  if (myClass in classToType) {
-    return classToType[myClass];
-  }
-  return "object";
-};
+  fns.jstype = function(obj) {
+    var classToType, myClass, name, _i, _len, _ref;
+    if (obj === void 0 || obj === null) {
+      return "null";
+    }
+    classToType = new Object;
+    _ref = "Boolean Number String Function Array Date RegExp".split(" ");
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      name = _ref[_i];
+      classToType["[object " + name + "]"] = name.toLowerCase();
+    }
+    myClass = Object.prototype.toString.call(obj);
+    if (myClass in classToType) {
+      return classToType[myClass];
+    }
+    return "object";
+  };
 
   // export for AMD / RequireJS
   if (typeof define !== 'undefined' && define.amd) {
