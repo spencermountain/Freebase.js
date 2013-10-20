@@ -39,7 +39,7 @@ var freebase = (function() {
     } //flexible parameter
     options = options || {};
     options.uniqueness_failure = options.uniqueness_failure || "soft";
-    options.cursor = options.cursor || true;
+    options.cursor = options.cursor || "";
     var url=globals.host+'mqlread?query='+JSON.stringify(query)
     fns.http(url, options, function(result) {
       return callback(result)
