@@ -16,7 +16,7 @@ var freebase = (function() {
 	var globals = {
 		host: 'https://www.googleapis.com/freebase/v1/',
 		image_host: "https://usercontent.googleapis.com/freebase/v1/image",
-		geosearch: 'http://api.freebase.com/api/service/geosearch',
+		geosearch: 'https://www.googleapis.com/freebase/v1/search',
 		wikipedia_host: 'http://en.wikipedia.org/w/api.php',
 		generic_query: {
 			id: null,
@@ -614,7 +614,7 @@ var freebase = (function() {
 
 
 	freebase.place_data = function(geo, options, callback) {
-		this.doc = "from a geo-coordinate, get the town, province, country, and timezone for it"
+		this.doc = "from a geo-coordinate, get the town, id, province, country, and timezone for it"
 		callback = callback || console.log;
 		if (!geo) {
 			return callback({})
@@ -625,27 +625,28 @@ var freebase = (function() {
 			var ps = fns.settle_params(arguments, freebase.place_data, {});
 			return fns.doit_async(ps)
 		}
-		var location = {
-			"coordinates": [geo.lng, geo.lat],
-			"type": "Point"
-		}
-		var out = [{
-			"mid": null,
-			"name": null,
-			"type": []
-		}]
-		var url = globals.geosearch + '?location=' + encodeURIComponent(JSON.stringify(location)) + '&order_by=distance&limit=1&type=/location/citytown&within=15&format=json&mql_output=' + encodeURIComponent(JSON.stringify(out))
+		var filter = '(all type:/location/location (within radius:30000ft lon:' + geo.lng +  ' lat:' + geo.lat + '))';
+		var url = globals.geosearch + '?filter=' + filter + '&limit=1';
+		console.log(url);
 		fns.http(url, options, function(r) {
+
 			var all = {
-				city: null,
+				id: r.result[0].id,
+				city: r.result[0].name,
 				country: null,
 				province: null,
 				timezone: null
 			}
-			all.city = r.result.features[0].properties;
+
 			var query = [{
 				"name": null,
-				"id": r.result.features[0].properties.mid,
+				"id": r.result[0].id,
+				"/location/location/time_zones": [{
+					"/time/time_zone/offset_from_uct": null,
+					"id": null,
+					"name": null,
+					"optional": true
+				}],
 				"/location/location/containedby": [{
 					"id": null,
 					"name": null,
@@ -673,6 +674,9 @@ var freebase = (function() {
 			}]
 			freebase.mqlread(query, {}, function(r) {
 				//hunt for the most appropriate topics in 2 layers
+				if (r.result[0]["/location/location/time_zones"][0] && r.result[0]["/location/location/time_zones"].length == 1) {
+					all.timezone = r.result[0]["/location/location/time_zones"][0];
+				}
 				for (var i in r.result[0]['/location/location/containedby']) {
 					var v = r.result[0]['/location/location/containedby'][i]
 					if (v.type.filter(function(t) {
@@ -1394,7 +1398,7 @@ var freebase = (function() {
 				var key = fns.mql_unencode(result.result[0].key.value)
 				var obj = {
 					html: 'http://dbpedia.org/page/' + key,
-					json: 'http://dbpedia.org/data/' + key + '.json',
+					json: 'http://dbpedia.org/data/' + key + '.json'
 				}
 				return ps.callback(obj)
 			})

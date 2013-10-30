@@ -1,0 +1,35 @@
+
+<html>
+<head>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
+<script src="https://raw.github.com/spencermountain/slow/master/slow.min.js"></script>
+<script>
+var options={
+  max:3,
+  monitor:function(r){
+    $("#monitor").append('<div>'+r+'</div>')
+  },
+  debug:true
+}
+  slow.walk( [1,2,3,4,5,6,7,8,9], random_wait, options, function(r){
+     $("#result").html(r.join('<br/>'))
+  })
+  function random_wait(q, callback){
+    var x=Math.floor(Math.random()*4000)
+    setTimeout(function(){callback("finished "+q+" in "+x+"ms")}, x)
+  }
+</script>
+</head>
+<body>
+  <h2 style="color:grey;"> slowing async requests to 3 at a time</h2>
+
+slow.walk( [1,2,3,4,5,6,7,8,9], random_wait, options, callback)
+
+<h4>realtime monitor:</h4>
+<ul id="monitor" style="color:steelblue; font-size:15px;"></ul>
+
+<h4>callback:</h4>
+    <ul id="result"><img src="http://acre.freebase.com/api/trans/raw/guid/9202a8c04000641f800000000abf4b47"></ul>
+
+</body>
+</html>
