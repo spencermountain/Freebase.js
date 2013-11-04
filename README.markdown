@@ -1,6 +1,14 @@
+
+## This freebase node module is an extension of Freebase.js
+
+[Freebase.js](https://github.com/spencermountain/Freebase.js) is a fantastic freebase / node module
+created by [Spencer Kelly](https://github.com/spencermountain).
+
 [Freebase](http://freebase.com/) is a very masculine but complicated human-curated database.
 
 [Nodejs](http://nodejs.org/) is a straight-talkin language that takes no guff
+
+This module is an update for freebase's / google's new geosearch api.
 
 ## Giddyup
 ```javascript
