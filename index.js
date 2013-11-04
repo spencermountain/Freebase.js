@@ -15,7 +15,7 @@ var freebase = (function() {
 
   var globals = {
     host: 'https://www.googleapis.com/freebase/v1/',
-    image_host: "https://usercontent.googleapis.com/freebase/v1/image",
+    image_host: "https://www.googleapis.com/freebase/v1/image",
     geosearch: 'http://api.freebase.com/api/service/geosearch',
     wikipedia_host: 'http://en.wikipedia.org/w/api.php',
     generic_query: {
@@ -40,12 +40,12 @@ var freebase = (function() {
     options = options || {};
     options.uniqueness_failure = options.uniqueness_failure || "soft";
     options.cursor = options.cursor || "";
-    var url=globals.host+'mqlread?query='+JSON.stringify(query)
+    var url=globals.host+'mqlread?query='+JSON.stringify(query)+"&cursor="+options.cursor
     fns.http(url, options, function(result) {
       return callback(result)
     })
   }
-  //freebase.mqlread([{id:"/en/radiohead",name:null}])
+  // freebase.mqlread([{id:"/en/radiohead",name:null}])
 
   freebase.lookup_id = function(q, options, callback) {
     this.doc = "generic info for an id";
@@ -65,7 +65,7 @@ var freebase = (function() {
       return ps.callback(r[0] || {})
     })
   }
-   //freebase.lookup_id('/en/radiohead')
+   // freebase.lookup_id('/en/radiohead')
   // freebase.lookup_id('/m/07jnt')
 
   freebase.search = function(q, options, callback) {
@@ -111,9 +111,9 @@ var freebase = (function() {
       return ps.callback(result.result)
     })
   }
-  //freebase.search("bill murray")
+  // freebase.search("bill murray")
   // freebase.search("/m/01sh40")
-  //freebase.search("/en/radiohead")
+  // freebase.search("/en/radiohead")
 
   //*************
   //slightly different lookup when its a url
@@ -286,7 +286,7 @@ var freebase = (function() {
     var all = [];
     //recursive mqlread until cursor is false, or maximum reached
     var iterate = function(cursor) {
-      options.cursor = cursor
+      options.cursor = cursor || ""
       freebase.mqlread(query, options, function(result) {
         if (!result || !result.result) {
           return callback(all);
@@ -301,7 +301,7 @@ var freebase = (function() {
     }
     iterate('')
   }
-  // freebase.paginate([{"type":"/astronomy/moon","name":null, limit:1}],{max:10})
+  // freebase.paginate([{"type":"/astronomy/moon","name":null, limit:2}],{max:13})
 
   freebase.description = function(q, options, callback) {
     this.doc = "get a text blurb from freebase";
@@ -326,7 +326,7 @@ var freebase = (function() {
       })
     });
   }
-
+  // freebase.description("tunisia")
 
   freebase.image = function(q, options, callback) {
     this.doc = "get a url for image href of on this topic"
@@ -358,13 +358,16 @@ var freebase = (function() {
           return ps.callback('');
         }
         var url = globals.image_host + result.result[0]["/common/topic/image"][0].id;
+        delete ps.options.strict
+        delete ps.options.cursor
+        delete ps.options.uniqueness_failure
         var params = fns.set_params(ps.options);
         url += '?' + params;
         return ps.callback(url)
       })
     })
   }
-  //freebase.image('radiohead',{type:"/music/artist"})
+  // freebase.image('toronto',{type:"/location/citytown"})
 
   freebase.grammar = function(q, options, callback) {
     this.doc = "get the proper pronoun to use for a topic eg. he/she/they/it"
@@ -435,7 +438,7 @@ var freebase = (function() {
       })
     })
   }
-  //freebase.grammar("toronto maple leafs")
+  // freebase.grammar("toronto maple leafs")
 
   freebase.same_as_links = function(q, options, callback) {
     this.doc = "turns a url into a freebase topic and list its same:as links"
@@ -485,7 +488,7 @@ var freebase = (function() {
       })
     })
   }
-
+  // freebase.same_as_links("toronto maple leafs")
 
   freebase.translate = function(q, options, callback) {
     this.doc = "return specific language title for a topic"
@@ -523,7 +526,7 @@ var freebase = (function() {
       })
     })
   }
-
+  // freebase.translate("toronto maple leafs", {lang:"/lang/ja"})
 
   freebase.notable = function(q, options, callback) {
     this.doc = "get a topic's notable type"
@@ -534,7 +537,6 @@ var freebase = (function() {
     if (!ps.valid) {
       return ps.callback({});
     }
-
     freebase.topic(ps.q, {
       filter: "/common/topic/notable_types"
     }, function(result) {
@@ -548,6 +550,7 @@ var freebase = (function() {
       return ps.callback(notable.values[0])
     });
   }
+  // freebase.notable("toronto maple leafs")
 
   freebase.sentence = function(q, options, callback) {
     this.doc = "get the first sentence of a topic description"
@@ -559,7 +562,6 @@ var freebase = (function() {
     if (!ps.valid) {
       return ps.callback({});
     }
-
     freebase.description(ps.q, ps.options, function(desc) {
       if (!desc) {
         return ps.callback("")
@@ -571,7 +573,8 @@ var freebase = (function() {
       return ps.callback(desc)
     })
   }
-  //freebase.sentence(['radiohead','john malkovich'],{},console.log)
+  // freebase.sentence('john malkovich',{},console.log)
+  // freebase.sentence(['radiohead','john malkovich'],{},console.log)
 
   freebase.list = function(q, options, callback) {
     this.doc = "get a list of topics in a type"
@@ -610,7 +613,8 @@ var freebase = (function() {
       freebase.paginate(query, ps.options, ps.callback)
     })
   }
-  //freebase.list("hurricanes",{}, function(r){console.log(r)})
+  // freebase.list("hurricanes",{}, function(r){console.log(r)})
+  // freebase.list("moons",{}, function(r){console.log(r)})
 
 
   freebase.place_data = function(geo, options, callback) {
@@ -723,7 +727,7 @@ var freebase = (function() {
 
     })
   }
-  //  freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+  // *************** freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 
   freebase.incoming = function(q, options, callback) {
@@ -759,6 +763,7 @@ var freebase = (function() {
       })
     })
   }
+  // freebase.incoming("toronto")
 
   freebase.outgoing = function(q, options, callback) {
     this.doc = "return all outgoing links for a topic, traversing cvt types"
@@ -833,7 +838,7 @@ var freebase = (function() {
       })
     })
   }
-  //freebase.outgoing("vancouver")
+  // freebase.outgoing("vancouver")
 
   freebase.graph = function(q, options, callback) {
     this.doc = "return all outgoing and incoming links for a topic"
@@ -905,7 +910,7 @@ var freebase = (function() {
   }
   //freebase.graph("toronto")
   // freebase.graph("/m/07jnt")
-  //freebase.graph("shawshank redemption")
+  // freebase.graph("shawshank redemption")
 
   freebase.related = function(q, options, callback) {
     this.doc = "get similar topics to a topic"
@@ -962,9 +967,7 @@ var freebase = (function() {
       })
     })
   }
-  /*freebase.related("toronto", {}, function(r){
-  console.log(JSON.stringify(r, null, 2));
-})*/
+  // freebase.related("toronto", {}, function(r){console.log(JSON.stringify(r, null, 2));})
 
   freebase.is_a = function(q, options, callback) {
     this.doc = "get a list of identifiers for a topic"
@@ -1001,7 +1004,8 @@ var freebase = (function() {
       return ps.callback(r)
     })
   }
-  //freebase.is_a("toronto")
+  // freebase.is_a("toronto")
+  // freebase.is_a("george clooney")
 
   freebase.property_lookup = function(q, options, callback) {
     this.doc = "lookup soft property matches, like 'birthday' vs 'date of birth'"
@@ -1028,7 +1032,7 @@ var freebase = (function() {
       return ps.callback(candidate_properties)
     })
   }
-  //freebase.property_lookup("albums")
+  // freebase.property_lookup("albums")
 
 
   freebase.question = function(q, options, callback) {
@@ -1044,7 +1048,6 @@ var freebase = (function() {
     }
     var property = ps.options.property
     var type = ps.options.property.match(/\/.*?\/.*?\//)
-
     //straight-up id search
     if (property.match(/^\/.{1,12}\/.{3}/)) {
       return freebase.topic(q, {}, function(r) {
@@ -1083,10 +1086,10 @@ var freebase = (function() {
       })
     }
   }
-  //freebase.question("keanu reeves", {property:"children"})
+  // freebase.question("keanu reeves", {property:"children"})
   //freebase.question("thom yorke", "produced") //******
-  //freebase.question("pulp fiction", {property:"/film/film/initial_release_date"})
-  //freebase.question("keanu reeves","films") //******
+  // freebase.question("pulp fiction", {property:"/film/film/initial_release_date"})
+  // freebase.question("keanu reeves", {property:"films"}) //******
 
 
   freebase.dig = function(q, options, callback) {
@@ -1165,7 +1168,7 @@ var freebase = (function() {
       return ps.callback(result)
     })
   }
-  // freebase.gallery('hurricanes') //******
+  freebase.gallery('hurricanes') //******
 
 
   freebase.wordnet = function(q, options, callback) {
@@ -2030,7 +2033,7 @@ var freebase = (function() {
     }
     callback(str)
   }
-  //freebase.documentation()
+  // freebase.documentation()
 
   var aliases = {
     mqlread: ["query", "mql_read"],

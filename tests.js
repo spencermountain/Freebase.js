@@ -1,10 +1,16 @@
 var freebase=require('./index');
 var async=require('async');
-var slow=require('slow');
 var fns=require('./helpers/helpers')
 var _=require('underscore');
 var options={key:"AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI"};//please don't abuse my key
 var test={}
+
+
+
+
+// freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+// freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+
 //failing
 
 // freebase.inside('toronto',options, function(r){
@@ -13,6 +19,13 @@ var test={}
  // freebase.transitive("barrie", "part_of", options, function(r){
  // 	console.log(r.length>3)
  // })
+
+
+  freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){
+    console.log(r)
+  })
+
+
 
 test.search=[
   ["franklin", {}, function(r){console.log(r.length>2)}]
@@ -175,13 +188,13 @@ function done(r){
 
 //apply same thing to all functions
 function broadly(x, obj){
-  slow.walk(Object.keys(test), doit, done)
-  function doit(t){
-    console.log('------'+t+'------')
-    obj[t](x, function(r){
-      console.log(r)
-    })
-  }
+  // slow.walk(Object.keys(test), doit, done)
+  // function doit(t){
+  //   console.log('------'+t+'------')
+  //   obj[t](x, function(r){
+  //     console.log(r)
+  //   })
+  // }
 }
 
 function coverage(fn, tests){
@@ -196,7 +209,7 @@ function coverage(fn, tests){
 //console.log(coverage(freebase, test))
 // broadly(null,freebase)
 
-Object.keys(test).patient(testone, done)
+// Object.keys(test).patient(testone, done)
 
 
   //freebase.search("franklin",options,console.log)

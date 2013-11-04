@@ -73,7 +73,6 @@ fns.settle_params = function(params, method, defaults) {
   if (o.options.verbose) {
     var tmp = o.callback
     o.callback = function(r) {
-      console.log('hi')
       return tmp(r)
     }
   }
