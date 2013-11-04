@@ -99,6 +99,8 @@ var freebase = (function() {
       return freebase.lookup_id(ps.q, ps.options, ps.callback)
     }
     ps.options.query = encodeURIComponent(ps.q);
+    delete ps.options.property
+    delete ps.options.strict
     var params = fns.set_params(ps.options)
     var url = globals.host + 'search/?' + params;
     if (ps.options.type == "/type/type" || ps.options.type == "/type/property") {
@@ -1123,14 +1125,15 @@ var freebase = (function() {
           all = all.concat(_.flatten(big, 'shallow'))
           all = fns.json_unique(all, "id")
          //todo: fix
-          fns.doit_async(r, freebase.question, ps.options, function(big) {
+         obj= {q:r, options:ps.options, method:freebase.question, callback:function(big) {
             if (!big || !fns.isarray(big) || big.length === 0) {
               return ps.callback(all)
             }
             all = all.concat(_.flatten(big, 'shallow'))
             all = fns.json_unique(all, "id")
-            return ps.callback(all)
-          })
+            return callback(all)
+          }}
+          fns.doit_async(obj)
         }
       })
     })
@@ -1168,7 +1171,7 @@ var freebase = (function() {
       return ps.callback(result)
     })
   }
-  freebase.gallery('hurricanes') //******
+  // freebase.gallery('hurricanes') //******
 
 
   freebase.wordnet = function(q, options, callback) {
@@ -1216,7 +1219,7 @@ var freebase = (function() {
       return ps.callback(r.result)
     })
   }
-
+  // freebase.wordnet("charming")
 
   freebase.transitive = function transitive(q, options, callback) {
     this.doc = "do a transitive-query, like all rivers in canada, using freebase metaschema"
@@ -1233,7 +1236,7 @@ var freebase = (function() {
       }
       var candidate_metaschema = fns.metaschema_lookup(ps.options.property);
       if (candidate_metaschema) {
-        options.filter = '(all ' + candidate_metaschema + ':"' + topic.id + '")'
+        ps.options.filter = '(all ' + candidate_metaschema + ':"' + topic.mid + '")'
         freebase.search('', ps.options, function(result) {
           return ps.callback(result)
         })
@@ -1243,6 +1246,11 @@ var freebase = (function() {
     })
   }
   //*******
+ // freebase.transitive("ontario", {property:"part_of"}, function(r){
+ //  console.log(r)
+ // })
+
+
 
   freebase.geolocation = function(q, options, callback) {
     this.doc = "lat/long for a topic"
@@ -1335,7 +1343,7 @@ var freebase = (function() {
       return ps.callback(r)
     })
   }
-  //freebase.inside("montreal")//***********
+  // freebase.inside("montreal")//***********
 
 
   freebase.wikipedia_page = function(q, options, callback) {
@@ -1367,7 +1375,7 @@ var freebase = (function() {
       })
     })
   }
-  //freebase.wikipedia_page('toronto')
+  // freebase.wikipedia_page('toronto')
 
   freebase.dbpedia_page = function(q, options, callback) {
     this.doc = "get a url for dbpedia based on this topic"
@@ -1403,7 +1411,7 @@ var freebase = (function() {
       })
     })
   }
-  //freebase.dbpedia_page('toronto')
+  // freebase.dbpedia_page('toronto')
 
   freebase.wikipedia_categories = function(q, options, callback) {
     this.doc = "get the wikipedia categories for a topic"
@@ -1415,11 +1423,11 @@ var freebase = (function() {
       return ps.callback({});
     }
     //if its not a wikipedia title, reuse get-topic logic for searches/ids
-    if (ps.q.match(/ /) || ps.q.substr(0, 1) == ps.q.substr(0, 1).toLowerCase() || ps.q.match(/^\//)) {
-      return freebase.wikipedia_page(ps.q, options, function(r) {
-        freebase.wikipedia_categories(r, options, ps.callback)
-      })
-    }
+    // if (ps.q.match(/ /) || ps.q.substr(0, 1) == ps.q.substr(0, 1).toLowerCase() || ps.q.match(/^\//)) {
+    //   return freebase.wikipedia_page(ps.q, options, function(r) {
+    //     freebase.wikipedia_categories(r, options, ps.callback)
+    //   })
+    // }
     var url = globals.wikipedia_host + '?action=query&prop=categories&format=json&clshow=!hidden&cllimit=200&titles=' + encodeURIComponent(ps.q);
     fns.http(url, ps.options, function(r) {
       if (!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]) {
@@ -1432,12 +1440,13 @@ var freebase = (function() {
       return ps.callback(cats)
     })
   }
-  //freebase.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
-  //freebase.wikipedia_categories("Thom Yorke", {}, console.log)//****
+  // freebase.wikipedia_categories(["Thom Yorke","Toronto"], {}, console.log)
+  // freebase.wikipedia_categories("Thom Yorke", {}, console.log)//****
 
   freebase.wikipedia_links = function(q, options, callback) {
     this.doc = "outgoing links from this wikipedia page, converted to freebase ids"
     callback = callback || console.log;
+    var ps = fns.settle_params(arguments, freebase.wikipedia_links, {});
     if (!q) {
       return callback({})
     }
@@ -1477,11 +1486,12 @@ var freebase = (function() {
       return callback(links)
     })
   }
-  //freebase.wikipedia_links("Toronto", {}, console.log)
+  // freebase.wikipedia_links("Toronto", {}, console.log)
 
   freebase.wikipedia_external_links = function(q, options, callback) {
     this.doc = "outgoing links from this wikipedia page, converted to freebase ids"
     callback = callback || console.log;
+    var ps = fns.settle_params(arguments, freebase.wikipedia_external_links, {});
     if (!q) {
       return callback({})
     }
@@ -1501,7 +1511,8 @@ var freebase = (function() {
         freebase.wikipedia_external_links(r, options, callback)
       })
     }
-    var url = globals.wikipedia_host + '?action=query&prop=extlinks&format=json&plnamespace=0&pllimit=500&titles=' + encodeURIComponent(q);
+    var url = globals.wikipedia_host + '?action=query&prop=extlinks&format=json&ellimit=500&titles=' + encodeURIComponent(q);
+    console.log(url)
     fns.http(url, ps.options, function(r) {
       if (!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]) {
         return callback([])
@@ -1520,7 +1531,7 @@ var freebase = (function() {
       return callback(links)
     })
   }
-  //freebase.wikipedia_external_links("/en/toronto", {}, console.log)
+  // freebase.wikipedia_external_links("Toronto", {}, console.log)
 
 
 
@@ -1601,7 +1612,7 @@ var freebase = (function() {
     //   alias:[]
     //   }]
   }
-  //freebase.property_introspection("/government/politician/party")
+  // freebase.property_introspection("/government/politician/party")
 
 
   freebase.schema = function(q, options, callback) {
@@ -1716,8 +1727,7 @@ var freebase = (function() {
       }
     })
   }
-  //freebase.schema("politician")
-  //freebase.schema("/type/property/master_property")
+  // freebase.schema("politician")
 
 
   //
@@ -1801,7 +1811,7 @@ var freebase = (function() {
       })
     })
   }
-  // freebase.drilldown("/chemistry/chemical_compound",{max:10000},console.log)
+  // freebase.drilldown("/chemistry/chemical_compound",{max:400},console.log)
 
 
   freebase.mql_encode = function(s) {
@@ -1926,7 +1936,7 @@ var freebase = (function() {
       }
     })
   }
-  //freebase.wikipedia_subcategories("Category:Enzymes",{depth:20},function(r){console.log(JSON.stringify(r))})
+  // freebase.wikipedia_subcategories("Category:Enzymes",{depth:2},function(r){console.log(JSON.stringify(r))})
   //freebase.wikipedia_subcategories(["Category:Toronto","Category:Vancouver"])
 
 
@@ -1947,12 +1957,13 @@ var freebase = (function() {
       }
       ps.options.filter = ps.options.filter || 'all'
       var url = globals.host + "rdf" + id;
-      fns.http(url, ps.options, function(result) {
-        return ps.callback(result.body || '')
+      console.log(url)
+      fns.softget(url, ps.options, function(result) {
+        return ps.callback(result || '')
       })
     })
   }
-  //freebase.rdf("toronto")
+  // freebase.rdf("toronto")
 
   freebase.wikipedia_to_freebase = function(q, options, callback) {
     this.doc = "turn a wikipedia title or url into a freebase topic"

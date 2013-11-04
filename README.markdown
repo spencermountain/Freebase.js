@@ -261,28 +261,35 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
     freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 ```
 ##Method-list
+Freebase.com nodejs-library
+https://github.com/spencermountain/Freebase-nodejs--
+
 * **mqlread**
      -interface to freebase's mql api
+* **lookup_id**
+     -generic info for an id
+* **search**
+     -regular search api
+* **url_lookup**
+     -freebase search tuned for looking up a url
 * **lookup**
      -freebase search with filters to ensure only a confident, unambiguous result
 * **get_id**
      -like freebase.lookup but satisfied with an id
 * **topic**
      -topic api
-* **search**
-     -regular search api
 * **paginate**
      -get all of the results to your query
+* **description**
+     -get a text blurb from freebase
+* **image**
+     -get a url for image href of on this topic
 * **grammar**
      -get the proper pronoun to use for a topic eg. he/she/they/it
 * **same_as_links**
      -turns a url into a freebase topic and list its same:as links
 * **translate**
      -return specific language title for a topic
-* **image**
-     -get a url for image href of on this topic
-* **description**
-     -get a text blurb from freebase
 * **notable**
      -get a topic's notable type
 * **sentence**
@@ -301,6 +308,8 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
      -get similar topics to a topic
 * **is_a**
      -get a list of identifiers for a topic
+* **property_lookup**
+     -lookup soft property matches, like 'birthday' vs 'date of birth'
 * **question**
      -give a topic and a property, and get a list of results
 * **dig**
@@ -319,20 +328,30 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
      -list of topics inside a location
 * **wikipedia_page**
      -get a url for wikipedia based on this topic
+* **dbpedia_page**
+     -get a url for dbpedia based on this topic
 * **wikipedia_categories**
      -get the wikipedia categories for a topic
 * **wikipedia_links**
      -outgoing links from this wikipedia page, converted to freebase ids
 * **wikipedia_external_links**
      -outgoing links from this wikipedia page, converted to freebase ids
-* **schema_introspection**
-     -common lookups for types and properties
 * **property_introspection**
      -common lookups for freebase property data
-* **property_lookup**
-     -lookup soft property matches, like 'birthday' vs 'date of birth'
+* **schema**
+     -common lookups for types and properties
+* **drilldown**
+     -get insight into the breakdown of the topics in this type, by type and quality
 * **mql_encode**
      -quote a unicode string to turn it into a valid mql /type/key/value
+* **category_list**
+     -get the freebase topics in a wikipedia category
+* **wikipedia_subcategories**
+     -find the subcategories of this wikipedia category
+* **rdf**
+     -RDF api
+* **wikipedia_to_freebase**
+     -turn a wikipedia title or url into a freebase topic
 * **add_widget**
      -add a generic html view of a topic
 

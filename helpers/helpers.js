@@ -786,6 +786,12 @@ fns.clone = function(q) {
   return JSON.parse(JSON.stringify(q))
 }
 
+fns.softget=function(url, options, callback) {
+  http.get(url, function(r){
+    callback(r)
+  })
+}
+
 fns.http = function(url, options, callback) {
   if (options.key) {
     url += '&key=' + options.key;

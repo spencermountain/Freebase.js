@@ -21,9 +21,9 @@ var test={}
  // })
 
 
-  freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){
-    console.log(r)
-  })
+  // freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){
+  //   console.log(r)
+  // })
 
 
 
