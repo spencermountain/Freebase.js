@@ -1,11 +1,11 @@
 {
-  "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
+  "author": "Julia Jacobs <jjacobs2000@me.com> (http://html5devgal.com)",
   "name": "freebase",
-  "description": "a very masculine way to work with data from freebase.com",
-  "version": "2.1.12",
+  "description": "An extension of the Freebase.js node module https://github.com/spencermountain/Freebase.js /n which includes freebases geosearch api",
+  "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "git://github.com/spencermountain/Freebase.js.git"
+    "url": "git@github.com:jewelsjacobs/freebase_geo_node.git"
   },
   "main": "index.js",
   "engines": [
@@ -24,7 +24,8 @@
     "grunt-contrib-jshint": "~0.1.1",
     "grunt-contrib-nodeunit": "~0.1.2",
     "grunt-contrib-concat": "~0.1.3",
-    "slow":"0.0.10"
+    "slow": "0.0.10",
+    "grunt-contrib-uglify": "~0.2.5"
   },
   "preferGlobal": true,
   "scripts": {
