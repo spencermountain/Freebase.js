@@ -88,7 +88,7 @@ fns.settle_params = function(params, method, defaults) {
     }
   }
   //if its a freebase-type object
-  if (_.isObject(o.q)) {
+  if (typeof o.q =="object") {
     o.q = o.q.id || o.q.mid || o.q.name;
   }
   //make sure we're sane

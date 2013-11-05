@@ -39,9 +39,9 @@ $ freebase sentence "thom yorke"
 ## In the friggin broswer
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
-  <script src="https://raw.github.com/caolan/async/master/lib/async.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
-  <script src="https://raw.github.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
+  <script src="https://dl.dropboxusercontent.com/s/0fvdus9v0hhnsfd/freebase.min.js"></script>
   <script>
   $(document).ready(function(){
     function show(r){
@@ -49,7 +49,7 @@ $ freebase sentence "thom yorke"
     }
     $.freebase.sentence("tony hawk",{},show)
   })
-</script>
+  </script>
 ```
 
 ## MQLwrite

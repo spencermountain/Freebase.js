@@ -1,0 +1,12 @@
+<script type="text/javascript" src="./libs/underscore.js"></script>
+<script type="text/javascript" src="./libs/async.js"></script>
+<script type="text/javascript" src="./libs/jquery.js"></script>
+<script type="text/javascript" src="./freebase.js"></script>
+<script>
+$(document).ready(function(){
+  function show(r){
+    $('body').append(r)
+  }
+  $.freebase.sentence("tony hawk",{},show)
+})
+</script>
