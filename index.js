@@ -209,7 +209,7 @@ var freebase = (function() {
   // freebase.lookup(["/en/radiohead", "http://myspace.com/u2"])
   // freebase.lookup("/m/01sh40")
   //freebase.search("/en/radiohead")
-  //freebase.lookup("pulp fiction")
+  // freebase.lookup("pulp fiction")
 
 
 
@@ -640,7 +640,9 @@ var freebase = (function() {
       "name": null,
       "type": []
     }]
-    var url = globals.geosearch + '?location=' + encodeURIComponent(JSON.stringify(location)) + '&order_by=distance&limit=1&type=/location/citytown&within=15&format=json&mql_output=' + encodeURIComponent(JSON.stringify(out))
+    //999000ft  == 30k
+    var filter='(all type:/location/citytown (within radius:999000ft lon:'+ geo.lng +' lat:'+ geo.lat +'))'
+    var url = globals.host+'search?filter='+ filter +'&limit=200'
     fns.http(url, options, function(r) {
       var all = {
         city: null,
@@ -648,10 +650,10 @@ var freebase = (function() {
         province: null,
         timezone: null
       }
-      all.city = r.result.features[0].properties;
+      all.city = r.result[0];
       var query = [{
         "name": null,
-        "id": r.result.features[0].properties.mid,
+        "id": r.result[0].mid,
         "/location/location/containedby": [{
           "id": null,
           "name": null,
@@ -729,7 +731,7 @@ var freebase = (function() {
 
     })
   }
-  // *************** freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+  // freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 
 
   freebase.incoming = function(q, options, callback) {
@@ -1288,7 +1290,7 @@ var freebase = (function() {
       })
     })
   }
-  //freebase.geolocation("cn tower")
+  // freebase.geolocation("cn tower")
 
   freebase.nearby = function(q, options, callback) {
     this.doc = "list of topics nearby a location"
@@ -1303,17 +1305,17 @@ var freebase = (function() {
       if (!geo || !geo.latitude || !geo.longitude) {
         return ps.callback([])
       }
-      //use the *old* freebase api for this, as there's no alternative in the new one
-      var location = '{"coordinates":[' + geo.longitude + ',' + geo.latitude + '],"type":"Point"}'
-      ps.options.within = ps.options.within || 5;
+      ps.options.within = ps.options.within || 500;
       ps.options.type = ps.options.type || "/location/location";
-      var url = globals.geosearch + '?location=' + encodeURIComponent(location) + '&order_by=distance&type=' + ps.options.type + '&within=' + ps.options.within + '&limit=200&format=json'
+
+      var filter='(all type:'+ps.options.type+' (within radius:'+ps.options.within+'ft lon:'+ geo.longitude +' lat:'+ geo.latitude +'))'
+      var url = globals.host+'search?filter='+ encodeURIComponent(filter) +'&limit=200'
       fns.http(url, ps.options, function(r) {
-        return ps.callback(r.result.features)
+        return ps.callback(r.result)
       })
     })
   }
-  //freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+  // freebase.nearby("cn tower", {type:"/location/location"}, console.log)
 
 
   freebase.inside = function(q, options, callback) {
@@ -1512,7 +1514,6 @@ var freebase = (function() {
       })
     }
     var url = globals.wikipedia_host + '?action=query&prop=extlinks&format=json&ellimit=500&titles=' + encodeURIComponent(q);
-    console.log(url)
     fns.http(url, ps.options, function(r) {
       if (!r || !r.query || !r.query.pages || !r.query.pages[Object.keys(r.query.pages)[0]]) {
         return callback([])
@@ -1606,11 +1607,6 @@ var freebase = (function() {
         return callback(obj)
       })
     })
-    //   //get its property aliases
-    // var query=[{type:"/base/natlang/property_alias",
-    //   property:property,
-    //   alias:[]
-    //   }]
   }
   // freebase.property_introspection("/government/politician/party")
 
@@ -1957,7 +1953,6 @@ var freebase = (function() {
       }
       ps.options.filter = ps.options.filter || 'all'
       var url = globals.host + "rdf" + id;
-      console.log(url)
       fns.softget(url, ps.options, function(result) {
         return ps.callback(result || '')
       })
