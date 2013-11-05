@@ -22,7 +22,8 @@
   "devDependencies": {
     "grunt": "*",
     "grunt-contrib-jshint": "*",
-    "grunt-contrib-concat": "*"
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-uglify":"*"
   },
   "preferGlobal": true,
   "scripts": {
