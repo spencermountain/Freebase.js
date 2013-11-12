@@ -1648,6 +1648,7 @@ var freebase = (function() {
           "properties": [{
             "id": null,
             "name": null,
+            "optional": true,
             "/type/property/reverse_property": [{
               "id": null,
               "name": null,
@@ -1687,6 +1688,7 @@ var freebase = (function() {
           var obj = {}
           obj.domain = r.domain
           obj.id = r.id
+          obj.name = r.name
           obj.included_types = r["/freebase/type_hints/included_types"]
           obj.incoming_properties = r["/type/type/expected_by"]
           obj.is_compound_value = r["/freebase/type_hints/mediator"] || false
