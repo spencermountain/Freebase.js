@@ -25,15 +25,15 @@ it's built to be as flexible as possible. all methods can handle the same things
 ```
 this properly handles many asynchronous requests, rate-limiting them to 10-at-a-time.
 ```javascript
-    freebase.images(["johny greenwood", "thom yorke", "marvin gaye"], {max:10}, console.log)
+    freebase.images(["johny greenwood", "marvin gaye", "Yusuf Islam"], {max:10}, console.log)
 ```
 this is pretty clever i'd say:
 ```javascript
     freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
 ```
-and when you're hacking in the console:
+and when you're hacking in the shell, you can use it like this:
 ```shell
-$ freebase sentence "thom yorke"
+$ freebase sentence "batman"
 ```
 
 ## In the friggin broswer
@@ -52,16 +52,22 @@ $ freebase sentence "thom yorke"
   </script>
 ```
 
-## MQLwrite
+## Writing to Freebase:
+####Oauth is hard, but you can do it.
+register a 'web app' at [https://code.google.com/apis/console](google api console) to get your ''Client ID'' and ''Client secret''.
+run this 'wizard' to get your ''access token''.
 ```shell
-  cd mqlwrite
-  npm install googleapis request
+  node mqlwrite_setup.js
 ```
-add your client ID and Client Secret to the file
-```shell
-  node mqlwrite_example.js
+
+thats all you need to include in your request:
+```javascript
+    freebase.add_type("/en/radiohead", {type:"/music/artist", token: your_access_token})
+
+    freebase.add_alias("/en/melanie_chisholm", {alias:"Sporty Spice", token: your_access_token})
 ```
-this will take you through the steps of authenticating and making a write to freebase.
+
+''mqlwrite_setup.js'' will take you through the steps of authenticating and making a write to freebase. You'll need to get a new token after about 3 hours. Just run it again.
 
 ### Basic methods
 

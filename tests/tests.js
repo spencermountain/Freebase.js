@@ -1,8 +1,8 @@
-var freebase=require('./index');
+var freebase=require('../index');
 var async=require('async');
-var fns=require('./helpers/helpers')
+var fns=require('../helpers/helpers')
 var _=require('underscore');
-var options={key:"AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI"};//please don't abuse my key
+var options={key:""};//use your mqlREAD key..
 var test={}
 
 
@@ -10,6 +10,8 @@ var test={}
 
 // freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 // freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+
+
 
 //failing
 
@@ -24,7 +26,6 @@ var test={}
   // freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){
   //   console.log(r)
   // })
-
 
 
 test.search=[
@@ -187,14 +188,13 @@ function done(r){
   }
 
 //apply same thing to all functions
-function broadly(x, obj){
-  // slow.walk(Object.keys(test), doit, done)
-  // function doit(t){
-  //   console.log('------'+t+'------')
-  //   obj[t](x, function(r){
-  //     console.log(r)
-  //   })
-  // }
+function broadly(x){
+  Object.keys(freebase).forEach(function(t){
+    console.log('------'+t+'------')
+    obj[t](x, function(r){
+      console.log(r)
+    })
+  })
 }
 
 function coverage(fn, tests){
@@ -207,9 +207,5 @@ function coverage(fn, tests){
   }
 }
 //console.log(coverage(freebase, test))
-// broadly(null,freebase)
-
-// Object.keys(test).patient(testone, done)
-
-
-  //freebase.search("franklin",options,console.log)
+//broadly(null)
+// freebase.search("franklin", options, console.log)

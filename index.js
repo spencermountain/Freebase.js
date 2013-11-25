@@ -1673,11 +1673,11 @@ var freebase = (function() {
             "id": null,
             "name": null
           },
-          "/freebase/type_profile/equivalent_topic": {
+          "/freebase/type_profile/equivalent_topic": [{
             "id": null,
             "name": null,
             "optional":true
-          },
+          }],
           "type": "/type/type"
         }]
         freebase.mqlread(query, options, function(r) {
@@ -2025,7 +2025,7 @@ var freebase = (function() {
         options = {};
       } //flexible parameter
       options = options || {};
-      options.oauth_token = options.oauth_token || freebase.access_token
+      options.oauth_token = options.token || options.oauth_token || freebase.access_token
       if(!options.oauth_token){
         console.log("=========")
         console.log("to write to freebase, you must create an 'access token'")
@@ -2035,42 +2035,40 @@ var freebase = (function() {
       var url = globals.host + 'mqlwrite?query=' + encodeURIComponent(JSON.stringify(query)) + "&oauth_token=" + (options.oauth_token || "")
       fns.http(url, callback)
   }
-  freebase.add_type=function(topic, type, callback) {
+  freebase.add_type=function(topic, options, callback) {
       this.doc = "add a type to a freebase topic";
       this.reference = "http://wiki.freebase.com/wiki/MQLwrite";
       callback = callback || console.log;
+      options = options || {};
       var query = {
         "id": topic,
         "type": {
-          "id": type,
+          "id": options.type,
           "connect": "insert"
         }
       }
-      freebase.mqlwrite(query, {}, callback)
+      freebase.mqlwrite(query, options, callback)
   }
-  freebase.add_alias=function(topic, alias, callback) {
+  freebase.add_alias=function(topic, options, callback) {
       this.doc = "add a alias to a freebase topic";
       this.reference = "http://wiki.freebase.com/wiki/MQLwrite";
       callback = callback || console.log;
+      options = options || {};
       var query = {
         "id": topic,
         "/common/topic/alias": {
-          "value": alias,
+          "value": options.alias,
           "connect": "insert",
           "lang":"/lang/en"
         }
       }
-      freebase.mqlwrite(query, {}, callback)
+      freebase.mqlwrite(query, options, callback)
   }
 
-  freebase.test_writes = function() {
-    freebase.add_type("/en/radiohead", "/music/artist", console.log)
+  freebase.test_writes = function(token) {
+    freebase.add_type("/en/radiohead", {type:"/music/artist", token: token})
     // freebase.add_alias("/wikipedia/en/John_f_kenedy", "jfk", console.log)
   }
-  // freebase.test_writes()
-
-
-
 
 
   //soften up the api so it will take these methods alternatively..
@@ -2084,7 +2082,6 @@ var freebase = (function() {
 
 
 
-  //
   freebase.documentation = function(f, options, callback) {
     callback = callback || console.log;
     options = options || {};
@@ -2113,7 +2110,6 @@ var freebase = (function() {
     }
     callback(str)
   }
-  // freebase.documentation()
 
   var aliases = {
     mqlread: ["query", "mql_read"],

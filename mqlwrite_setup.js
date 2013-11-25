@@ -29,7 +29,7 @@ try{
 	var request = require('request');
 	var googleapis = require('googleapis');
 	var OAuth2Client = googleapis.OAuth2Client;
-	var fns = require('../helpers/helpers');
+	var fns = require('./helpers/helpers');
 }catch(e){
 	console.log("to run this script, first run 'npm install googleapis request'. it's easy.")
 	console.log("exiting.")
@@ -120,10 +120,14 @@ command_line_ask("So, on the google api console, what is your OAuth 'Client ID'?
 										console.log("     ")
 										console.log("   you can paste that into a browser, or whatever  ")
 										console.log("     ")
+										console.log("you can also write like this:   ")
+										console.log('   freebase.add_type("/en/radiohead", {type:"/music/artist", token: "'+tokens.access_token+'"}) ')
+										console.log("     ")
 										console.log("your oauth_token is: ")
 										console.log(tokens.access_token)
 										console.log("     ")
-										console.log(" use '/freebase/v1sandbox/mqlwrite' to test in the sandbox   ")
+										console.log("     ")
+										console.log(" (use '/freebase/v1sandbox/mqlwrite' to test in the sandbox )  ")
 										console.log("     ")
 										console.log(" you rule!  ")
 										process.exit(code=0)
