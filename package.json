@@ -2,7 +2,7 @@
     "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
     "name": "freebase",
     "description": "a very masculine way to work with data from freebase.com",
-    "version": "2.1.19",
+    "version": "2.1.21",
     "repository": {
         "type": "git",
         "url": "git://github.com/spencermountain/Freebase.js.git"
@@ -15,13 +15,13 @@
         "freebase": "./helpers/cli.js"
     },
     "dependencies": {
-        "request": "*",
-        "async": "*",
-        "underscore": "*",
-        "googleapis": "*"
+        "request": "2.34.0",
+        "async": "0.2.10",
+        "underscore": "1.6.0",
+        "googleapis": "0.6.1"
     },
     "devDependencies": {
-        "grunt": "*",
+        "grunt": "0.4.2",
         "grunt-contrib-jshint": "*",
         "grunt-contrib-concat": "*",
         "grunt-contrib-uglify": "*"
