@@ -628,7 +628,7 @@ var freebase = (function() {
 
 
   freebase.place_data = function(geo, options, callback) {
-    this.doc = "from a geo-coordinate, get the town, province, country, and timezone for it"
+    this.doc = "from a geo-coordinate and area radius, get the town, province, country, and timezone for it"
     callback = callback || console.log;
     if (!geo) {
       return callback({})
@@ -649,7 +649,7 @@ var freebase = (function() {
       "type": []
     }]
     //999000ft  == 30k
-    var filter='(all type:/location/citytown (within radius:999000ft lon:'+ geo.lng +' lat:'+ geo.lat +'))'
+    var filter='(all type:/location/citytown (within radius:' + geo.raduis + 'ft lon:'+ geo.lng +' lat:'+ geo.lat +'))'
     var url = globals.host+'search?filter='+ filter +'&limit=200'
     fns.http(url, options, function(r) {
       var all = {
