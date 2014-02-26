@@ -444,6 +444,7 @@ function coverage(fn, tests) {
 // freebase.is_a("george clooney")
 // freebase.property_lookup("albums")
 // freebase.question("keanu reeves", {property:"children"})
+// freebase.question("bill murray", {property:"birthday"})
 // freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){ console.log(r) })
 // freebase.gallery('hurricanes')
 // freebase.wordnet("charming")

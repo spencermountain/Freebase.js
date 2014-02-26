@@ -17,37 +17,32 @@ then:
 
 it's built to be as flexible as possible. all methods can handle the same things:
 ```javascript
-    freebase.sentence("/en/thom_yorke",)//freebase link
+    freebase.sentence("/en/thom_yorke", {}, console.log)//freebase link
     freebase.weblinks("thom yorke", {}, console.log)//search term
     freebase.wikipedia_categories("http://www.myspace.com/thomyorkemusic", {}, console.log)//weblink
     freebase.search({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)//freebase object
     freebase.notable(["/en/radiohead","thom yorke"], {}, console.log)//array of stuff
 ```
 it handles many asynchronous requests responsibly, rate-limiting them to 10-at-a-time.
-```javascript
-    freebase.images(["johny greenwood", "marvin gaye", "Yusuf Islam"], {max:10}, console.log)
-```
+
 this is pretty clever, i'd say:
 ```javascript
     freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
 ```
-and when you're hacking in the shell, you can use it like this:
-```shell
-$ freebase sentence "batman"
-```
 
 ## In the friggin broswer
+[demo](http://dl.dropboxusercontent.com/u/8068328/freebasejs/client_side/demo.html)
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
-  <script src="https://dl.dropboxusercontent.com/s/0fvdus9v0hhnsfd/freebase.min.js"></script>
+  <script src="https://dl.dropboxusercontent.com/u/8068328/freebasejs/client_side/freebase.min.js"></script>
   <script>
   $(document).ready(function(){
-    function show(r){
+    function callback(r){
       $('body').append(r)
     }
-    $.freebase.sentence("tony hawk",{},show)
+    $.freebase.description("tony hawk", {}, callback)
   })
   </script>
 ```

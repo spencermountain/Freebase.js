@@ -1,12 +1,106 @@
-<script type="text/javascript" src="./libs/underscore.js"></script>
-<script type="text/javascript" src="./libs/async.js"></script>
-<script type="text/javascript" src="./libs/jquery.js"></script>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js"></script>
+<script src="http://code.jquery.com/jquery-latest.js"></script>
 <script type="text/javascript" src="./freebase.js"></script>
+
+
+<style>
+  h2{color:grey;}
+  .c{color:#858585; font-size:15px;}
+  a{color:steelblue;}
+  .r{color:steelblue;}
+</style>
+
+
 <script>
-$(document).ready(function(){
-  function show(r){
-    $('body').append(r)
-  }
-  $.freebase.sentence("tony hawk",{},show)
+$(window).load(function(){
+  window.callback= function(r){console.log(r)}
+
+  $("#search").keypress(_.debounce(function() {
+    var el=$(this)
+    el.siblings('.c').html("$.freebase.description(\""+el.val()+"\", {}, callback)")
+    $.freebase.description(el.val(), {}, function(r){
+      el.parent().find('.r').text(r)
+    })
+  }, 300))
+  $("#search").keypress()
+
+  $("#search2").keypress(_.debounce(function() {
+    var el=$(this)
+    el.siblings('.c').html("$.freebase.translate(\""+el.val()+"\",  {lang:\"/lang/ja\"}, callback)")
+    $.freebase.translate(el.val(), {lang:"/lang/ja"}, function(r){
+      el.siblings('.r').text(r)
+    })
+  }, 300))
+  $("#search2").keypress()
+
+
+  $("#search3").keypress(_.debounce(function() {
+    var el=$(this)
+    el.siblings('.c').html("$.freebase.wordnet(\""+el.val()+"\",  {}, callback)")
+    $.freebase.wordnet(el.val(), {}, function (r){
+      el.siblings('.r').html(
+        r.map(function(s){return "<li><b>"+s.syntactic_category+"</b>: "+s.gloss+"</li>"}).join("")
+        )
+    })
+  }, 300))
+  $("#search3").keypress()
+
+  $("#search4").keypress(_.debounce(function() {
+    var el=$(this)
+    var t=el.val()
+    var q=$('#search42').val()
+    el.siblings('.c').html("$.freebase.question(\""+t+"\",  {property:\""+q+"\"}, callback)")
+    $.freebase.question(t, {property:q}, function (r){
+      el.siblings('.r').html(
+          r.map(function(s){return s.text || s.name}).join(", ")
+        )
+    })
+  }, 300))
+  $("#search42").keypress(_.debounce(function() {$("#search4").keypress() }))
+  $("#search4").keypress()
+
+
+
+
+
 })
 </script>
+
+
+
+<h1><a href="https://github.com/spencermountain/Freebase.js">Freebase.js demo</a></h1>
+
+<ul>
+  <h2>Simple Query</h2>
+  <input id="search4" value="bill murray"/>
+  <input id="search42" value="birthday"/>
+  <ul class="c" ></ul>
+  <div class="r" ></div>
+</ul>
+<hr/>
+
+<ul>
+  <h2>Wikipedia First Paragraph</h2>
+  <input id="search" value="tony hawk"/>
+  <ul class="c" ></ul>
+  <div class="r" ></div>
+</ul>
+<hr/>
+
+<ul>
+  <h2>Translate to Japanese</h2>
+  <input id="search2" value="pulp fiction"/>
+  <ul class="c" ></ul>
+  <div class="r" ></div>
+</ul>
+<hr/>
+
+<ul>
+  <h2>Query Wordnet</h2>
+  <input id="search3" value="creep"/>
+  <ul class="c" ></ul>
+  <div class="r" ></div>
+</ul>
+<hr/>
