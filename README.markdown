@@ -1,4 +1,4 @@
-[Freebase](http://freebase.com/) is a very masculine but complicated human-curated database.
+[Freebase](http://freebase.com/) is a masculine but complicated human-curated database.
 
 [Nodejs](http://nodejs.org/) is a straight-talkin language that takes no guff
 
@@ -10,24 +10,24 @@
 then:
 ```javascript
     var freebase=require('freebase');
-    freebase.description('tom cruise', [options], [callback])
+    freebase.description('tom cruise', {}, console.log)
     //"Tom Cruise, is an American film actor.."
 ```
 ## Showin' off
 
 it's built to be as flexible as possible. all methods can handle the same things:
 ```javascript
-    freebase.sentence("/en/thom_yorke")//freebase link
-    freebase.weblinks("thom yorke")//search term
-    freebase.wikipedia_categories("http://www.myspace.com/thomyorkemusic")//weblink
-    freebase.search({"name":"thom yorke", "id":"/en/thom_yorke"})//freebase object
-    freebase.notable(["/en/radiohead","thom yorke"])//array of stuff
+    freebase.sentence("/en/thom_yorke",)//freebase link
+    freebase.weblinks("thom yorke", {}, console.log)//search term
+    freebase.wikipedia_categories("http://www.myspace.com/thomyorkemusic", {}, console.log)//weblink
+    freebase.search({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)//freebase object
+    freebase.notable(["/en/radiohead","thom yorke"], {}, console.log)//array of stuff
 ```
-this properly handles many asynchronous requests, rate-limiting them to 10-at-a-time.
+it handles many asynchronous requests responsibly, rate-limiting them to 10-at-a-time.
 ```javascript
     freebase.images(["johny greenwood", "marvin gaye", "Yusuf Islam"], {max:10}, console.log)
 ```
-this is pretty clever i'd say:
+this is pretty clever, i'd say:
 ```javascript
     freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
 ```
@@ -54,15 +54,15 @@ $ freebase sentence "batman"
 
 ## Writing to Freebase:
 ####Oauth is hard, but you can do it.
-register a 'web app' at [https://code.google.com/apis/console](google api console) to get your ''Client ID'' and ''Client secret''.
-run this 'wizard' to get your ''access token''.
+register a web app at [https://code.google.com/apis/console](google api console) to get your **Client ID** and **Client secret**.
+run this 'wizard' to get your **access token**.
 ```shell
   node mqlwrite_setup.js
 ```
 
 thats all you need to include in your request:
 ```javascript
-    freebase.add_type("/en/radiohead", {type:"/music/artist", token: your_access_token})
+    freebase.add_type("/en/the_who", {type:"/music/artist", token: your_access_token})
 
     freebase.add_alias("/en/melanie_chisholm", {alias:"Sporty Spice", token: your_access_token})
 ```
@@ -97,7 +97,7 @@ Hockey players named 'doug'
     freebase.search("doug",{type: "/ice_hockey/hockey_player"}, console.log)
 ```
 ####Description API
-First paragraph of the wikipedia article:
+First paragraph of a topic's wikipedia article:
 ```javascript
      freebase.description("mike myers", {}, console.log)
      freebase.description("http://myspace.com/u2", {}, console.log)
@@ -143,23 +143,29 @@ Similar topics to this topic
     freebase.related("toronto", {}, function(r){
         console.log(r.map(function(v){return v.name}))
       })
-      -> /* Toronto FC
-          Toronto Maple Leafs
-          Toronto Argonauts
-          North York
-          Toronto Marlies*/
+  -> /* Toronto FC
+      Toronto Maple Leafs
+      Toronto Argonauts
+      North York
+      Toronto Marlies*/
 ```
-####Safe-Lookup
-A common-sense search that only matches when confident:
+####Wordnet
+Query all of wordnet, from freebase:
 ```javascript
-    freebase.lookup("tom green", {}, console.log)
-    freebase.lookup(["toronto","suddenly susan"], {}, console.log)
+    freebase.wordnet("charming")
+    freebase.wordnet("submarine",{},console.log)
 ```
 ####SameAs links
 sameAs weblinks for a topic, or url
 ```javascript
     freebase.same_as_links("toronto", {}, console.log)
     freebase.same_as_links("http://toronto.ca", {}, console.log)
+```
+####Safe-Lookup
+A common-sense search that only matches when confident:
+```javascript
+    freebase.lookup("tom green", {}, console.log)
+    freebase.lookup(["sandra bullock","suddenly susan"], {}, console.log)
 ```
 ####First Sentence
 The first sentence from a wikipedia article:
@@ -193,7 +199,7 @@ Encode a string for inclusion in a freebase id/key/whatever
 ####Schema introspection
 Find-out relevant information for a type or property:
 ```javascript
-     freebase.schema_introspection("politician", {}, console.log)
+     freebase.property_introspection("politician", {}, console.log)
      ->/* { domain: { name: 'Government', id: '/government' },
           is_compound_value: false,
           is_commons: 'Published',
@@ -303,7 +309,7 @@ https://github.com/spencermountain/Freebase-nodejs--
 * **list**
      -get a list of topics in a type
 * **place_data**
-     -from a geo-coordinate, get the town, province, country, and timezone for it
+     -from a geo-coordinate and area radius (in feet), get the town, province, country, and timezone for it
 * **incoming**
      -get any incoming data to this topic, ignoring cvt types
 * **outgoing**
@@ -360,6 +366,12 @@ https://github.com/spencermountain/Freebase-nodejs--
      -turn a wikipedia title or url into a freebase topic
 * **add_widget**
      -add a generic html view of a topic
+* **mqlwrite**
+     -write to freebase
+* **add_type**
+     -add a type to a freebase topic
+* **add_alias**
+     -add a alias to a freebase topic
 
 ##Examples
 * freebase.mqlread([{id:"/en/radiohead",name:null}])

@@ -1,33 +1,33 @@
 {
-  "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
-  "name": "freebase",
-  "description": "a very masculine way to work with data from freebase.com",
-  "version": "2.1.16",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/spencermountain/Freebase.js.git"
-  },
-  "main": "index.js",
-  "engines": [
-    "node >= 0.3.6"
-  ],
-  "bin": {
-    "freebase": "./helpers/cli.js"
-  },
-  "dependencies": {
-    "request": "*",
-    "async": "*",
-    "underscore": "*",
-    "googleapis": "*"
-  },
-  "devDependencies": {
-    "grunt": "*",
-    "grunt-contrib-jshint": "*",
-    "grunt-contrib-concat": "*",
-    "grunt-contrib-uglify":"*"
-  },
-  "preferGlobal": true,
-  "scripts": {
-    "test": "node tests.js"
-  }
+    "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
+    "name": "freebase",
+    "description": "a very masculine way to work with data from freebase.com",
+    "version": "2.1.19",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/spencermountain/Freebase.js.git"
+    },
+    "main": "index.js",
+    "engines": [
+        "node >= 0.3.6"
+    ],
+    "bin": {
+        "freebase": "./helpers/cli.js"
+    },
+    "dependencies": {
+        "request": "*",
+        "async": "*",
+        "underscore": "*",
+        "googleapis": "*"
+    },
+    "devDependencies": {
+        "grunt": "*",
+        "grunt-contrib-jshint": "*",
+        "grunt-contrib-concat": "*",
+        "grunt-contrib-uglify": "*"
+    },
+    "preferGlobal": true,
+    "scripts": {
+        "test": "node tests.js"
+    }
 }
