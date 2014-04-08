@@ -49,6 +49,9 @@ var freebase = (function() {
         options.cursor = options.cursor || "";
         var url = globals.host + 'mqlread?query=' + JSON.stringify(query) + "&cursor=" + options.cursor
         fns.http(url, options, function(result) {
+            if (result.error) {
+                console.log(JSON.stringify(result.error, null, 2));
+            }
             return callback(result)
         })
     }
@@ -116,6 +119,9 @@ var freebase = (function() {
         }
         fns.http(url, ps.options, function(result) {
             if (!result || !result.result || !result.result[0]) {
+                if (result.error) {
+                    console.log(JSON.stringify(result.error, null, 2));
+                }
                 return ps.callback([])
             }
             return ps.callback(result.result)

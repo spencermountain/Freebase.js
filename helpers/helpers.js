@@ -90,7 +90,7 @@ var fns = (function() {
             }
         }
         //if its a freebase-type object
-        if (typeof o.q == "object") {
+        if (o.q && typeof o.q == "object") {
             o.q = o.q.id || o.q.mid || o.q.name;
         }
         //make sure we're sane

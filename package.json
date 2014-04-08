@@ -1,8 +1,8 @@
 {
-    "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencerwaterbed.com)",
+    "author": "Spencer Kelly <spencerwater@gmail.com> (http://spencermounta.in)",
     "name": "freebase",
     "description": "a very masculine way to work with data from freebase.com",
-    "version": "2.1.22",
+    "version": "2.1.24",
     "repository": {
         "type": "git",
         "url": "git://github.com/spencermountain/Freebase.js.git"
