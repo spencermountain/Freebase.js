@@ -13,30 +13,14 @@ then:
     freebase.description('tom cruise', {}, console.log)
     //"Tom Cruise, is an American film actor.."
 ```
-## Showin' off
-
-it's built to be as flexible as possible. all methods can handle the same things:
-```javascript
-    freebase.sentence("/en/thom_yorke", {}, console.log)//freebase link
-    freebase.weblinks("thom yorke", {}, console.log)//search term
-    freebase.wikipedia_categories("http://www.myspace.com/thomyorkemusic", {}, console.log)//weblink
-    freebase.search({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)//freebase object
-    freebase.notable(["/en/radiohead","thom yorke"], {}, console.log)//array of stuff
-```
-it handles many asynchronous requests responsibly, rate-limiting them to 10-at-a-time.
-
-this is pretty clever, i'd say:
-```javascript
-    freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
-```
 
 ## In the friggin broswer
-[demo](http://dl.dropboxusercontent.com/u/8068328/freebasejs/client_side/demo.html)
+[demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
-  <script src="https://dl.dropboxusercontent.com/u/8068328/freebasejs/client_side/freebase.min.js"></script>
+  <script src="https://rawgit.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
   <script>
   $(document).ready(function(){
     function callback(r){
@@ -109,6 +93,27 @@ The most accurate, or notable type for a topic:
      freebase.notable("canada", {}, console.log)
      -> {id:"/location/country", name:"Country"}
 ```
+
+## Showin' off
+
+it's built to be as flexible as possible. all methods can handle the same things:
+```javascript
+    //freebase link
+    freebase.sentence("/en/thom_yorke", {}, console.log)
+    //a confident search term
+    freebase.sentence("thom yorke", {}, console.log)
+    //a same-As weblink
+    freebase.sentence("http://www.myspace.com/thomyorkemusic", {}, console.log)
+    //a freebase result object
+    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)
+    //an array of queries, rate-limiting them to 10-at-a-time.
+    freebase.sentence(["/en/radiohead","thom yorke"], {}, console.log)
+```
+this is pretty clever, i'd say:
+```javascript
+    freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
+```
+
 ## Sugar
 ####Grammar
 Which pronoun, tense, article and gender to use for this topic
