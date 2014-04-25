@@ -18,15 +18,14 @@ then:
 [demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/async/0.2.7/async.min.js"></script>
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.4.4/underscore-min.js"></script>
   <script src="https://rawgit.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
   <script>
   $(document).ready(function(){
-    function callback(r){
+
+    $.freebase.description("tony hawk", {}, function callback(r){
       $('body').append(r)
-    }
-    $.freebase.description("tony hawk", {}, callback)
+    })
+
   })
   </script>
 ```
