@@ -9,7 +9,7 @@
 
 then:
 ```javascript
-    var freebase=require('freebase');
+    freebase=require('freebase');
     freebase.description('tom cruise', {}, console.log)
     //"Tom Cruise, is an American film actor.."
 ```
@@ -23,7 +23,7 @@ freebase_core.js == 16 kb,  freebase.js == 16kb
   <script>
   $(document).ready(function(){
 
-    $.freebase.description("tony hawk", {}, function callback(r){
+    $.freebase.description("tony hawk", function (r){
       $('body').append(r)
     })
 
@@ -213,18 +213,18 @@ Find-out relevant information for a type or property:
 ##Wikipedia
 
 ####Wikipedia-page
-Get the wikipedia link for a topic
+Get the wikipedia url for a topic
 ```javascript
      freebase.wikipedia_page("tony hawk", {}, console.log)
      ->// http://en.wikipedia/wiki/Tony_Hawk
 ```
 ####Wikipedia categories
-Get the wikipedia categories for this topic's article
+Get the wikipedia categories on this topic's article
 ```javascript
      freebase.wikipedia_categories("tony hawk", {}, console.log)
 ```
 ####Wikipedia topic-links
-Get the freebase topics linked-to in this topic's wikipedia article
+Get the links on it's wikipedia page as freebase ids
 ```javascript
      freebase.wikipedia_links("tony hawk", {}, console.log)
       -> /*[{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
@@ -234,7 +234,7 @@ Get the freebase topics linked-to in this topic's wikipedia article
           ...*/
 ```
 ####Wikipedia external-links
-Get the webpages linked-to from this topic's article
+Get the external urls on it's wikipedia page
 ```javascript
      freebase.wikipedia_external_links("tony hawk", {}, console.log)
       -> /*[{ url: 'http://skate.quiksilver.com/riders-detail/',
@@ -415,7 +415,6 @@ https://github.com/spencermountain/Freebase-nodejs--
 * freebase.category_list("Category:Redirects_from_plurals")
 * freebase.wikipedia_subcategories("Category:Enzymes",{depth:2},function(r){console.log(JSON.stringify(r))})
 * freebase.rdf("toronto")
-* freebase.wikipedia_to_freebase("Tony Hawk")
 * freebase.documentation()
 
 
