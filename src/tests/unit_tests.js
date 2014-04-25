@@ -1,33 +1,9 @@
-var freebase = require('../index');
-var async = require('async');
-var fns = require('../helpers/helpers')
-var _ = require('underscore');
+var freebase = require('../../index');
 var options = {
-    key: ""
-}; //use your mqlREAD key..
+    key: "AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI" //please use your mqlREAD key..
+};
 var test = {}
 
-
-
-
-// freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
-// freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
-
-
-
-//failing
-
-// freebase.inside('toronto',options, function(r){
-// 	console.log(r.length>3)
-// })
-// freebase.transitive("barrie", "part_of", options, function(r){
-// 	console.log(r.length>3)
-// })
-
-
-// freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){
-//   console.log(r)
-// })
 
 
 test.search = [
@@ -66,13 +42,30 @@ test.lookup = [
         function(r) {
             console.log(r.mid == "/m/017yxq")
         }
-    ],
-    [
-        ["toronto", "suddenly susan"], options,
-        function(r) {
-            console.log(r.length == 2)
-        }
     ]
+    // [
+    //     ["toronto", "suddenly susan"], options,
+    //     function(r) {
+    //         console.log(r.length == 2)
+    //     }
+    // ]
+]
+
+
+test.lookup_id = [
+    ["/en/pulp_fiction", options,
+        function(r) {
+            console.log(r.mid == "/m/0f4_l")
+        }
+    ],
+]
+
+test.url_lookup = [
+    ["http://myspace.com/u2", options,
+        function(r) {
+            console.log(r.mid == '/m/0dw4g')
+        }
+    ],
 ]
 
 test.mqlread = [
@@ -85,7 +78,16 @@ test.mqlread = [
         function(r) {
             console.log(r.result.artist == 'Rick Astley')
         }
-    ]
+    ],
+    [{
+            id: "/en/radiohead",
+            name: null
+        },
+        options,
+        function(r) {
+            console.log(r.result.name == 'Radiohead')
+        }
+    ],
 ]
 test.get_id = [
     ["/en/tony_hawk", options,
@@ -115,7 +117,7 @@ test.paginate = [
 test.grammar = [
     ["toronto maple leafs", options,
         function(r) {
-            console.log(_.isEqual(r, {
+            console.log(isequal(r, {
                 plural: true,
                 gender: null,
                 article: 'a',
@@ -126,7 +128,7 @@ test.grammar = [
     ],
     ["ron weasley", options,
         function(r) {
-            console.log(_.isEqual(r, {
+            console.log(isequal(r, {
                 plural: false,
                 gender: 'male',
                 article: 'a',
@@ -174,7 +176,6 @@ test.image = [
             type: "/location/location"
         },
         function(r) {
-            console.log(r);
             console.log(r.match(/maxheight/) != null)
         }
     ]
@@ -238,15 +239,6 @@ test.place_data = [
         options,
         function(r) {
             console.log(r.city.name == "Toronto")
-        }
-    ],
-    [{
-            lat: 52.05375719395869,
-            lng: 5.9511566162109375
-        },
-        options,
-        function(r) {
-            console.log(r.country.name == "Netherlands")
         }
     ],
     [{
@@ -335,7 +327,14 @@ test.inside = [
 test.wikipedia_page = [
     ["tony hawk", options,
         function(r) {
-            console.log(r == "Tony_Hawk")
+            console.log(r == "http://en.wikipedia.org/wiki/Tony_Hawk")
+        }
+    ]
+]
+test.dbpedia_page = [
+    ["tony hawk", options,
+        function(r) {
+            console.log(r.json == "http://dbpedia.org/data/Tony_Hawk.json")
         }
     ]
 ]
@@ -362,69 +361,154 @@ test.wikipedia_external_links = [
         }
     ]
 ]
+test.rdf = [
+    ["/en/toronto", options,
+        function(r) {
+            console.log(r.match(/ns:common\.topic\.alias/) != null)
+        }
+    ]
+]
+test.drilldown = [
+    ["/astronomy/planet", options,
+        function(r) {
+            console.log(r.types.length > 0)
+        }
+    ]
+]
+test.schema = [
+    ["politician", options,
+        function(r) {
+            console.log(r.incoming_properties.length > 0)
+        }
+    ]
+]
 // test.schema_introspection=[
 //  ["person",options,function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
 //  ["/people/person",options,function(r){console.log(r.id=="/people/person" && r.incoming_properties.length>5)}]
 // ]
-test.property_introspection = []
-test.property_lookup = []
-test.transitive = []
-test.is_a = []
-test.question = []
-test.dig = []
-test.mql_encode = []
-test.add_widget = []
-
-
-//testit('sentence')
+test.property_introspection = [
+    ["/government/politician/party", options,
+        function(r) {
+            console.log(r.name == "Party")
+        }
+    ]
+]
+// test.property_lookup = []
+// test.is_a = []
+// test.question = []
+// test.dig = []
+// test.mql_encode = []
 
 
 function done(r) {
     console.log('===========done========')
 }
 
-
-function testone(v, callback) {
-    var all = []
-    test[v].patient(function(t) {
-        freebase[v](t[0], t[1], function(r) {
-            console.log('========' + v + '=========')
-            t[2](r)
-        })
-    }, function() {
-        callback('done')
-    })
+function isequal(o1, o2) {
+    for (var i in o1) {
+        if (o1[i] != o2[i]) {
+            return false
+        }
+    }
+    return true
 }
 
-//apply same thing to all functions
-function broadly(x) {
-    Object.keys(freebase).forEach(function(t) {
-        console.log('------' + t + '------')
-        obj[t](x, function(r) {
-            console.log(r)
-        })
-    })
-}
 
-function coverage(fn, tests) {
-    fn = Object.keys(fn)
-    tests = Object.keys(test)
-    return {
-        missing: _.difference(fn, tests),
-        has: _.union(fn, tests).length,
-        doesnt: _.difference(fn, tests).length,
-        dangling_tests: _.difference(tests, fn)
+function testone(v, cb) {
+    if (!test[v]) {
+        console.log("need test for " + v)
+        console.log('')
+        cb()
+    } else {
+        var d = 0
+        test[v].forEach(function(t, i) {
+            freebase[v](t[0], t[1], function(r) {
+                console.log(v + ' ' + i + ':  ')
+                t[2](r)
+                d++
+                if (d >= test[v].length) {
+                    cb()
+                }
+            })
+        })
     }
 }
+
+
+function core_test(cb) {
+    var core = [
+        'mqlread',
+        'search',
+        'lookup',
+        'lookup_id',
+        'url_lookup',
+        'get_id',
+        'topic',
+        'paginate',
+        'wikipedia_page',
+        'dbpedia_page',
+        'rdf',
+        'description',
+        'image',
+        'notable',
+        'drilldown',
+        'property_introspection',
+        'schema',
+        'grammar',
+        'same_as_links',
+        'translate',
+        'sentence',
+        'list',
+        'place_data',
+        'is_a',
+        'property_lookup',
+        'question',
+        'wordnet',
+        'dig',
+        'geolocation',
+        'nearby',
+        'inside',
+        'incoming',
+        'outgoing',
+        'graph',
+        'related'
+    ]
+
+    var i = 0
+    var doit = function() {
+        testone(core[i], function() {
+            i++
+            if (core[i]) {
+                doit(i)
+            } else {
+                console.log("done")
+            }
+        })
+    }
+    doit()
+
+}
+
+
+// core_test(function() {})
+testone('wordnet', function() {})
+
+
+
+
+
+
 //console.log(coverage(freebase, test))
 //broadly(null)
 // freebase.search("franklin", options, console.log)
-
-// freebase.mqlread([{id:"/en/radiohead",name:null}])
+// freebase.mqlread([{
+//     id: "/en/radiohead",
+//     name: null
+// }])
 // freebase.lookup_id('/en/radiohead')
 // freebase.search("bill murray")
 // freebase.url_lookup("http://myspace.com/u2")
-// freebase.lookup("pulp fiction")
+// freebase.lookup_id("/en/pulp_fiction")
 // freebase.get_id("/en/radiohead")
 // freebase.topic("toronto", {filter:"allproperties"})
 // freebase.paginate([{"type":"/astronomy/moon","name":null, limit:2}],{max:13})
