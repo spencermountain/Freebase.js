@@ -16,6 +16,7 @@ then:
 
 ## In the friggin broswer
 [demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)
+freebase_core.js == 16 kb,  freebase.js == 16kb
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="https://rawgit.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
@@ -331,8 +332,6 @@ https://github.com/spencermountain/Freebase-nodejs--
      -list of topics with images
 * **wordnet**
      -query wordnet via freebase
-* **transitive**
-     -do a transitive-query, like all rivers in canada, using freebase metaschema
 * **geolocation**
      -lat/long for a topic
 * **nearby**
@@ -402,7 +401,6 @@ https://github.com/spencermountain/Freebase-nodejs--
 * freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){ console.log(r) })
 * freebase.gallery('hurricanes')
 * freebase.wordnet("charming")
-* freebase.transitive("ontario", {property:"part_of"}, function(r){ console.log(r)})
 * freebase.geolocation("cn tower")
 * freebase.nearby("cn tower", {type:"/location/location"}, console.log)
 * freebase.inside("montreal")

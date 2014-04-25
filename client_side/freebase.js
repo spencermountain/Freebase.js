@@ -1376,28 +1376,28 @@ var freebase = (function() {
         mqlread: ["query", "mql_read"],
         topic: ["topic_api", "all_data", "data", "everything", "get_data"],
         paginate: ["continue", "all", "each"],
-        same_as_links: ["sameas", "sameAs", "sameaslinks", "links", "sameas_links", "external_links", "weblinks"],
-        translate: ["translate_to", "multilingual", "i8n", "get_translation"],
-        image: ["pic", "photo", "picture", "get_image", "image_url", "image_src"],
-        description: ["get_description", "blurb", "get_blurb", "blurb_api", "text", "get_text"],
-        notable: ["notable_type", "notabletype", "notable_for", "notable_as", "main_type", "type"],
-        place_data: ["city", "country", "province", "place_info", "location_info", "location", "whereis"],
-        incoming: ["incoming_links", "incoming_nodes", "inlinks"],
-        outgoing: ["outgoing_links", "outgoing_nodes", "outlinks"],
-        related: ["related_topics", "similar", "related_to", "get_related"],
+        same_as_links: ["sameas", "sameaslinks", "links", "external_links", "weblinks"],
+        translate: ["translate_to", "i8n", "translation"],
+        image: ["picture", "get_image"],
+        description: ["blurb", "get_blurb", "blurb_api", "text"],
+        notable: ["notable_type", "notable_for", "notable_as", "main_type", "type"],
+        place_data: ["place", "place_info", "location_info", "location"],
+        incoming: ["incoming_links"],
+        outgoing: ["outgoing_links"],
+        related: ["related_topics", "similar"],
         geolocation: ["geo", "geocoordinates", "geo_location", "lat_lng", "location"],
         nearby: ["near", "close_to"],
         inside: ["inside_of", "within", "contained_by", "contains"],
         mql_encode: ["encode", "escape"]
     }
-    // Object.keys(aliases).forEach(function(k) {
-    //     if (freebase[k]) {
-    //         aliases[k].forEach(function(a) {
-    //             freebase[a] = freebase[k]
-    //         })
+    Object.keys(aliases).forEach(function(k) {
+        if (freebase[k]) {
+            aliases[k].forEach(function(a) {
+                freebase[a] = freebase[k]
+            })
 
-    //     }
-    // })
+        }
+    })
 
 
     // export for Node.js
