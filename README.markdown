@@ -305,7 +305,7 @@ freebase.add_type("/en/the_who", {type:"/music/artist", access_token: your_acces
 ###Add alias sugar
 ```javascript
 freebase.add_alias("/en/melanie_chisholm", {alias:"Sporty Spice", access_token: your_access_token})
-'''
+```
 
 ###Garden Wikipedia Categories
 Get topics under a wikipedia category, filter them, then write data to them
