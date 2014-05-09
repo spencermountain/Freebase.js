@@ -33,11 +33,13 @@ freebase_core.js == 16 kb,  freebase.js == 16kb
 
 ## Writing to Freebase:
 ####Oauth is hard, but you can do it.
-register a web app at [https://code.google.com/apis/console](google api console) to get your **Client ID** and **Client secret**.
-run this 'wizard' to get your **access token**.
-```shell
-  node mqlwrite_setup.js
-```
+Instructions:
+* Register a project at [https://code.google.com/apis/console](google api console) and enable the Freebase API
+* In the 'Credentials' section, create a new Client ID -> 'installed application', 'other'
+* Add your data to './auth/credentials.js'
+* Run ```node ./auth/authenticate.js```
+* You will be given a url to visit in your browser, which gives you an OAuth code.
+* Paste the oAuth code, and you'll be given the end tokens.
 
 thats all you need to include in your request:
 ```javascript
@@ -45,8 +47,9 @@ thats all you need to include in your request:
 
     freebase.add_alias("/en/melanie_chisholm", {alias:"Sporty Spice", token: your_access_token})
 ```
+You'll need to get a new token after about 3 hours.
 
-''mqlwrite_setup.js'' will take you through the steps of authenticating and making a write to freebase. You'll need to get a new token after about 3 hours. Just run it again.
+(Be careful not to commit your credentials.)
 
 ### Basic methods
 
@@ -212,6 +215,19 @@ Find-out relevant information for a type or property:
 ```
 ##Wikipedia
 
+####Wikipedia-Category pages
+Get the wikipedia url for a topic
+```javascript
+freebase.from_category("Category:Bridges_in_Saskatchewan", {
+  depth: 2 //levels to recurse down
+}, console.log)
+/*[{id: '/wikipedia/en/Long_Creek_Bridge',
+    name: 'Long Creek Bridge'},
+   {id: '/wikipedia/en/Diefenbaker_Bridge',
+     name: 'Diefenbaker Bridge'}
+   ...
+```
+
 ####Wikipedia-page
 Get the wikipedia url for a topic
 ```javascript
@@ -356,7 +372,7 @@ https://github.com/spencermountain/Freebase-nodejs--
      -get insight into the breakdown of the topics in this type, by type and quality
 * **mql_encode**
      -quote a unicode string to turn it into a valid mql /type/key/value
-* **category_list**
+* **from_category**
      -get the freebase topics in a wikipedia category
 * **wikipedia_subcategories**
      -find the subcategories of this wikipedia category
@@ -412,7 +428,7 @@ https://github.com/spencermountain/Freebase-nodejs--
 * freebase.property_introspection("/government/politician/party")
 * freebase.schema("politician")
 * freebase.drilldown("/chemistry/chemical_compound",{max:400},console.log)
-* freebase.category_list("Category:Redirects_from_plurals")
+* freebase.from_category("Category:Redirects_from_plurals")
 * freebase.wikipedia_subcategories("Category:Enzymes",{depth:2},function(r){console.log(JSON.stringify(r))})
 * freebase.rdf("toronto")
 * freebase.documentation()
