@@ -1,10 +1,10 @@
-var freebase = require('../../index');
+var async = require('async')
+var freebase = require('../index');
+var key = require("./auth/credentials").API_KEY || ''
 var options = {
-    key: "AIzaSyD5GmnQC7oW9GJIWPGsJUojspMMuPusAxI" //please use your mqlREAD key..
+    key: key //please use your mqlREAD key..
 };
 var test = {}
-
-
 
 test.search = [
     ["franklin", {},
@@ -268,7 +268,7 @@ test.outgoing = [
 test.graph = [
     ["paul ryan", options,
         function(r) {
-            console.log(r[0].object.name == "Paul Ryan" || r[0].subject.name == "Paul Ryan")
+            console.log(r[0] && (r[0].object.name == "Paul Ryan" || r[0].subject.name == "Paul Ryan"))
         }
     ]
 ]
@@ -295,7 +295,7 @@ test.wordnet = [
     ],
     ["wood", options,
         function(r) {
-            console.log(r.length == 4)
+            console.log(r && r.length == 4)
         }
     ]
 ]
@@ -377,8 +377,8 @@ test.drilldown = [
 ]
 test.schema = [
     ["politician", options,
-        function(r) {
-            console.log(r.incoming_properties.length > 0)
+        function(res) {
+            console.log(res && res.incoming_properties && res.incoming_properties.length > 0)
         }
     ]
 ]
@@ -428,6 +428,7 @@ function testone(v, cb) {
                 d++
                 if (d >= test[v].length) {
                     cb()
+                    return
                 }
             })
         })
@@ -464,7 +465,6 @@ function core_test(cb) {
         'property_lookup',
         'question',
         'wordnet',
-        'dig',
         'geolocation',
         'nearby',
         'inside',
@@ -474,24 +474,15 @@ function core_test(cb) {
         'related'
     ]
 
-    var i = 0
-    var doit = function() {
-        testone(core[i], function() {
-            i++
-            if (core[i]) {
-                doit(i)
-            } else {
-                console.log("done")
-            }
-        })
-    }
-    doit()
+    async.mapLimit(core, 1, testone, function(err, r) {
+        console.log('done')
+    });
 
 }
 
 
-// core_test(function() {})
-testone('wordnet', function() {})
+core_test(function() {})
+// testone('schema', function() {})
 
 
 

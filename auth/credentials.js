@@ -10,7 +10,8 @@
 //  Paste the oAuth code, and you'll be given your
 
 module.exports = {
-	CLIENT_ID: "YOURS HERE", // (ends with .googleusercontent.com)
-	CLIENT_SECRET: "YOURS HERE", //(a hash)
-	REDIRECT_URL: "YOURS HERE" // (use the 'urn:', preferably)
+	API_KEY: "", //your mqlread api_key (a hash)
+	CLIENT_ID: "", // (ends with .googleusercontent.com)
+	CLIENT_SECRET: "", //(a hash)
+	REDIRECT_URL: "" // (use the 'urn:', preferably)
 }
