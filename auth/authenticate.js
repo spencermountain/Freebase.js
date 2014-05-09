@@ -1,4 +1,11 @@
-var credentials = require('./credentials')
+var credentials = require('./credentials');
+var googleapis = require('googleapis');
+var OAuth2 = googleapis.auth.OAuth2;
+var open = require("open");
+
+var oauth2Client = new OAuth2(credentials.CLIENT_ID, credentials.CLIENT_SECRET, credentials.REDIRECT_URL);
+
+
 if (!credentials || !credentials.CLIENT_ID) {
 	console.log("You must put your oAuth credentials in ./credentials.js")
 	console.log("get them at https://console.developers.google.com")
@@ -23,10 +30,6 @@ command_line_ask = function(question, format, callback) {
 	});
 }
 
-var googleapis = require('googleapis'),
-	OAuth2 = googleapis.auth.OAuth2;
-
-var oauth2Client = new OAuth2(credentials.CLIENT_ID, credentials.CLIENT_SECRET, credentials.REDIRECT_URL);
 
 // generates a url that allows offline access and asks permissions
 // for Google+ scope.
@@ -34,20 +37,26 @@ var url = oauth2Client.generateAuthUrl({
 	access_type: 'offline',
 	scope: 'https://www.googleapis.com/auth/freebase'
 });
-console.log('visit this url in your browser:')
-console.log(url)
-
-command_line_ask("what is the 'code' parameter on the page you redirected to?", /.+/, function(code) {
-	console.log('...')
+console.log('opening authentication url in your browser... ')
+open(url)
+console.log(" ")
+command_line_ask("  what is the 'code' from the resulting webpage: ", /.+/, function(code) {
+	console.log('...generating tokens...')
 	oauth2Client.getToken(code, function(err, tokens) {
 		if (err) {
 			console.log(err)
 			return
 		}
+		console.log(" ")
+		console.log(" ")
+		console.log(" ")
+		console.log(" ")
+		console.log(" ")
 		console.log("woohoo!")
-		console.log("here are your oauth tokens, it lasts about 3 hours..")
+		console.log("here are your oauth tokens, they last about 3 hours..")
 		console.log("===========================")
 		console.log(JSON.stringify(tokens, null, 2))
+		console.log("===========================")
 		console.log(" ")
 		console.log(" ")
 		console.log(" ")
@@ -61,11 +70,18 @@ command_line_ask("what is the 'code' parameter on the page you redirected to?", 
 			}]
 		}]
 		var url = "https://www.googleapis.com/freebase/v1/mqlwrite?oauth_token=" + tokens.access_token + "&query=" + JSON.stringify(query)
-		console.log("perform a mqlwrite like this:   ")
+		console.log("   to perform a mqlwrite, visit this url:   ")
+		console.log("   ")
 		console.log(url)
 		console.log("   ")
 		console.log("   ")
-		console.log("or in your javascript:")
+		console.log("   or in javascript:")
+		console.log("   ")
+		console.log("access_token= '" + tokens.access_token + "'")
 		console.log("freebase.add_type('/en/radiohead', {type:'/music/artist', oauth_token:access_token})")
+		console.log("   ")
+		console.log("   ")
+		console.log("you rule!")
+		process.exit(0)
 	})
 })

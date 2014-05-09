@@ -132,9 +132,9 @@ freebase.wikipedia_external_links = function(q, options, callback) {
 
 
 
-freebase.category_list = function(q, options, callback) {
+freebase.from_category = function(q, options, callback) {
   this.doc = "get the freebase topics in a wikipedia category"
-  var ps = fns.settle_params(arguments, freebase.category_list, {
+  var ps = fns.settle_params(arguments, freebase.from_category, {
     depth: 1
   });
   if (ps.array) {
@@ -148,41 +148,79 @@ freebase.category_list = function(q, options, callback) {
     ps.q = 'Category:' + ps.q
   }
   var all_topics = [];
-  var all_categories = [];
-  iterate(ps.q, '')
-
-  function iterate(cat, cmcontinue) {
-    var url = freebase.globals.wikipedia_host + "?action=query&list=categorymembers&format=json&cmlimit=400&cmtitle=" + encodeURIComponent(cat) + "&cmcontinue=" + cmcontinue;
-    fns.http(url, ps.options, function(r) {
-      if (!r || !r.query || !r.query.categorymembers || !r.query.categorymembers[Object.keys(r.query.categorymembers)[0]]) {
-        return ps.callback([])
+  var all_cats = [
+    []
+  ];
+  var done = function(list) {
+    //unique the list
+    var flags = {};
+    list = list.filter(function(entry) {
+      if (flags[entry.id]) {
+        return false;
       }
-      all_categories = all_categories.concat(r.query.categorymembers.filter(function(v) {
-        return v.ns == 14
-      }));
-      var cmcontinue = r["query-continue"] || {}
-      cmcontinue = cmcontinue.categorymembers || {}
-      cmcontinue = cmcontinue.cmcontinue || '';
-      var topics = r.query.categorymembers.filter(function(v) {
-        return v.ns == 0
-      });
-      topics = topics.map(function(v) {
-        return {
-          id: "/wikipedia/en/" + freebase.mql_encode(v.title),
-          article: 'http://en.wikipedia.org/wiki/index.html?curid=' + v.pageid,
-          title: v.title
+      flags[entry.id] = true;
+      return true;
+    });
+    return ps.callback(list)
+  }
+  var depth = 0
+  iterate(ps.q)
+
+    function iterate(cat) {
+      // console.log('level ' + depth + '. doing ' + cat)
+      var url = freebase.globals.wikipedia_host + "?action=query&list=categorymembers&format=json&cmlimit=400&cmtitle=" + encodeURIComponent(cat)
+      fns.http(url, ps.options, function(r) {
+        if (!r || !r.query || !r.query.categorymembers || !r.query.categorymembers[Object.keys(r.query.categorymembers)[0]]) {
+          return ps.callback([])
+        }
+        var new_cats = r.query.categorymembers.filter(function(v) {
+          return v.ns == 14
+        })
+        new_cats = new_cats.map(function(c) {
+          return c.title
+        })
+        all_cats[depth + 1] = all_cats[depth + 1] || []
+        all_cats[depth + 1] = all_cats[depth + 1].concat(new_cats);
+
+        var topics = r.query.categorymembers.filter(function(v) {
+          return v.ns == 0
+        });
+        topics = topics.map(function(v) {
+          return {
+            id: "/wikipedia/en/" + freebase.mql_encode(v.title),
+            article: 'http://en.wikipedia.org/wiki/index.html?curid=' + v.pageid,
+            name: v.title,
+            category: cat,
+            depth: depth
+          }
+        })
+        all_topics = all_topics.concat(topics);
+
+        if (depth >= ps.options.depth || all_cats.length == 0) {
+          return done(all_topics)
+        } else {
+          //do the next cat
+          if (all_cats[depth].length) {
+            var new_cat = all_cats[depth][0]
+            all_cats[depth] = all_cats[depth].slice(1, all_cats[depth].length)
+            iterate(new_cat) //recurse
+          } else { //theres no more cats at this level
+            //do next level
+            if (depth < ps.options.depth && all_cats[depth + 1].length) {
+              depth += 1
+              var new_cat = all_cats[depth][0]
+              all_cats[depth] = all_cats[depth].slice(1, all_cats[depth].length)
+              iterate(new_cat) //recurse
+            } else {
+              return done(all_topics)
+            }
+
+          }
         }
       })
-      all_topics = all_topics.concat(topics);
-      if (!cmcontinue) {
-        return ps.callback(all_topics)
-      } else {
-        iterate(cat, cmcontinue); //recurse
-      }
-    })
-  }
+    }
 }
-// freebase.category_list("Category:Redirects_from_plurals")
+// freebase.from_category("Category:Redirects_from_plurals")
 
 
 
@@ -246,7 +284,7 @@ freebase.wikipedia_to_freebase = function(q, options, callback) {
   var title = ps.q;
   var obj = {
     id: "/wikipedia/en/" + freebase.mql_encode(ps.q),
-    title: title
+    name: title
   }
   return ps.callback(obj)
 }

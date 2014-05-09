@@ -288,6 +288,46 @@ From a geo-coordinate, find out its City, Province, Country, and timezone
 ```javascript
     freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
 ```
+
+##Writing to freebase
+###MQLWrite
+```javascript
+query=[{
+      "id": "/en/radiohead",
+      "type": [{
+        "id": "/music/artist",
+        "connect": "insert"
+      }]
+    }]
+freebase.mqlwrite(query, {access_token: your_access_token}, console.log)
+```
+
+###Add type sugar
+```javascript
+freebase.add_type("/en/the_who", {type:"/music/artist", access_token: your_access_token})
+```
+###Add alias sugar
+```javascript
+freebase.add_alias("/en/melanie_chisholm", {alias:"Sporty Spice", access_token: your_access_token})
+'''
+
+###Garden Wikipedia Categories
+Get topics under a wikipedia category, filter them, then write data to them
+```javascript
+options = {
+  access_token: "MY_OAUTH_TOKEN",
+  depth: 2,
+  filter: {
+      not_types: ["/transportation/bridge", "/time/event"],
+      not_name: /collapse/i,
+  },
+  write: {
+      type: "/transportation/bridge"
+  }
+}
+freebase.garden("Category:Bridges_in_Canada", options, console.log)
+```
+
 ##Method-list
 Freebase.com nodejs-library
 https://github.com/spencermountain/Freebase-nodejs--
