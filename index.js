@@ -18,3 +18,4 @@ var freebase = (function() {
 // freebase.grammar("toronto maple leafs")
 // console.log(Object.keys(freebase))
 // freebase.wikipedia_categories("Thom Yorke", {}, console.log) //****
+// freebase.documentation()

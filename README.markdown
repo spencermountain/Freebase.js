@@ -9,13 +9,29 @@
 
 then:
 ```javascript
-    freebase=require('freebase');
+    var freebase= require('freebase');
     freebase.description('tom cruise', {}, console.log)
     //"Tom Cruise, is an American film actor.."
 ```
 
+## Showin' off
+it's built to be as flexible as possible. all methods return the same things:
+```javascript
+    freebase.image("/en/thom_yorke", {}, console.log)
+    freebase.image("thom yorke", {}, console.log)
+    freebase.image("http://www.myspace.com/thomyorkemusic", {}, console.log)
+    freebase.image({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)
+    freebase.image(["/en/radiohead","thom yorke"], {}, console.log)
+```
+it's a good idea to include your [api_key](https://code.google.com/apis/console/) in each method:
+```javascript
+    freebase.sentence("meatloaf", {type:"/food/food", key:"MY_API_KEY"}, console.log)
+```
+the paramaters are lazy, if you're lazy.
+
 ## In the friggin broswer
 [demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)
+
 freebase_core.js == 16 kb,  freebase.js == 16kb
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
@@ -97,25 +113,6 @@ The most accurate, or notable type for a topic:
      -> {id:"/location/country", name:"Country"}
 ```
 
-## Showin' off
-
-it's built to be as flexible as possible. all methods can handle the same things:
-```javascript
-    //freebase link
-    freebase.sentence("/en/thom_yorke", {}, console.log)
-    //a confident search term
-    freebase.sentence("thom yorke", {}, console.log)
-    //a same-As weblink
-    freebase.sentence("http://www.myspace.com/thomyorkemusic", {}, console.log)
-    //a freebase result object
-    freebase.sentence({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)
-    //an array of queries, rate-limiting them to 10-at-a-time.
-    freebase.sentence(["/en/radiohead","thom yorke"], {}, console.log)
-```
-this is pretty clever, i'd say:
-```javascript
-    freebase.sentence("meatloaf", {type:"/food/food"}, console.log)
-```
 
 ## Sugar
 ####Grammar
@@ -128,7 +125,7 @@ Which pronoun, tense, article and gender to use for this topic
             pronoun: 'they',
             copula: 'are' }
     freebase.grammar(["prince harry", "miranda july"], {}, console.log)
-       /* [ { plural: false,
+       ->  [ { plural: false,
               gender: 'male',
               article: 'a',
               pronoun: 'he',
@@ -138,7 +135,6 @@ Which pronoun, tense, article and gender to use for this topic
               article: 'a',
               pronoun: 'she',
               copula: 'is' } ]
-            */
 ```
 ####Related Topics
 Similar topics to this topic
@@ -146,7 +142,7 @@ Similar topics to this topic
     freebase.related("toronto", {}, function(r){
         console.log(r.map(function(v){return v.name}))
       })
-  -> /* Toronto FC
+   /* Toronto FC
       Toronto Maple Leafs
       Toronto Argonauts
       North York
@@ -203,7 +199,7 @@ Encode a string for inclusion in a freebase id/key/whatever
 Find-out relevant information for a type or property:
 ```javascript
      freebase.property_introspection("politician", {}, console.log)
-     ->/* { domain: { name: 'Government', id: '/government' },
+     /* { domain: { name: 'Government', id: '/government' },
           is_compound_value: false,
           is_commons: 'Published',
           equivalent_topic: { name: 'Politician', id: '/en/politician' },
@@ -232,7 +228,7 @@ freebase.from_category("Category:Bridges_in_Saskatchewan", {
 Get the wikipedia url for a topic
 ```javascript
      freebase.wikipedia_page("tony hawk", {}, console.log)
-     ->// http://en.wikipedia/wiki/Tony_Hawk
+     // http://en.wikipedia/wiki/Tony_Hawk
 ```
 ####Wikipedia categories
 Get the wikipedia categories on this topic's article
@@ -243,7 +239,7 @@ Get the wikipedia categories on this topic's article
 Get the links on it's wikipedia page as freebase ids
 ```javascript
      freebase.wikipedia_links("tony hawk", {}, console.log)
-      -> /*[{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
+       /*[{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
           { id: '/wikipedia/en/Bam_Margera', name: 'Bam Margera' },
           { id: '/wikipedia/en/Barting_Over', name: 'Barting Over' },
           { id: '/wikipedia/en/Blink-182', name: 'Blink-182' },
@@ -253,7 +249,7 @@ Get the links on it's wikipedia page as freebase ids
 Get the external urls on it's wikipedia page
 ```javascript
      freebase.wikipedia_external_links("tony hawk", {}, console.log)
-      -> /*[{ url: 'http://skate.quiksilver.com/riders-detail/',
+       /*[{ url: 'http://skate.quiksilver.com/riders-detail/',
             domain: 'skate.quiksilver.com' },
           { url: 'http://skateboarding.transworld.net/1000095781/news/tony-hawk-on-theeve-trucks/',
             domain: 'skateboarding.transworld.net' },
@@ -264,13 +260,13 @@ Get the external urls on it's wikipedia page
   Get the lat/lng for a topic
 ```javascript
     freebase.geolocation("calgary", {}, console.log)
-    -> //{ latitude: 51.0544444444, longitude: -114.066944444 }
+     //{ latitude: 51.0544444444, longitude: -114.066944444 }
 ```
 ####Nearby
   List topics near this geolocation
 ```javascript
     freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
-      -> /*[{id: '/en/sneaky_dees',
+       /*[{id: '/en/sneaky_dees',
            name: 'Sneaky Dee\'s',
           },
           {id: '/en/keg_mansion',
@@ -329,45 +325,116 @@ freebase.garden("Category:Bridges_in_Canada", options, console.log)
 ```
 
 ##Method-list
-Freebase.com nodejs-library
-https://github.com/spencermountain/Freebase-nodejs--
-
-
-
 * **mqlread**
      -interface to freebase's mql api
-* **lookup_id**
-     -generic info for an id
 * **search**
      -regular search api
-* **url_lookup**
-     -freebase search tuned for looking up a url
 * **lookup**
      -freebase search with filters to ensure only a confident, unambiguous result
+* **lookup_id**
+     -generic info for an id
+* **url_lookup**
+     -freebase search tuned for looking up a url
 * **get_id**
      -like freebase.lookup but satisfied with an id
 * **topic**
      -topic api
 * **paginate**
      -get all of the results to your query
+* **wikipedia_page**
+     -get a url for wikipedia based on this topic
+* **dbpedia_page**
+     -get a url for dbpedia based on this topic
+* **mql_encode**
+     -quote a unicode string to turn it into a valid mql /type/key/value
+* **rdf**
+     -RDF api
 * **description**
      -get a text blurb from freebase
 * **image**
      -get a url for image href of on this topic
+* **notable**
+     -get a topic's notable type
+* **query**
+     -interface to freebase's mql api
+* **mql_read**
+     -interface to freebase's mql api
+* **topic_api**
+     -topic api
+* **all_data**
+     -topic api
+* **data**
+     -topic api
+* **everything**
+     -topic api
+* **get_data**
+     -topic api
+* **continue**
+     -get all of the results to your query
+* **all**
+     -get all of the results to your query
+* **each**
+     -get all of the results to your query
+* **picture**
+     -get a url for image href of on this topic
+* **get_image**
+     -get a url for image href of on this topic
+* **blurb**
+     -get a text blurb from freebase
+* **get_blurb**
+     -get a text blurb from freebase
+* **blurb_api**
+     -get a text blurb from freebase
+* **text**
+     -get a text blurb from freebase
+* **notable_type**
+     -get a topic's notable type
+* **notable_for**
+     -get a topic's notable type
+* **notable_as**
+     -get a topic's notable type
+* **main_type**
+     -get a topic's notable type
+* **type**
+     -get a topic's notable type
+* **encode**
+     -quote a unicode string to turn it into a valid mql /type/key/value
+* **escape**
+     -quote a unicode string to turn it into a valid mql /type/key/value
+* **drilldown**
+     -get insight into the breakdown of the topics in this type, by type and quality
+* **property_introspection**
+     -common lookups for freebase property data
+* **schema**
+     -common lookups for types and properties
 * **grammar**
      -get the proper pronoun to use for a topic eg. he/she/they/it
 * **same_as_links**
      -turns a url into a freebase topic and list its same:as links
 * **translate**
      -return specific language title for a topic
-* **notable**
-     -get a topic's notable type
 * **sentence**
      -get the first sentence of a topic description
 * **list**
      -get a list of topics in a type
 * **place_data**
      -from a geo-coordinate and area radius (in feet), get the town, province, country, and timezone for it
+* **is_a**
+     -get a list of identifiers for a topic
+* **property_lookup**
+     -lookup soft property matches, like 'birthday' vs 'date of birth'
+* **question**
+     -give a topic and a property, and get a list of results
+* **wordnet**
+     -query wordnet via freebase
+* **dig**
+     -transitive query on a specific property, maximum 3-ply
+* **geolocation**
+     -lat/long for a topic
+* **nearby**
+     -list of topics nearby a location
+* **inside**
+     -list of topics inside a location
 * **incoming**
      -get any incoming data to this topic, ignoring cvt types
 * **outgoing**
@@ -376,58 +443,18 @@ https://github.com/spencermountain/Freebase-nodejs--
      -return all outgoing and incoming links for a topic
 * **related**
      -get similar topics to a topic
-* **is_a**
-     -get a list of identifiers for a topic
-* **property_lookup**
-     -lookup soft property matches, like 'birthday' vs 'date of birth'
-* **question**
-     -give a topic and a property, and get a list of results
-* **dig**
-     -transitive query on a specific property, maximum 3-ply
-* **gallery**
-     -list of topics with images
-* **wordnet**
-     -query wordnet via freebase
-* **geolocation**
-     -lat/long for a topic
-* **nearby**
-     -list of topics nearby a location
-* **inside**
-     -list of topics inside a location
-* **wikipedia_page**
-     -get a url for wikipedia based on this topic
-* **dbpedia_page**
-     -get a url for dbpedia based on this topic
 * **wikipedia_categories**
      -get the wikipedia categories for a topic
 * **wikipedia_links**
      -outgoing links from this wikipedia page, converted to freebase ids
 * **wikipedia_external_links**
      -outgoing links from this wikipedia page, converted to freebase ids
-* **property_introspection**
-     -common lookups for freebase property data
-* **schema**
-     -common lookups for types and properties
-* **drilldown**
-     -get insight into the breakdown of the topics in this type, by type and quality
-* **mql_encode**
-     -quote a unicode string to turn it into a valid mql /type/key/value
 * **from_category**
      -get the freebase topics in a wikipedia category
 * **wikipedia_subcategories**
      -find the subcategories of this wikipedia category
-* **rdf**
-     -RDF api
 * **wikipedia_to_freebase**
      -turn a wikipedia title or url into a freebase topic
-* **add_widget**
-     -add a generic html view of a topic
-* **mqlwrite**
-     -write to freebase
-* **add_type**
-     -add a type to a freebase topic
-* **add_alias**
-     -add a alias to a freebase topic
 
 ##Examples
 * freebase.mqlread([{id:"/en/radiohead",name:null}])
@@ -468,7 +495,7 @@ https://github.com/spencermountain/Freebase-nodejs--
 * freebase.property_introspection("/government/politician/party")
 * freebase.schema("politician")
 * freebase.drilldown("/chemistry/chemical_compound",{max:400},console.log)
-* freebase.from_category("Category:Redirects_from_plurals")
+* freebase.from_category("Category:Bridges_in_Canada", {depth:2})
 * freebase.wikipedia_subcategories("Category:Enzymes",{depth:2},function(r){console.log(JSON.stringify(r))})
 * freebase.rdf("toronto")
 * freebase.documentation()

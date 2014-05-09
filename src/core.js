@@ -543,9 +543,9 @@ var freebase = (function() {
 
     freebase.documentation = function(f, options, callback) {
         Object.keys(freebase).filter(function(v) {
-            return v != "documentation" && v != "access_token" && v != "test_writes"
+            return v != "documentation" && v != "access_token" && v != "test_writes" && v != "globals"
         }).forEach(function(k) {
-            x = new freebase[k]("", {}, function() {})
+            var x = new freebase[k]("", {}, function() {})
             console.log("* **" + k + "**\n     -" + x.doc)
         })
     }

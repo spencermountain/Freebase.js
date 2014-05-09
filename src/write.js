@@ -8,13 +8,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var request = require('request')
 }
 
-
-if (typeof freebase == 'undefined' || !freebase || !freebase.search) {
-    console.warn('freebase write methods loaded without freebase core methods')
-    freebase = {}
-}
-
-
+freebase = freebase || {}
 
 freebase.mqlwrite = function(query, options, callback) {
     this.doc = "write to freebase";
