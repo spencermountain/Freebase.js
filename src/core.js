@@ -94,9 +94,7 @@ var freebase = (function() {
         }
         fns.http(url, ps.options, function(result) {
             if (!result || !result.result || !result.result[0]) {
-                if (result.error) {
-                    console.log(JSON.stringify(result.error, null, 2));
-                }
+                console.log(JSON.stringify(result.error, null, 2));
                 return ps.callback([])
             }
             return ps.callback(result.result)
