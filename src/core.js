@@ -46,7 +46,7 @@ var freebase = (function() {
         options.cursor = options.cursor || "";
         var url = freebase.globals.host + 'mqlread?query=' + JSON.stringify(query) + "&cursor=" + options.cursor
         fns.http(url, options, function(result) {
-            if (result.error) {
+            if (!result || result.error) {
                 console.log(JSON.stringify(result.error, null, 2));
             }
             return callback(result)
