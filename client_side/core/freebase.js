@@ -1,6 +1,6 @@
 /*! freebase 
  by @spencermountain
- 2014-04-25 */
+ 2014-07-15 */
 /*! freebase.js 
  by @spencermountain
 	https://github.com/spencermountain/Freebase.js
@@ -529,7 +529,7 @@ var freebase = (function() {
         options.cursor = options.cursor || "";
         var url = freebase.globals.host + 'mqlread?query=' + JSON.stringify(query) + "&cursor=" + options.cursor
         fns.http(url, options, function(result) {
-            if (result.error) {
+            if (result && result.error) {
                 console.log(JSON.stringify(result.error, null, 2));
             }
             return callback(result)
@@ -577,7 +577,7 @@ var freebase = (function() {
         }
         fns.http(url, ps.options, function(result) {
             if (!result || !result.result || !result.result[0]) {
-                if (result.error) {
+                if (result && result.error) {
                     console.log(JSON.stringify(result.error, null, 2));
                 }
                 return ps.callback([])
@@ -1026,9 +1026,9 @@ var freebase = (function() {
 
     freebase.documentation = function(f, options, callback) {
         Object.keys(freebase).filter(function(v) {
-            return v != "documentation" && v != "access_token" && v != "test_writes"
+            return v != "documentation" && v != "access_token" && v != "test_writes" && v != "globals"
         }).forEach(function(k) {
-            x = new freebase[k]("", {}, function() {})
+            var x = new freebase[k]("", {}, function() {})
             console.log("* **" + k + "**\n     -" + x.doc)
         })
     }
