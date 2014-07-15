@@ -1,6 +1,6 @@
 var async = require('async')
 var freebase = require('../index');
-var key = require("./auth/credentials").API_KEY || ''
+var key = require("../auth/credentials").API_KEY || ''
 var options = {
     key: key //please use your mqlREAD key..
 };
@@ -99,6 +99,7 @@ test.get_id = [
 test.topic = [
     ['radiohead', options,
         function(r) {
+            // console.log(r)
             console.log(r.id == '/m/09jm8' && r.property['/music/artist/origin'] != null)
         }
     ]
@@ -308,7 +309,7 @@ test.geolocation = [
 ]
 test.nearby = [
     ["cn tower", {
-            type: "/food/restaurant"
+            type: "/location/location"
         },
         function(r) {
             console.log(r.length > 4)
@@ -316,9 +317,7 @@ test.nearby = [
     ]
 ]
 test.inside = [
-    ["toronto", {
-            type: "/locaton/citytown"
-        },
+    ["ontario", {}, //type:/location/location produces no results
         function(r) {
             console.log(r.length > 4)
         }
@@ -482,7 +481,7 @@ function core_test(cb) {
 
 
 core_test(function() {})
-// testone('schema', function() {})
+// testone('inside', function() {})
 
 
 

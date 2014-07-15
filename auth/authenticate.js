@@ -1,4 +1,5 @@
-var credentials = require('./credentials');
+file = process.argv[2] || './credentials'
+var credentials = require(file);
 var googleapis = require('googleapis');
 var OAuth2 = googleapis.auth.OAuth2;
 var open = require("open");
@@ -7,7 +8,7 @@ var oauth2Client = new OAuth2(credentials.CLIENT_ID, credentials.CLIENT_SECRET, 
 
 
 if (!credentials || !credentials.CLIENT_ID) {
-	console.log("You must put your oAuth credentials in ./credentials.js")
+	console.log("You must put your oAuth credentials in ./credentials.js, or add a path as an argument")
 	console.log("get them at https://console.developers.google.com")
 	console.log("  ")
 	console.log("OAuth is hard, but you can do it!  ")

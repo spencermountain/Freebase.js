@@ -95,3 +95,9 @@ freebase.inside = function(q, options, callback) {
     })
 }
 // freebase.inside("montreal") //***********
+
+
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = freebase
+}

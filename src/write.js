@@ -8,8 +8,6 @@ if (typeof module !== 'undefined' && module.exports) {
     var request = require('request')
 }
 
-freebase = freebase || {}
-
 freebase.mqlwrite = function(query, options, callback) {
     this.doc = "write to freebase";
     callback = callback || console.log;
@@ -252,7 +250,9 @@ freebase.garden = function(cat, options, callback) {
 
 }
 
-
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = freebase
+}
 
 // var cat = "Category:Canadian bridge (structure) stubs"
 // var cat = "Category:Bridges_in_Saskatchewan"
