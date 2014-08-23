@@ -45,6 +45,10 @@ var freebase = (function() {
         options.uniqueness_failure = options.uniqueness_failure || "soft";
         options.cursor = options.cursor || "";
         var url = freebase.globals.host + 'mqlread?query=' + JSON.stringify(query) + "&cursor=" + options.cursor
+        if (options.dateline) {
+            url += "&dateline=" + dateline;
+        }
+
         fns.http(url, options, function(result) {
             if (result && result.error) {
                 console.log(JSON.stringify(result.error, null, 2));
