@@ -2,7 +2,7 @@
 
 // export for Node.js
 if (typeof module !== 'undefined' && module.exports) {
-    var freebase = require("../index")
+    var freebase = require("./core")
     var fns = require('./helpers/helpers');
     var async = require('async')
     var request = require('request')
@@ -234,21 +234,6 @@ freebase.write_async = function(topics, options, callback) {
 
 
 
-//cross-reference wikipedia+freebase data
-freebase.garden = function(cat, options, callback) {
-
-    freebase.from_category(cat, options, function(all) {
-        freebase.filter(all, options, function(list) {
-            if (!options.write) {
-                return callback(list)
-            }
-            freebase.write_async(list, options, function(result) {
-                callback(result)
-            })
-        })
-    })
-
-}
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = freebase

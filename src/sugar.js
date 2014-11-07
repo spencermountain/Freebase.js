@@ -387,7 +387,7 @@ freebase.same_as_links = function(q, options, callback) {
             }
             var links = [];
             //same-as ones
-            if (all.property['/common/topic/topic_equivalent_webpage']) {
+            if (all.property && all.property['/common/topic/topic_equivalent_webpage']) {
                 links = all.property['/common/topic/topic_equivalent_webpage'].values.map(function(v) {
                     return {
                         href: v.value,
@@ -396,7 +396,7 @@ freebase.same_as_links = function(q, options, callback) {
                 })
             }
             //webpage ones
-            if (all.property['/common/topic/topical_webpage']) {
+            if (all.property && all.property['/common/topic/topical_webpage']) {
                 links = links.concat(all.property['/common/topic/topical_webpage'].values.map(function(v) {
                     var host = fns.parseurl(v.value).authority || ''
                     return {

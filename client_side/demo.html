@@ -8,7 +8,7 @@
   h2{color:grey;}
   .c{color:#858585; font-size:15px;}
   a{color:steelblue;}
-  .r{color:steelblue;}
+  .r{color:steelblue; position:relative; left:70px;}
 </style>
 
 
@@ -53,7 +53,6 @@ $(window).load(function(){
     var q=$('#search42').val()
     el.siblings('.c').html("$.freebase.question(\""+t+"\",  {property:\""+q+"\"}, callback)")
     $.freebase.question(t, {property:q}, function (r){
-      console.log(r)
       el.siblings('.r').html(
           r.map(function(s){return s.text || s.name}).join(", ")
         )
@@ -77,7 +76,6 @@ $(window).load(function(){
     var el=$(this)
     el.siblings('.c').html("$.freebase.image(\""+el.val()+"\", {}, callback)")
     $.freebase.image(el.val(), {}, function(r){
-      console.log(r)
       var html="<img src='"+r+"'/>"
       el.parent().find('.r').html(html)
     })

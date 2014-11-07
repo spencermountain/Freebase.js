@@ -135,13 +135,13 @@ var freebase = (function() {
         if (!ps.options.strict) {
             strength = "word"
         }
-        var url = freebase.globals.host + 'search?limit=2&lang=en&type=' + ps.options.type + '&filter=';
-        var output = fns.clone(freebase.globals.generic_query);
-        url += encodeURIComponent('(any name{' + strength + '}:"' + ps.q + '" alias{' + strength + '}:"' + ps.q + '")');
+        var filter= encodeURIComponent('(any name{' + strength + '}:"' + ps.q + '" alias{' + strength + '}:"' + ps.q + '")');
+        var output= ps.options.output || "(type description:wikipedia)"
+        var url = freebase.globals.host + 'search?limit=2&lang=en&type=' + ps.options.type + '&filter='+filter+'&output='+output;
         if (ps.options.type == "/type/type" || ps.options.type == "/type/property") {
             url += "&scoring=schema&stemmed=true"
         }
-        url += "&mql_output=" + encodeURIComponent(JSON.stringify(output));
+
         return fns.http(url, ps.options, function(result) {
             if (!result || !result.result || !result.result[0]) {
                 return ps.callback({})
@@ -154,18 +154,18 @@ var freebase = (function() {
             if (!result[0].score && result[0].score < 30) {
                 return ps.callback({})
             }
-            if (ps.options.strict) {
-                //kill if 2nd result is also notable
-                if (((result[0].score || 0) * 0.7) < (result[1].score || 0)) {
+            //kill if 2nd result is also good
+            if (((result[0].score || 0) * 0.7) < (result[1].score || 0)) {
+                return ps.callback({})
+            }
+            //kill if types are crap
+            var types= ((result[0].output.type||{})["/type/object/type"]||[]).map(function(o){return o.id})
+            var kill_list = ["/music/track", "/music/release_track", "/tv/tv_episode", "/music/recording", "/book/book_edition"]
+            for(var i=0; i<=types.length; i++){
+                if (fns.isin(types[i], kill_list)) {
                     return ps.callback({})
                 }
             }
-            kill_list = ["/music/track", "/music/release_track", "/tv/tv_episode", "/music/recording", "/music/composition", "/book/book_edition"]
-            //kill if types are crap
-            if (result[1] && result[0].notable && fns.isin(result[0].notable.id, kill_list)) {
-                return ps.callback({})
-            }
-            result[0].name = result[0].name || result[0].text || '';
             return ps.callback(result[0])
         })
     }

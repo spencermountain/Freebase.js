@@ -14,6 +14,8 @@ then:
     //"Tom Cruise, is an American film actor.."
 ```
 
+[![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
+
 ## Showin' off
 it's built to be as flexible as possible. all methods return the same things:
 ```javascript
@@ -70,6 +72,8 @@ You'll need to get a new token after about 3 hours.
 ### Basic methods
 
 ####MQLread API
+[Official MQL documentation](https://developers.google.com/freebase/v1/mql-overview)
+
 Books about planets:
 ```javascript
     var query=[{
@@ -90,6 +94,8 @@ Every Tornado, ever
       freebase.paginate(query, {max:400}, console.log)
 ```
 ####Search API
+[Official search api documentation](https://developers.google.com/freebase/v1/search-overview)
+
 Hockey players named 'doug'
 ```javascript
     freebase.search("doug",{type: "/ice_hockey/hockey_player"}, console.log)
@@ -101,10 +107,19 @@ First paragraph of a topic's wikipedia article:
      freebase.description("http://myspace.com/u2", {}, console.log)
 ```
 ####Topic API
+[Official topic api documentation](https://developers.google.com/freebase/v1/topic-overview)
+
 A nicely treated output of all of a topic's data:
 ```javascript
      freebase.topic("mike myers", {}, console.log)
      freebase.topic("http://myspace.com/u2", {}, console.log)
+```
+####RDF API
+[Official RDF api documentation](https://developers.google.com/freebase/v1/rdf-overview)
+
+A xml string a topic's data in RDF:
+```javascript
+     freebase.rdf("blonde redhead", {}, console.log)
 ```
 ####Notable-types
 The most accurate, or notable type for a topic:
