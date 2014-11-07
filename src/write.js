@@ -93,6 +93,7 @@ freebase.test_writes = function(token) {
 
 //accept a list of topics and ensure they meet demands
 freebase.filter = function(list, options, callback) {
+    list=list||[]
     options = options || {}
     options.filter = options.filter || {}
     //build query
@@ -198,6 +199,7 @@ freebase.filter = function(list, options, callback) {
 
 
 freebase.write_async = function(topics, options, callback) {
+    topics= topics || []
     options = options || {}
     options.write = options.write || {}
     options.connect = options.connect || "insert"

@@ -10,31 +10,27 @@
 then:
 ```javascript
     var freebase= require('freebase');
-    freebase.description('tom cruise', {}, console.log)
+    freebase.description('tom cruise', {})
     //"Tom Cruise, is an American film actor.."
 ```
-
-[![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
 
 ## Showin' off
 it's built to be as flexible as possible. all methods return the same things:
 ```javascript
-    freebase.image("/en/thom_yorke", {}, console.log)
-    freebase.image("thom yorke", {}, console.log)
-    freebase.image("http://www.myspace.com/thomyorkemusic", {}, console.log)
-    freebase.image({"name":"thom yorke", "id":"/en/thom_yorke"}, {}, console.log)
-    freebase.image(["/en/radiohead","thom yorke"], {}, console.log)
+    freebase.image("/en/thom_yorke", {})
+    freebase.image("thom yorke", {})
+    freebase.image("http://www.myspace.com/thomyorkemusic", {})
+    freebase.image({"name":"thom yorke", "id":"/en/thom_yorke"}, {})
+    freebase.image(["/en/radiohead","thom yorke"], {})
 ```
 it's a good idea to include your [api_key](https://code.google.com/apis/console/) in each method:
 ```javascript
-    freebase.sentence("meatloaf", {type:"/food/food", key:"MY_API_KEY"}, console.log)
+    freebase.sentence("meatloaf", {type:"/food/food", key:"MY_API_KEY"})
 ```
 the paramaters are lazy, if you're lazy.
 
 ## In the friggin broswer
-[demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)
-
-freebase_core.js == 16 kb,  freebase.js == 16kb
+[Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  - freebase_core.js == 16 kb,  freebase.js == 16kb
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="https://rawgit.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
@@ -48,6 +44,8 @@ freebase_core.js == 16 kb,  freebase.js == 16kb
   })
   </script>
 ```
+
+[![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
 
 ## Writing to Freebase:
 ####Oauth is hard, but you can do it.
@@ -72,7 +70,7 @@ You'll need to get a new token after about 3 hours.
 ### Basic methods
 
 ####MQLread API
-[Official MQL documentation](https://developers.google.com/freebase/v1/mql-overview)
+[MQL documentation](https://developers.google.com/freebase/v1/mql-overview)
 
 Books about planets:
 ```javascript
@@ -91,40 +89,40 @@ Every Tornado, ever
               "type":"/base/disaster2/tornado",
               "name":null
              }]
-      freebase.paginate(query, {max:400}, console.log)
+      freebase.paginate(query, {max:400})
 ```
 ####Search API
-[Official search api documentation](https://developers.google.com/freebase/v1/search-overview)
+[search api documentation](https://developers.google.com/freebase/v1/search-overview)
 
 Hockey players named 'doug'
 ```javascript
-    freebase.search("doug",{type: "/ice_hockey/hockey_player"}, console.log)
+    freebase.search("doug",{type: "/ice_hockey/hockey_player"})
 ```
 ####Description API
 First paragraph of a topic's wikipedia article:
 ```javascript
-     freebase.description("mike myers", {}, console.log)
-     freebase.description("http://myspace.com/u2", {}, console.log)
+     freebase.description("mike myers", {})
+     freebase.description("http://myspace.com/u2", {})
 ```
 ####Topic API
-[Official topic api documentation](https://developers.google.com/freebase/v1/topic-overview)
+[topic api documentation](https://developers.google.com/freebase/v1/topic-overview)
 
 A nicely treated output of all of a topic's data:
 ```javascript
-     freebase.topic("mike myers", {}, console.log)
-     freebase.topic("http://myspace.com/u2", {}, console.log)
+     freebase.topic("mike myers", {})
+     freebase.topic("http://myspace.com/u2", {})
 ```
 ####RDF API
-[Official RDF api documentation](https://developers.google.com/freebase/v1/rdf-overview)
+[RDF api documentation](https://developers.google.com/freebase/v1/rdf-overview)
 
-A xml string a topic's data in RDF:
+A string of tuples for a topic:
 ```javascript
-     freebase.rdf("blonde redhead", {}, console.log)
+     freebase.rdf("blonde redhead", {})
 ```
 ####Notable-types
 The most accurate, or notable type for a topic:
 ```javascript
-     freebase.notable("canada", {}, console.log)
+     freebase.notable("canada", {})
      -> {id:"/location/country", name:"Country"}
 ```
 
@@ -133,13 +131,13 @@ The most accurate, or notable type for a topic:
 ####Grammar
 Which pronoun, tense, article and gender to use for this topic
 ```javascript
-    freebase.grammar("washing machine", {}, console.log)
+    freebase.grammar("washing machine", {})
        -> { plural: true,
             gender: null,
             article: 'a',
             pronoun: 'they',
             copula: 'are' }
-    freebase.grammar(["prince harry", "miranda july"], {}, console.log)
+    freebase.grammar(["prince harry", "miranda july"], {})
        ->  [ { plural: false,
               gender: 'male',
               article: 'a',
@@ -172,36 +170,36 @@ Query all of wordnet, from freebase:
 ####SameAs links
 sameAs weblinks for a topic, or url
 ```javascript
-    freebase.same_as_links("toronto", {}, console.log)
-    freebase.same_as_links("http://toronto.ca", {}, console.log)
+    freebase.same_as_links("toronto", {})
+    freebase.same_as_links("http://toronto.ca", {})
 ```
 ####Safe-Lookup
 A common-sense search that only matches when confident:
 ```javascript
-    freebase.lookup("tom green", {}, console.log)
-    freebase.lookup(["sandra bullock","suddenly susan"], {}, console.log)
+    freebase.lookup("tom green", {})
+    freebase.lookup(["sandra bullock","suddenly susan"], {})
 ```
 ####First Sentence
 The first sentence from a wikipedia article:
 ```javascript
-    freebase.sentence("tokyo", {}, console.log)
+    freebase.sentence("tokyo", {})
 ```
 ####Graph-analysis
 Graph-type queries on topics, dancing over tough values and mediators:
 ```javascript
-      freebase.graph("ubuntu", {}, console.log )
-      freebase.outgoing("ubuntu", {}, console.log )
-      freebase.incoming("ubuntu", {}, console.log )
+      freebase.graph("ubuntu", {} )
+      freebase.outgoing("ubuntu", {} )
+      freebase.incoming("ubuntu", {} )
 ```
 ####Schema-agnostic queries
 A list of topics in a 'is-a' type of collection:
 ```javascript
-     freebase.list("earthquakes", {}, console.log)
+     freebase.list("earthquakes", {})
 ```
 ####Translation
 Translated names for topics:
 ```javascript
-     freebase.translate("radiohead", {lang:"/lang/ko"}, console.log)
+     freebase.translate("radiohead", {lang:"/lang/ko"})
      -> 라디오헤드
 ```
 ####Encoding
@@ -213,7 +211,7 @@ Encode a string for inclusion in a freebase id/key/whatever
 ####Schema introspection
 Find-out relevant information for a type or property:
 ```javascript
-     freebase.property_introspection("politician", {}, console.log)
+     freebase.property_introspection("politician", {})
      /* { domain: { name: 'Government', id: '/government' },
           is_compound_value: false,
           is_commons: 'Published',
@@ -231,7 +229,7 @@ Get the wikipedia url for a topic
 ```javascript
 freebase.from_category("Category:Bridges_in_Saskatchewan", {
   depth: 2 //levels to recurse down
-}, console.log)
+})
 /*[{id: '/wikipedia/en/Long_Creek_Bridge',
     name: 'Long Creek Bridge'},
    {id: '/wikipedia/en/Diefenbaker_Bridge',
@@ -242,18 +240,18 @@ freebase.from_category("Category:Bridges_in_Saskatchewan", {
 ####Wikipedia-page
 Get the wikipedia url for a topic
 ```javascript
-     freebase.wikipedia_page("tony hawk", {}, console.log)
+     freebase.wikipedia_page("tony hawk", {})
      // http://en.wikipedia/wiki/Tony_Hawk
 ```
 ####Wikipedia categories
 Get the wikipedia categories on this topic's article
 ```javascript
-     freebase.wikipedia_categories("tony hawk", {}, console.log)
+     freebase.wikipedia_categories("tony hawk", {})
 ```
 ####Wikipedia topic-links
 Get the links on it's wikipedia page as freebase ids
 ```javascript
-     freebase.wikipedia_links("tony hawk", {}, console.log)
+     freebase.wikipedia_links("tony hawk", {})
        /*[{ id: '/wikipedia/en/Baker_Skateboards',  name: 'Baker Skateboards' },
           { id: '/wikipedia/en/Bam_Margera', name: 'Bam Margera' },
           { id: '/wikipedia/en/Barting_Over', name: 'Barting Over' },
@@ -263,7 +261,7 @@ Get the links on it's wikipedia page as freebase ids
 ####Wikipedia external-links
 Get the external urls on it's wikipedia page
 ```javascript
-     freebase.wikipedia_external_links("tony hawk", {}, console.log)
+     freebase.wikipedia_external_links("tony hawk", {})
        /*[{ url: 'http://skate.quiksilver.com/riders-detail/',
             domain: 'skate.quiksilver.com' },
           { url: 'http://skateboarding.transworld.net/1000095781/news/tony-hawk-on-theeve-trucks/',
@@ -274,13 +272,13 @@ Get the external urls on it's wikipedia page
 ####Geolocation
   Get the lat/lng for a topic
 ```javascript
-    freebase.geolocation("calgary", {}, console.log)
+    freebase.geolocation("calgary", {})
      //{ latitude: 51.0544444444, longitude: -114.066944444 }
 ```
 ####Nearby
   List topics near this geolocation
 ```javascript
-    freebase.nearby("cn tower", {type:"/food/restaurant"}, console.log)
+    freebase.nearby("cn tower", {type:"/food/restaurant"})
        /*[{id: '/en/sneaky_dees',
            name: 'Sneaky Dee\'s',
           },
@@ -297,7 +295,7 @@ Get the external urls on it's wikipedia page
 ####Place-data
 From a geo-coordinate, find out its City, Province, Country, and timezone
 ```javascript
-    freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+    freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {})
 ```
 
 ##Writing to freebase
@@ -310,7 +308,7 @@ query=[{
         "connect": "insert"
       }]
     }]
-freebase.mqlwrite(query, {access_token: your_access_token}, console.log)
+freebase.mqlwrite(query, {access_token: your_access_token})
 ```
 
 ###Add type sugar
@@ -320,23 +318,6 @@ freebase.add_type("/en/the_who", {type:"/music/artist", access_token: your_acces
 ###Add alias sugar
 ```javascript
 freebase.add_alias("/en/melanie_chisholm", {alias:"Sporty Spice", access_token: your_access_token})
-```
-
-###Garden Wikipedia Categories
-Get topics under a wikipedia category, filter them, then write data to them
-```javascript
-options = {
-  access_token: "MY_OAUTH_TOKEN",
-  depth: 2,
-  filter: {
-      not_types: ["/transportation/bridge", "/time/event"],
-      not_name: /collapse/i,
-  },
-  write: {
-      type: "/transportation/bridge"
-  }
-}
-freebase.garden("Category:Bridges_in_Canada", options, console.log)
 ```
 
 ##Method-list
@@ -370,52 +351,6 @@ freebase.garden("Category:Bridges_in_Canada", options, console.log)
      -get a url for image href of on this topic
 * **notable**
      -get a topic's notable type
-* **query**
-     -interface to freebase's mql api
-* **mql_read**
-     -interface to freebase's mql api
-* **topic_api**
-     -topic api
-* **all_data**
-     -topic api
-* **data**
-     -topic api
-* **everything**
-     -topic api
-* **get_data**
-     -topic api
-* **continue**
-     -get all of the results to your query
-* **all**
-     -get all of the results to your query
-* **each**
-     -get all of the results to your query
-* **picture**
-     -get a url for image href of on this topic
-* **get_image**
-     -get a url for image href of on this topic
-* **blurb**
-     -get a text blurb from freebase
-* **get_blurb**
-     -get a text blurb from freebase
-* **blurb_api**
-     -get a text blurb from freebase
-* **text**
-     -get a text blurb from freebase
-* **notable_type**
-     -get a topic's notable type
-* **notable_for**
-     -get a topic's notable type
-* **notable_as**
-     -get a topic's notable type
-* **main_type**
-     -get a topic's notable type
-* **type**
-     -get a topic's notable type
-* **encode**
-     -quote a unicode string to turn it into a valid mql /type/key/value
-* **escape**
-     -quote a unicode string to turn it into a valid mql /type/key/value
 * **drilldown**
      -get insight into the breakdown of the topics in this type, by type and quality
 * **property_introspection**
@@ -470,6 +405,12 @@ freebase.garden("Category:Bridges_in_Canada", options, console.log)
      -find the subcategories of this wikipedia category
 * **wikipedia_to_freebase**
      -turn a wikipedia title or url into a freebase topic
+* **mqlwrite**
+     -write to freebase
+* **add_type**
+     -add a type to a freebase topic
+* **add_alias**
+     -add a alias to a freebase topic
 
 ##Examples
 * freebase.mqlread([{id:"/en/radiohead",name:null}])
@@ -487,31 +428,31 @@ freebase.garden("Category:Bridges_in_Canada", options, console.log)
 * freebase.translate("toronto maple leafs", {lang:"/lang/ja"})
 * freebase.notable("toronto maple leafs")
 * freebase.sentence('john malkovich',{},console.log)
-* freebase.list("hurricanes",{}, function(r){console.log(r)})
-* freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {}, console.log)
+* freebase.list("hurricanes",{})
+* freebase.place_data({lat:51.545414293637286,lng:-0.07589578628540039}, {})
 * freebase.incoming("toronto")
 * freebase.outgoing("vancouver")
 * freebase.graph("shawshank redemption")
-* freebase.related("toronto", {}, function(r){console.log(JSON.stringify(r, null, 2));})
+* freebase.related("toronto", {})
 * freebase.is_a("george clooney")
 * freebase.property_lookup("albums")
 * freebase.question("keanu reeves", {property:"children"})
-* freebase.dig('/en/toronto', {property:'/location/location/contains'}, function(r){ console.log(r) })
+* freebase.dig('/en/toronto', {property:'/location/location/contains'})
 * freebase.gallery('hurricanes')
 * freebase.wordnet("charming")
 * freebase.geolocation("cn tower")
-* freebase.nearby("cn tower", {type:"/location/location"}, console.log)
+* freebase.nearby("cn tower", {type:"/location/location"})
 * freebase.inside("montreal")
 * freebase.wikipedia_page('toronto')
 * freebase.dbpedia_page('toronto')
 * freebase.wikipedia_categories("Tunisia")
-* freebase.wikipedia_links("Toronto", {}, console.log)
-* freebase.wikipedia_external_links("Toronto", {}, console.log)
+* freebase.wikipedia_links("Toronto", {})
+* freebase.wikipedia_external_links("Toronto", {})
 * freebase.property_introspection("/government/politician/party")
 * freebase.schema("politician")
-* freebase.drilldown("/chemistry/chemical_compound",{max:400},console.log)
+* freebase.drilldown("/chemistry/chemical_compound",{max:400})
 * freebase.from_category("Category:Bridges_in_Canada", {depth:2})
-* freebase.wikipedia_subcategories("Category:Enzymes",{depth:2},function(r){console.log(JSON.stringify(r))})
+* freebase.wikipedia_subcategories("Category:Enzymes",{depth:2}})
 * freebase.rdf("toronto")
 * freebase.documentation()
 
