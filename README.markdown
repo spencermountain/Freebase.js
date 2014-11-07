@@ -29,6 +29,8 @@ it's a good idea to include your [api_key](https://code.google.com/apis/console/
 ```
 the paramaters are lazy, if you're lazy.
 
+[![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
+
 ## In the friggin broswer
 [Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  - freebase_core.js == 16 kb,  freebase.js == 16kb
 ```javascript
@@ -44,8 +46,6 @@ the paramaters are lazy, if you're lazy.
   })
   </script>
 ```
-
-[![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
 
 ## Writing to Freebase:
 ####Oauth is hard, but you can do it.
