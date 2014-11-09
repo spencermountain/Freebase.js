@@ -280,17 +280,45 @@ freebase.wikipedia_to_freebase = function(q, options, callback) {
     if (!ps.valid) {
         return ps.callback({});
     }
-    ps.q = ps.q.replace(/^https?:\/\/..\.wikipedia\.org\/wiki\//, '');
-    var title = ps.q;
-    var obj = {
-        id: "/wikipedia/en/" + freebase.mql_encode(ps.q),
-        name: title
+ 
+    options = options || {};
+    options.lang = options.lang || "en";
+
+    var regex = /^https?:\/\/([a-z]+)\.wikipedia\.org\/wiki\/(.*)/;
+    var match = regex.exec(ps.q);
+    if (match) {
+        var lang = match[1];
+        var title = decodeURIComponent(match[2]);
+        var obj = {
+            id: "/wikipedia/" + lang + "/" + freebase.mql_encode(title),
+            name: title
+        };
+        return ps.callback(obj)
+    } else {
+        regex = /^\/wiki\/(.*)/;
+        match = regex.exec(ps.q);
+        if (match) {
+           var title = decodeURIComponent(match[1]);
+           var obj = {
+               id: "/wikipedia/" + options.lang + "/" + freebase.mql_encode(title),
+               name: title
+           };
+           return ps.callback(obj)
+       } else {
+            ps.q = ps.q.replace(/^https?:\/\/..\.wikipedia\.org\/wiki\//, '');
+            var title = ps.q;
+            var obj = {
+                id: "/wikipedia/" + options.lang + "/" + freebase.mql_encode(ps.q),
+                 name: title
+            };
+            return ps.callback(obj);
+        }
     }
-    return ps.callback(obj)
 }
-// freebase.wikipedia_to_freebase("Tony Hawk")
-
-
+// freebase.wikipedia_to_freebase("Tony Hawk") => /wikipedia/en/Tony_Hawk
+// freebase.wikipedia_to_freebase("Tony Hawk", { lang: "de" }) => /wikipedia/de/Tony_Hawk
+// freebase.wikipedia_to_freebase("http://ru.wikipedia.org/wiki/%D0%A5%D0%BE%D1%83%D0%BA%2C_%D0%A2%D0%BE%D0%BD%D0%B8"); => /wikipedia/ru/$0425$043E$0443$043A$002C_$0422$043E$043D$0438
+// freebase.wikipedia_to_freebase("/wiki/%D7%A1%D7%A7%D7%99%D7%99%D7%98%D7%91%D7%95%D7%A8%D7%93%D7%99%D7%A0%D7%92", { lang: "he" }) => /wikipedia/he/$05E1$05E7$05D9$05D9$05D8$05D1$05D5$05E8$05D3$05D9$05E0$05D2
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = freebase
