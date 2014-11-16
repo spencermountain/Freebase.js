@@ -48,6 +48,9 @@ var freebase = (function() {
         if (options.dateline) {
             url += "&dateline=" + dateline;
         }
+        if (options.html_escape === false) {
+            url += '&html_escape=false';
+        }
 
         fns.http(url, options, function(result) {
             if (result && result.error) {
