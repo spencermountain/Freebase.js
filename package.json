@@ -24,6 +24,6 @@
         "grunt-contrib-uglify": "*"
     },
     "scripts": {
-        "test": "node ./src/tests/unit_tests.js"
+        "test": "node ./tests/unit_tests.js"
     }
 }
