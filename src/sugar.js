@@ -641,7 +641,7 @@ freebase.place_data = function(geo, options, callback) {
 
 freebase.is_a = function(q, options, callback) {
     this.doc = "get a list of identifiers for a topic"
-    var ps = fns.settle_params(arguments, freebase.related, {
+    var ps = fns.settle_params(arguments, freebase.is_a, {
         max: 25
     });
     if (ps.array) {
