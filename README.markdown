@@ -31,7 +31,7 @@ the paramaters are lazy, if you're lazy.
 
 [![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
 
-## In the friggin broswer
+## In the friggin browser
 [Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  - freebase_core.js == 16 kb,  freebase.js == 16kb
 ```javascript
   <script src="http://code.jquery.com/jquery-latest.js"></script>
@@ -81,6 +81,7 @@ Books about planets:
                }]​
     freebase.mqlread(query, {}, function(r){console.log(r)})
 ```
+the options object will ship [any paramaters](https://developers.google.com/freebase/v1/mql-overview) to the freebase api.
 
 ####Pagination
 Every Tornado, ever
@@ -91,6 +92,7 @@ Every Tornado, ever
              }]
       freebase.paginate(query, {max:400})
 ```
+
 ####Search API
 [search api documentation](https://developers.google.com/freebase/v1/search-overview)
 
@@ -98,6 +100,8 @@ Hockey players named 'doug'
 ```javascript
     freebase.search("doug",{type: "/ice_hockey/hockey_player"})
 ```
+the options object will ship [any paramaters](https://developers.google.com/freebase/v1/search) to the freebase search api.
+
 ####Description API
 First paragraph of a topic's wikipedia article:
 ```javascript

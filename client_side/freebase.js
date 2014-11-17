@@ -1,6 +1,6 @@
 /*! freebase 
  by @spencermountain
- 2014-11-07 */
+ 2014-11-16 */
 /*! freebase.js 
  by @spencermountain
 	https://github.com/spencermountain/Freebase.js
@@ -860,11 +860,17 @@ var freebase = (function() {
         if (typeof options == "function") {
             callback = options;
             options = {};
-        } //flexible parameter
+        } //flexible parameters
         options = options || {};
         options.uniqueness_failure = options.uniqueness_failure || "soft";
         options.cursor = options.cursor || "";
         var url = freebase.globals.host + 'mqlread?query=' + JSON.stringify(query) + "&cursor=" + options.cursor
+        //options object contains some cruft, but we can still splat it onto the url
+        var params = fns.set_params(options)
+        url+="&"+params
+        if (options.debug) {
+            console.log(url)
+        }
         fns.http(url, options, function(result) {
             if (result && result.error) {
                 console.log(JSON.stringify(result.error, null, 2));
@@ -905,12 +911,16 @@ var freebase = (function() {
             return freebase.lookup_id(ps.q, ps.options, ps.callback)
         }
         ps.options.query = encodeURIComponent(ps.q);
+        //the options object has some cruft to remove
         delete ps.options.property
         delete ps.options.strict
         var params = fns.set_params(ps.options)
         var url = freebase.globals.host + 'search/?' + params;
         if (ps.options.type == "/type/type" || ps.options.type == "/type/property") {
             url += "&scoring=schema&stemmed=true"
+        }
+        if(ps.options.debug){
+            console.log(url)
         }
         fns.http(url, ps.options, function(result) {
             if (!result || !result.result || !result.result[0]) {
@@ -1408,7 +1418,9 @@ var freebase = (function() {
     return freebase;
 
 })()
-
+// q=[{id:"/en/radiohead",name:null}]
+// freebase.mqlread(q, {cost:true, html_escape:false, debug:true,dinosaur:"yessir"}, function(r){console.log(r)})
+// freebase.search("tony hawk", {debug:true, dinosaur:"yessir"}, function(r){console.log(r)})
 //make sure we have core methods
 
 // export for Node.js
