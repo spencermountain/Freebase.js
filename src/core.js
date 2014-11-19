@@ -317,13 +317,13 @@ var freebase = (function() {
             options.cursor = cursor || ""
             freebase.mqlread(query, options, function(result) {
                 if (!result || !result.result) {
-                    return callback(all);
+                    return options.nodeCallback ? callback(null, all) : callback(all)
                 }
                 all = all.concat(result.result);
                 if (result.cursor && (!options.max || all.length < options.max)) {
                     iterate(result.cursor)
                 } else {
-                    return callback(all)
+                    return options.nodeCallback ? callback(null, all) : callback(all)
                 }
             })
         }
