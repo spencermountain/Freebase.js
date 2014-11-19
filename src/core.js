@@ -34,13 +34,13 @@ var freebase = (function() {
         this.doc = "interface to freebase's mql api";
         this.reference = "http://wiki.freebase.com/wiki/MQL";
         callback = callback || console.log;
-        if (!query) {
-            return callback({})
-        }
         if (typeof options == "function") {
             callback = options;
             options = {};
         } //flexible parameters
+        if (!query) {
+            return options.nodeCallback ? callback(null, {}) : callback({})
+        }
         options = options || {};
         options.uniqueness_failure = options.uniqueness_failure || "soft";
         options.cursor = options.cursor || "";
@@ -55,7 +55,7 @@ var freebase = (function() {
             if (result && result.error) {
                 console.log(JSON.stringify(result.error, null, 2));
             }
-            return callback(result)
+            return options.nodeCallback ? callback(null, result) : callback(result)
         })
     }
     // freebase.mqlread([{id:"/en/radiohead",name:null}])
