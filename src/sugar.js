@@ -104,13 +104,17 @@ freebase.drilldown = function(q, options, callback) {
 freebase.property_introspection = function(q, options, callback) {
     this.doc = "common lookups for freebase property data"
     callback = callback || console.log;
-    if (!q) {
-        return callback({})
-    }
     if (typeof options == "function") {
         callback = options;
         options = {};
     } //flexible parameter
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+    }
+    if (!q) {
+        return callback({})
+    }
     options = options || {};
     var ps = fns.settle_params(arguments, freebase.property_introspection);
     //handle an array
@@ -179,13 +183,17 @@ freebase.property_introspection = function(q, options, callback) {
 freebase.schema = function(q, options, callback) {
     this.doc = "common lookups for types and properties"
     callback = callback || console.log;
-    if (!q) {
-        return callback({})
-    }
     if (typeof options == "function") {
         callback = options;
         options = {};
     } //flexible parameter
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+    }
+    if (!q) {
+        return callback({})
+    }
     options = options || {};
     //handle an array
     if (fns.isarray(q) && q.length > 1) {

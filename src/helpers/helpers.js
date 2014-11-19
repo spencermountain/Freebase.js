@@ -73,6 +73,7 @@ var fns = (function() {
 
         if (o.options.nodeCallback) {
             o.callback = o.callback.bind(undefined, null);
+            o.options.nodeCallback = false;
         }
         //fancy callback wrapper
         if (o.options.verbose) {
