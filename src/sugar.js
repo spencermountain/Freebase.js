@@ -111,6 +111,7 @@ freebase.property_introspection = function(q, options, callback) {
 
     if (options.nodeCallback) {
         callback = callback.bind(undefined, null)
+        options.nodeCallback = false
     }
     if (!q) {
         return callback({})
@@ -190,6 +191,7 @@ freebase.schema = function(q, options, callback) {
 
     if (options.nodeCallback) {
         callback = callback.bind(undefined, null)
+        options.nodeCallback = false;
     }
     if (!q) {
         return callback({})
@@ -532,6 +534,11 @@ freebase.list = function(q, options, callback) {
 freebase.place_data = function(geo, options, callback) {
     this.doc = "from a geo-coordinate and area radius (in feet), get the town, province, country, and timezone for it"
     callback = callback || console.log;
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false;
+    }
     if (!geo) {
         return callback({})
     }
