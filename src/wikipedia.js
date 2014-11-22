@@ -252,12 +252,12 @@ freebase.wikipedia_subcategories = function(q, options, callback) {
         cats = cats.filter(function(v) {
             return !fns.isin(v, ps.options.already)
         })
-        ps.options.already = fns.compact_strong(_.flatten(ps.options.already.concat(cats)));
+        ps.options.already = fns.compact_strong(fns.flatten(ps.options.already.concat(cats)));
         if (ps.options.depth > 1 && cats.length > 0) {
             ps.options.depth = ps.options.depth - 1;
             return freebase.wikipedia_subcategories(cats, ps.options, function(r) {
                 ps.options.already = ps.options.already.concat(r)
-                return ps.callback(fns.compact_strong(_.flatten(ps.options.already)));
+                return ps.callback(fns.compact_strong(fns.flatten(ps.options.already)));
             })
         } else {
             return ps.callback(ps.options.already)

@@ -188,10 +188,6 @@ freebase.related = function(q, options, callback) {
 		all = result.filter(function(v) {
 			return fns.isin(v.property, data.related_properties)
 		})
-		//randomize the results
-		all = all.sort(function(a, b) {
-			return (Math.round(Math.random()) - 0.5);
-		})
 		all = all.map(function(v) {
 			if (!v.sentence) {
 				v.sentence = v.name + " is related to " + result.name
@@ -206,7 +202,7 @@ freebase.related = function(q, options, callback) {
 		freebase.notable(ps.q, ps.options, function(result) {
 			if (result && result.id) {
 				return freebase.list(result.id, {
-					max: ps.options.max
+					max: ps.options.max || 100
 				}, function(r) {
 					if (!r || fns.isempty(r)) {
 						return ps.callback(all)
@@ -217,9 +213,6 @@ freebase.related = function(q, options, callback) {
 					})
 					all = all.concat(r); //todo
 					all = fns.json_unique(all, "id")
-					all = all.sort(function(a, b) {
-						return (Math.round(Math.random()) - 0.5);
-					})
 					return ps.callback(all)
 				})
 			} else {
@@ -228,6 +221,7 @@ freebase.related = function(q, options, callback) {
 		})
 	})
 }
+// require("./sugar")
 // freebase.related("toronto", {}, function(r) {
 // 	console.log(JSON.stringify(r, null, 2));
 // })

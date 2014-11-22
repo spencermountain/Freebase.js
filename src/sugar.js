@@ -568,6 +568,9 @@ freebase.place_data = function(geo, options, callback) {
             province: null,
             timezone: null
         }
+        if(!r.result || !r.result[0]){
+            return callback({})
+        }
         all.city = r.result[0];
         var query = [{
             "name": null,
