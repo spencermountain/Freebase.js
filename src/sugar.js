@@ -104,13 +104,18 @@ freebase.drilldown = function(q, options, callback) {
 freebase.property_introspection = function(q, options, callback) {
     this.doc = "common lookups for freebase property data"
     callback = callback || console.log;
-    if (!q) {
-        return callback({})
-    }
     if (typeof options == "function") {
         callback = options;
         options = {};
     } //flexible parameter
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false
+    }
+    if (!q) {
+        return callback({})
+    }
     options = options || {};
     var ps = fns.settle_params(arguments, freebase.property_introspection);
     //handle an array
@@ -179,13 +184,18 @@ freebase.property_introspection = function(q, options, callback) {
 freebase.schema = function(q, options, callback) {
     this.doc = "common lookups for types and properties"
     callback = callback || console.log;
-    if (!q) {
-        return callback({})
-    }
     if (typeof options == "function") {
         callback = options;
         options = {};
     } //flexible parameter
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false;
+    }
+    if (!q) {
+        return callback({})
+    }
     options = options || {};
     //handle an array
     if (fns.isarray(q) && q.length > 1) {
@@ -524,6 +534,11 @@ freebase.list = function(q, options, callback) {
 freebase.place_data = function(geo, options, callback) {
     this.doc = "from a geo-coordinate and area radius (in feet), get the town, province, country, and timezone for it"
     callback = callback || console.log;
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false;
+    }
     if (!geo) {
         return callback({})
     }

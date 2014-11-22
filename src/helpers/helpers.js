@@ -64,10 +64,16 @@ var fns = (function() {
             defaults: defaults || {},
             method: method || ''
         }
+
         //flexible parameters
         if (typeof o.options == "function") {
             o.callback = o.options;
             o.options = {};
+        }
+
+        if (o.options.nodeCallback) {
+            o.callback = o.callback.bind(undefined, null);
+            o.options.nodeCallback = false;
         }
         //fancy callback wrapper
         if (o.options.verbose) {

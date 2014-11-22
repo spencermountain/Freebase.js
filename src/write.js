@@ -12,7 +12,7 @@ freebase.mqlwrite = function(query, options, callback) {
     this.doc = "write to freebase";
     callback = callback || console.log;
     if (!query) {
-        return callback({})
+        return options.nodeCallback ? callback(null, {}) : callback({})
     }
     if (typeof options == "function") {
         callback = options;
@@ -41,7 +41,7 @@ freebase.mqlwrite = function(query, options, callback) {
             console.log(err)
         }
         var result = JSON.parse(p).result
-        return callback(result, err)
+        return options.nodeCallback ? callback(err, result) : callback(result, err)
     })
 
 }
@@ -191,7 +191,7 @@ freebase.filter = function(list, options, callback) {
         if (!options.silent) {
             print_report(all, goods)
         }
-        callback(goods)
+        options.nodeCallback ? callback(null, goods) : callback(goods)
     });
 
 }
@@ -228,7 +228,7 @@ freebase.write_async = function(topics, options, callback) {
         })
     }
     async.mapLimit(queries, 5, write_it, function(err, all) {
-        callback(all)
+        options.nodeCallback ? callback(null, all) : callback(all)
     })
 
 }
