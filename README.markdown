@@ -67,6 +67,24 @@ You'll need to get a new token after about 3 hours.
 
 (Be careful not to commit your credentials.)
 
+##Documentation
+Each method takes the following form:
+    freebase.method( "query",   {options},  callback()  )
+it supports this form:
+    freebase.method( "query",  callback()  )
+and also this form, where the callback defaults to console.log()
+    freebase.method( "query" )
+
+here are some options that you can ship in to any method:
+````javascript
+{
+  nodeCallback: true, // use the 'error-first' callback form -> callback(error, result){}
+  key: "MY_API_KEY", // good idea to include your freebase key, to avoid errors
+  limit: 2, // truncate results
+  debug: true, // print out the urls being fetched
+}
+````
+
 ### Basic methods
 
 ####MQLread API

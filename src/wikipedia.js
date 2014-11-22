@@ -90,7 +90,7 @@ freebase.wikipedia_external_links = function(q, options, callback) {
     callback = callback || console.log;
     var ps = fns.settle_params(arguments, freebase.wikipedia_external_links, {});
     if (!q) {
-        return callback({})
+        return ps.callback({})
     }
     if (typeof options == "function") {
         callback = options;
@@ -127,7 +127,7 @@ freebase.wikipedia_external_links = function(q, options, callback) {
         return callback(links)
     })
 }
-// freebase.wikipedia_external_links("Toronto", {}, console.log)
+// freebase.wikipedia_external_links("Toronto")
 
 
 
@@ -280,7 +280,7 @@ freebase.wikipedia_to_freebase = function(q, options, callback) {
     if (!ps.valid) {
         return ps.callback({});
     }
- 
+
     options = options || {};
     options.lang = options.lang || "en";
 

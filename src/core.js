@@ -7,6 +7,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 var freebase = (function() {
+    "use strict";
 
     var freebase = {};
 

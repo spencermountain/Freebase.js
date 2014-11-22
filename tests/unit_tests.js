@@ -1,12 +1,13 @@
 var async = require('async')
 var freebase = require('../index');
-var key = require("../auth/credentials").API_KEY || ''
+var key = require("../auth/credentials").API_KEY || ""
 var options = {
     key: key //please use your mqlREAD key..
 };
 var test = {}
 
 test.search = [
+
     ["franklin", {},
         function(r) {
             console.log(r.length > 2)
@@ -471,6 +472,7 @@ function core_test(cb) {
 
 core_test(function() {})
 // testone('inside', function() {})
+// testone('search', function() {})
 
 
 

@@ -1,5 +1,5 @@
 var freebase = (function() {
-
+        "use strict";
         var freebase = require("./src/core")
         var add_methods = function(obj) {
             Object.keys(obj).forEach(function(k) {
@@ -23,3 +23,7 @@ var freebase = (function() {
     // console.log(Object.keys(freebase))
     // freebase.wikipedia_categories("Thom Yorke", {}, console.log) //****
     // freebase.documentation()
+
+    // freebase.search("toronto", {nodeCallback:true}, function(err, r){
+    //     console.log(JSON.stringify(r, null, 2));
+    // })
