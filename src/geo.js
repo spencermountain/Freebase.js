@@ -39,7 +39,7 @@ freebase.geolocation = function(q, options, callback) {
             }]
         }]
         freebase.mqlread(query, ps.options, function(result) {
-            if (result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]) {
+            if (result && result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]) {
                 var geo = result.result[0]['/location/location/geolocation'][0];
                 delete geo.type;
                 delete geo.optional;
@@ -79,9 +79,7 @@ freebase.nearby = function(q, options, callback) {
 
 freebase.inside = function(q, options, callback) {
     this.doc = "list of topics inside a location"
-    var ps = fns.settle_params(arguments, freebase.inside, {
-        property: "part_of"
-    });
+    var ps = fns.settle_params(arguments, freebase.inside);
     if (ps.array) {
         return fns.doit_async(ps);
     }
@@ -91,10 +89,12 @@ freebase.inside = function(q, options, callback) {
     ps.options.filter = ps.options.filter || "(all part_of:'" + ps.q + "')"
     ps.options.output = ps.options.output || "(geocode)"
     freebase.search("", ps.options, function(r) {
+        r=r.filter(function(o){return o.id!=q && o.mid!=q})
         return ps.callback(r)
     })
 }
-// freebase.inside("montreal") //***********
+// freebase.inside("montreal", {}) //***********
+// freebase.inside("92lkj348ljqeh2qpo2yslkqj2uedhaslkjad7d")
 
 
 

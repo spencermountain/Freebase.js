@@ -56,31 +56,25 @@ var fns = (function() {
 
 
     fns.settle_params = function(params, method, defaults) {
+        defaults= defaults || {}
         var o = {
             valid: false,
             q: params[0],
             options: params[1] || {},
-            callback: params[2] || console.log,
-            defaults: defaults || {},
+            callback: params[2] || function(r){console.log(r)},
             method: method || ''
         }
-
+        //clone the options object to avoid memory leaks passing it around
+        o.options=JSON.parse(JSON.stringify(o.options))
         //flexible parameters
         if (typeof o.options == "function") {
             o.callback = o.options;
             o.options = {};
         }
-
+        // support for error-first callbacks
         if (o.options.nodeCallback) {
             o.callback = o.callback.bind(undefined, null);
             o.options.nodeCallback = false;
-        }
-        //fancy callback wrapper
-        if (o.options.verbose) {
-            var tmp = o.callback
-            o.callback = function(r) {
-                return tmp(r)
-            }
         }
         //handle an array
         if (fns.isarray(o.q)) {
@@ -106,9 +100,11 @@ var fns = (function() {
             o.is_id = true;
         }
         //set default options
-        for (var i in o.defaults) {
-            o.options[i] = o.options[i] || o.defaults[i];
-        }
+        Object.keys(defaults).forEach(function(k){
+            if(!o.options[k]){
+              o.options[k] = defaults[k];
+            }
+        })
         //remove whitespace
         o.q = o.q.replace(/  /, ' ');
         o.q = o.q.replace(/^\s+|\s+$/, '');

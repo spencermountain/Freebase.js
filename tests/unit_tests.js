@@ -472,7 +472,7 @@ function core_test(cb) {
 
 core_test(function() {})
 // testone('inside', function() {})
-// testone('search', function() {})
+// testone('geolocation', function() {})
 
 
 

@@ -386,6 +386,9 @@ freebase.same_as_links = function(q, options, callback) {
     }
 
     var url = freebase.globals.host + 'search?type=/common/topic&limit=1&query=' + encodeURIComponent(ps.q);
+    if (ps.options.debug) {
+      console.log(url)
+    }
     fns.http(url, ps.options, function(result) {
         if (!result || !result.result || !result.result[0]) {
             return ps.callback({})
@@ -429,7 +432,7 @@ freebase.translate = function(q, options, callback) {
     this.doc = "return specific language title for a topic"
     this.reference = "http://wiki.freebase.com/wiki/I18n"
     var ps = fns.settle_params(arguments, freebase.translate, {
-        lang: "/lang/fr"
+        lang: "fr"
     });
     if (ps.array) {
         return fns.doit_async(ps);
@@ -561,6 +564,9 @@ freebase.place_data = function(geo, options, callback) {
     geo.radius = geo.radius || 999000
     var filter = '(all type:/location/citytown (within radius:' + geo.radius + 'ft lon:' + geo.lng + ' lat:' + geo.lat + '))'
     var url = freebase.globals.host + 'search?filter=' + filter + '&limit=200'
+    if (options.debug) {
+      console.log(url)
+    }
     fns.http(url, options, function(r) {
         var all = {
             city: null,
@@ -823,6 +829,7 @@ freebase.wordnet = function(q, options, callback) {
         query[0].limit = ps.options.limit;
     }
     freebase.mqlread(query, ps.options, function(r) {
+        r= r || {result:{}}
         return ps.callback(r.result)
     })
 }
