@@ -1,6 +1,6 @@
 /*! freebase 
  by @spencermountain
- 2014-11-16 */
+ 2014-11-22 */
 /*! freebase.js 
  by @spencermountain
 	https://github.com/spencermountain/Freebase.js
@@ -489,25 +489,25 @@ var fns = (function() {
 
 
     fns.settle_params = function(params, method, defaults) {
+        defaults= defaults || {}
         var o = {
             valid: false,
             q: params[0],
             options: params[1] || {},
-            callback: params[2] || console.log,
-            defaults: defaults || {},
+            callback: params[2] || function(r){console.log(r)},
             method: method || ''
         }
+        //clone the options object to avoid memory leaks passing it around
+        o.options=JSON.parse(JSON.stringify(o.options))
         //flexible parameters
         if (typeof o.options == "function") {
             o.callback = o.options;
             o.options = {};
         }
-        //fancy callback wrapper
-        if (o.options.verbose) {
-            var tmp = o.callback
-            o.callback = function(r) {
-                return tmp(r)
-            }
+        // support for error-first callbacks
+        if (o.options.nodeCallback) {
+            o.callback = o.callback.bind(undefined, null);
+            o.options.nodeCallback = false;
         }
         //handle an array
         if (fns.isarray(o.q)) {
@@ -533,9 +533,11 @@ var fns = (function() {
             o.is_id = true;
         }
         //set default options
-        for (var i in o.defaults) {
-            o.options[i] = o.options[i] || o.defaults[i];
-        }
+        Object.keys(defaults).forEach(function(k){
+            if(!o.options[k]){
+              o.options[k] = defaults[k];
+            }
+        })
         //remove whitespace
         o.q = o.q.replace(/  /, ' ');
         o.q = o.q.replace(/^\s+|\s+$/, '');
@@ -827,6 +829,7 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 var freebase = (function() {
+    "use strict";
 
     var freebase = {};
 
@@ -854,13 +857,13 @@ var freebase = (function() {
         this.doc = "interface to freebase's mql api";
         this.reference = "http://wiki.freebase.com/wiki/MQL";
         callback = callback || console.log;
-        if (!query) {
-            return callback({})
-        }
         if (typeof options == "function") {
             callback = options;
             options = {};
         } //flexible parameters
+        if (!query) {
+            return options.nodeCallback ? callback(null, {}) : callback({})
+        }
         options = options || {};
         options.uniqueness_failure = options.uniqueness_failure || "soft";
         options.cursor = options.cursor || "";
@@ -875,7 +878,7 @@ var freebase = (function() {
             if (result && result.error) {
                 console.log(JSON.stringify(result.error, null, 2));
             }
-            return callback(result)
+            return options.nodeCallback ? callback(null, result) : callback(result)
         })
     }
     // freebase.mqlread([{id:"/en/radiohead",name:null}])
@@ -971,7 +974,9 @@ var freebase = (function() {
         if (ps.options.type == "/type/type" || ps.options.type == "/type/property") {
             url += "&scoring=schema&stemmed=true"
         }
-
+        if (ps.options.debug) {
+            console.log(url)
+        }
         return fns.http(url, ps.options, function(result) {
             if (!result || !result.result || !result.result[0]) {
                 return ps.callback({})
@@ -1003,6 +1008,8 @@ var freebase = (function() {
     // freebase.lookup("/m/01sh40")
     //freebase.search("/en/radiohead")
     // freebase.lookup("pulp fiction")
+    // freebase.lookup('australia',{type:"/location/location", debug:true})
+
 
     freebase.lookup_id = function(q, options, callback) {
         this.doc = "generic info for an id";
@@ -1045,6 +1052,9 @@ var freebase = (function() {
         var output = fns.clone(freebase.globals.generic_query);
         var url = freebase.globals.host + 'search?type=/common/topic&limit=1&query=' + encodeURIComponent(ps.q);
         url += "&mql_output=" + encodeURIComponent(JSON.stringify(output));
+        if (ps.options.debug) {
+            console.log(url)
+        }
         fns.http(url, ps.options, function(result) {
             if (!result || !result.result) {
                 return ps.callback({})
@@ -1112,6 +1122,9 @@ var freebase = (function() {
             }
             ps.options.filter = ps.options.filter || 'all'
             var url = freebase.globals.host + 'topic' + id + '?' + fns.set_params(ps.options)
+            if (ps.options.debug) {
+                console.log(url)
+            }
             fns.http(url, ps.options, function(result) {
                 return ps.callback(result)
             })
@@ -1137,13 +1150,13 @@ var freebase = (function() {
             options.cursor = cursor || ""
             freebase.mqlread(query, options, function(result) {
                 if (!result || !result.result) {
-                    return callback(all);
+                    return options.nodeCallback ? callback(null, all) : callback(all)
                 }
                 all = all.concat(result.result);
                 if (result.cursor && (!options.max || all.length < options.max)) {
                     iterate(result.cursor)
                 } else {
-                    return callback(all)
+                    return options.nodeCallback ? callback(null, all) : callback(all)
                 }
             })
         }
@@ -1194,7 +1207,7 @@ var freebase = (function() {
         }
         freebase.get_id(ps.q, ps.options, function(topic) {
             if (!topic || !topic.id) {
-                return ps.callback("")
+                return options.nodeCallback ? ps.callback(null, "") : ps.callback("")
             }
             var query = [{
                 "id": topic.id,
@@ -1206,14 +1219,14 @@ var freebase = (function() {
             }]
             freebase.mqlread(query, ps.options, function(result) {
                 if (!result || !result.result || !result.result[0]) {
-                    return ps.callback({})
+                    return options.nodeCallback ? ps.callback(null, {}) : ps.callback({})
                 }
                 var key = fns.mql_unencode(result.result[0].key.value)
                 var obj = {
                     html: 'http://dbpedia.org/page/' + key,
                     json: 'http://dbpedia.org/data/' + key + '.json',
                 }
-                return ps.callback(obj)
+                return options.nodeCallback ? ps.callback(null, obj) : ps.callback(obj)
             })
         })
     }
@@ -1259,17 +1272,18 @@ var freebase = (function() {
             return fns.doit_async(ps);
         }
         if (!ps.valid) {
-            return ps.callback({});
+            return options.nodeCallback ? ps.callback(null, {}) : ps.callback({})
         }
         freebase.get_id(ps.q, ps.options, function(topic) {
             var id = topic.id;
             if (!id) {
-                return ps.callback({})
+                return options.nodeCallback ? ps.callback(null, {}) : ps.callback({})
             }
             ps.options.filter = ps.options.filter || 'all'
             var url = freebase.globals.host + "rdf" + id;
             fns.softget(url, ps.options, function(result) {
-                return ps.callback(result || '')
+                result= result||''
+                return options.nodeCallback ? ps.callback(null, result) : ps.callback(result)
             })
         })
     }
@@ -1293,6 +1307,9 @@ var freebase = (function() {
                 return ps.callback("")
             }
             var url = freebase.globals.host + 'text' + topic.id;
+            if (ps.options.debug) {
+                console.log(url)
+            }
             fns.http(url, ps.options, function(result) {
                 if (!result.result) {
                     return ps.callback('')
@@ -1353,22 +1370,23 @@ var freebase = (function() {
             return fns.doit_async(ps);
         }
         if (!ps.valid) {
-            return ps.callback({});
+            return ps.options.nodeCallback ? ps.callback(null, {}) : ps.callback({})
         }
         freebase.topic(ps.q, {
             filter: "/common/topic/notable_types"
         }, function(result) {
             if (!result || !result.property || !result.property['/common/topic/notable_types']) {
-                return ps.callback({})
+                return ps.options.nodeCallback ? ps.callback(null, {}) : ps.callback({})
             }
             var notable = result.property['/common/topic/notable_types'] || {
                 values: []
             };
             notable.values[0].name = notable.values[0].text;
-            return ps.callback(notable.values[0])
+            var result=notable.values[0]
+            return ps.options.nodeCallback ? ps.callback(null, result) : ps.callback(result)
         });
     }
-    // freebase.notable("toronto maple leafs")
+    // freebase.notable("toronto maple leafs", {nodeCallback:true})
 
 
     freebase.documentation = function(f, options, callback) {
@@ -1527,13 +1545,18 @@ freebase.drilldown = function(q, options, callback) {
 freebase.property_introspection = function(q, options, callback) {
     this.doc = "common lookups for freebase property data"
     callback = callback || console.log;
-    if (!q) {
-        return callback({})
-    }
     if (typeof options == "function") {
         callback = options;
         options = {};
     } //flexible parameter
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false
+    }
+    if (!q) {
+        return callback({})
+    }
     options = options || {};
     var ps = fns.settle_params(arguments, freebase.property_introspection);
     //handle an array
@@ -1602,13 +1625,18 @@ freebase.property_introspection = function(q, options, callback) {
 freebase.schema = function(q, options, callback) {
     this.doc = "common lookups for types and properties"
     callback = callback || console.log;
-    if (!q) {
-        return callback({})
-    }
     if (typeof options == "function") {
         callback = options;
         options = {};
     } //flexible parameter
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false;
+    }
+    if (!q) {
+        return callback({})
+    }
     options = options || {};
     //handle an array
     if (fns.isarray(q) && q.length > 1) {
@@ -1799,6 +1827,9 @@ freebase.same_as_links = function(q, options, callback) {
     }
 
     var url = freebase.globals.host + 'search?type=/common/topic&limit=1&query=' + encodeURIComponent(ps.q);
+    if (ps.options.debug) {
+      console.log(url)
+    }
     fns.http(url, ps.options, function(result) {
         if (!result || !result.result || !result.result[0]) {
             return ps.callback({})
@@ -1842,7 +1873,7 @@ freebase.translate = function(q, options, callback) {
     this.doc = "return specific language title for a topic"
     this.reference = "http://wiki.freebase.com/wiki/I18n"
     var ps = fns.settle_params(arguments, freebase.translate, {
-        lang: "/lang/fr"
+        lang: "fr"
     });
     if (ps.array) {
         return fns.doit_async(ps);
@@ -1947,6 +1978,11 @@ freebase.list = function(q, options, callback) {
 freebase.place_data = function(geo, options, callback) {
     this.doc = "from a geo-coordinate and area radius (in feet), get the town, province, country, and timezone for it"
     callback = callback || console.log;
+
+    if (options.nodeCallback) {
+        callback = callback.bind(undefined, null)
+        options.nodeCallback = false;
+    }
     if (!geo) {
         return callback({})
     }
@@ -1969,12 +2005,18 @@ freebase.place_data = function(geo, options, callback) {
     geo.radius = geo.radius || 999000
     var filter = '(all type:/location/citytown (within radius:' + geo.radius + 'ft lon:' + geo.lng + ' lat:' + geo.lat + '))'
     var url = freebase.globals.host + 'search?filter=' + filter + '&limit=200'
+    if (options.debug) {
+      console.log(url)
+    }
     fns.http(url, options, function(r) {
         var all = {
             city: null,
             country: null,
             province: null,
             timezone: null
+        }
+        if(!r.result || !r.result[0]){
+            return callback({})
         }
         all.city = r.result[0];
         var query = [{
@@ -2064,7 +2106,7 @@ freebase.place_data = function(geo, options, callback) {
 
 freebase.is_a = function(q, options, callback) {
     this.doc = "get a list of identifiers for a topic"
-    var ps = fns.settle_params(arguments, freebase.related, {
+    var ps = fns.settle_params(arguments, freebase.is_a, {
         max: 25
     });
     if (ps.array) {
@@ -2228,6 +2270,7 @@ freebase.wordnet = function(q, options, callback) {
         query[0].limit = ps.options.limit;
     }
     freebase.mqlread(query, ps.options, function(r) {
+        r= r || {result:{}}
         return ps.callback(r.result)
     })
 }
@@ -2787,7 +2830,7 @@ freebase.geolocation = function(q, options, callback) {
             }]
         }]
         freebase.mqlread(query, ps.options, function(result) {
-            if (result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]) {
+            if (result && result.result && result.result[0] && result.result[0]['/location/location/geolocation'][0]) {
                 var geo = result.result[0]['/location/location/geolocation'][0];
                 delete geo.type;
                 delete geo.optional;
@@ -2827,9 +2870,7 @@ freebase.nearby = function(q, options, callback) {
 
 freebase.inside = function(q, options, callback) {
     this.doc = "list of topics inside a location"
-    var ps = fns.settle_params(arguments, freebase.inside, {
-        property: "part_of"
-    });
+    var ps = fns.settle_params(arguments, freebase.inside);
     if (ps.array) {
         return fns.doit_async(ps);
     }
@@ -2839,10 +2880,12 @@ freebase.inside = function(q, options, callback) {
     ps.options.filter = ps.options.filter || "(all part_of:'" + ps.q + "')"
     ps.options.output = ps.options.output || "(geocode)"
     freebase.search("", ps.options, function(r) {
+        r=r.filter(function(o){return o.id!=q && o.mid!=q})
         return ps.callback(r)
     })
 }
-// freebase.inside("montreal") //***********
+// freebase.inside("montreal", {}) //***********
+// freebase.inside("92lkj348ljqeh2qpo2yslkqj2uedhaslkjad7d")
 
 
 
@@ -3039,10 +3082,6 @@ freebase.related = function(q, options, callback) {
 		all = result.filter(function(v) {
 			return fns.isin(v.property, data.related_properties)
 		})
-		//randomize the results
-		all = all.sort(function(a, b) {
-			return (Math.round(Math.random()) - 0.5);
-		})
 		all = all.map(function(v) {
 			if (!v.sentence) {
 				v.sentence = v.name + " is related to " + result.name
@@ -3057,7 +3096,7 @@ freebase.related = function(q, options, callback) {
 		freebase.notable(ps.q, ps.options, function(result) {
 			if (result && result.id) {
 				return freebase.list(result.id, {
-					max: ps.options.max
+					max: ps.options.max || 100
 				}, function(r) {
 					if (!r || fns.isempty(r)) {
 						return ps.callback(all)
@@ -3068,9 +3107,6 @@ freebase.related = function(q, options, callback) {
 					})
 					all = all.concat(r); //todo
 					all = fns.json_unique(all, "id")
-					all = all.sort(function(a, b) {
-						return (Math.round(Math.random()) - 0.5);
-					})
 					return ps.callback(all)
 				})
 			} else {
@@ -3079,6 +3115,7 @@ freebase.related = function(q, options, callback) {
 		})
 	})
 }
+// require("./sugar")
 // freebase.related("toronto", {}, function(r) {
 // 	console.log(JSON.stringify(r, null, 2));
 // })
