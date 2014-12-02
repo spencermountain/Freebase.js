@@ -1,6 +1,6 @@
 /*! freebase 
  by @spencermountain
- 2014-11-22 */
+ 2014-12-02 */
 /*! freebase.js 
  by @spencermountain
 	https://github.com/spencermountain/Freebase.js

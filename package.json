@@ -17,13 +17,23 @@
         "googleapis": "0.6.1",
         "async": "0.8.0"
     },
+    "keywords": [
+        "freebase",
+        "semantic web",
+        "wikipedia"
+    ],
+    "preferGlobal": true,
     "devDependencies": {
         "grunt": "0.4.2",
         "grunt-contrib-jshint": "*",
         "grunt-contrib-concat": "*",
         "grunt-contrib-uglify": "*"
     },
+    "bin": {
+        "freebase": "./bin/freebase.js"
+    },
     "scripts": {
         "test": "node ./tests/unit_tests.js"
-    }
+    },
+    "license": "MIT"
 }
