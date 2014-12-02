@@ -43,7 +43,7 @@ here are some options that you can ship in to any method:
 ````
 You can also ship in any [MQL parameters](https://developers.google.com/freebase/v1/mql-overview) or [search api parameters](https://developers.google.com/freebase/v1/search-overview).
 
-[![Video Demo](http://i.imgur.com/AA2AMTS.png)](https://vimeo.com/13992710)
+[![Video Demo](http://i.imgur.com/AA2AMTS.png?1)](https://vimeo.com/13992710)
 
 ## In the friggin browser
 [Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  -  63kb
