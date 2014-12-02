@@ -33,9 +33,6 @@ it's a good idea to include your [api_key](https://code.google.com/apis/console/
 ```javascript
 freebase.sentence("meatloaf", {type:"/food/food", key:"MY_API_KEY"})
 ```
-
-[![Video Demo](http://i.imgur.com/AA2AMTS.png)](https://vimeo.com/13992710)
-
 here are some options that you can ship in to any method:
 ````javascript
 { nodeCallback: true, // use the 'error-first' callback form -> callback(error, result){}
@@ -46,6 +43,7 @@ here are some options that you can ship in to any method:
 ````
 You can also ship in any [MQL parameters](https://developers.google.com/freebase/v1/mql-overview) or [search api parameters](https://developers.google.com/freebase/v1/search-overview).
 
+[![Video Demo](http://i.imgur.com/AA2AMTS.png)](https://vimeo.com/13992710)
 
 ## In the friggin browser
 [Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  -  63kb
