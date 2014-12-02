@@ -27,6 +27,6 @@ var freebase = (function() {
     // freebase.search("toronto", {nodeCallback:true}, function(err, r){
     //     console.log(JSON.stringify(r, null, 2));
     // })
-    // freebase.topic("toronto", {debug:true}, function(err, r){
+    // freebase.topic("toronto", {debug:true}, function(r){
     //     console.log(JSON.stringify(r, null, 2));
     // })
