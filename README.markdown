@@ -14,21 +14,41 @@ freebase.description('tom cruise', {})
 //"Tom Cruise, is an American film actor.."
 ```
 
+
+
+
+
 ## Showin' off
-it's built to be as flexible as possible. all methods return the same things:
+All methods take the following form. The parameters are lazy.
+```javascript
+freebase.method( "query",   {options},  callback()  )
+freebase.method( "query",  callback()  )
+freebase.method( "query",  {options}  )
+freebase.method( "query" )
+````
+These methods return the same things:
 ```javascript
 freebase.image("/en/thom_yorke")
-freebase.image("thom yorke", {}, console.log)
-freebase.image("http://www.myspace.com/thomyorkemusic")
+freebase.image("http://www.myspace.com/thomyorkemusic", {}, console.log)
+freebase.image("thom yorke") //makes a 'safe guess'
 freebase.image({"name":"thom yorke", "id":"/en/thom_yorke"}, console.log)
 ```
 it's a good idea to include your [api_key](https://code.google.com/apis/console/) in each method:
 ```javascript
 freebase.sentence("meatloaf", {type:"/food/food", key:"MY_API_KEY"})
 ```
-the paramaters are lazy, if you're lazy.
 
 [![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
+
+here are some options that you can ship in to any method:
+````javascript
+{ nodeCallback: true, // use the 'error-first' callback form -> callback(error, result){}
+  key: "MY_API_KEY", // good idea to include your freebase key, to avoid errors
+  limit: 2, // truncate results
+  debug: true, // print out the urls being fetched
+}
+````
+You can also ship in any [MQL parameters](https://developers.google.com/freebase/v1/mql-overview) or [search api parameters](https://developers.google.com/freebase/v1/search-overview).
 
 
 ## In the friggin browser
@@ -76,27 +96,6 @@ You'll need to get a new token after about 3 hours. (Don't commit your credentia
 
 If you're doing inference, or writing a bot, check out [freebase_garden](https://github.com/spencermountain/freebase_garden)
 
-##Documentation
-Each method takes the following form:
-```javascript
-freebase.method( "query",   {options},  callback()  )
-````
-it supports this form:
-```javascript
-freebase.method( "query",  callback()  )
-````
-and also this form, where the callback defaults to console.log()
-```javascript
-freebase.method( "query" )
-````
-here are some options that you can ship in to any method:
-````javascript
-{ nodeCallback: true, // use the 'error-first' callback form -> callback(error, result){}
-  key: "MY_API_KEY", // good idea to include your freebase key, to avoid errors
-  limit: 2, // truncate results
-  debug: true, // print out the urls being fetched
-}
-````
 
 ### Basic methods
 
