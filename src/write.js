@@ -36,12 +36,17 @@ freebase.mqlwrite = function(query, options, callback) {
             Authorization: "Bearer " + options.oauth_token
         }
     }
+    if(options.debug){
+        console.log(obj)
+    }
     request(obj, function(err, r, p) {
-        if (err) {
+        if (!options.nodeCallback && err || !p || p.error) {
             console.log(err)
+            console.log(p)
         }
-        var result = JSON.parse(p).result
-        return options.nodeCallback ? callback(err, result) : callback(result, err)
+        var result = JSON.parse(p).result || {}
+        var error= err || result.error
+        return options.nodeCallback ? callback(error, result) : callback(result, error)
     })
 
 }
@@ -49,15 +54,38 @@ freebase.add_type = function(topic, options, callback) {
     this.doc = "add a type to a freebase topic";
     callback = callback || console.log;
     options = options || {};
-    var query = {
-        "id": topic,
-        "type": {
-            "id": options.type,
-            "connect": options.connect || "insert"
+    //just one id for a topic..
+    if(typeof topic=="string"){
+        var query = {
+            "id": topic,
+            "type": {
+                "id": options.type,
+                "connect": options.connect || "insert"
+            }
         }
+        return freebase.mqlwrite(query, options, callback)
     }
-    freebase.mqlwrite(query, options, callback)
+    //do a list of topics
+    var queries= topic.map(function(t){
+        return {
+            "id": t,
+            "type": {
+                "id": options.type,
+                "connect": options.connect || "insert"
+            }
+        }
+    })
+    var write_it = function(q, cb) {
+        freebase.mqlwrite(q, options, function(result, err) {
+            cb(err, result)
+        })
+    }
+    return async.mapLimit(queries, 5, write_it, function(err, all) {
+        options.nodeCallback ? callback(null, all) : callback(all)
+    })
 }
+
+
 freebase.add_alias = function(topic, options, callback) {
     this.doc = "add a alias to a freebase topic";
     callback = callback || console.log;
@@ -83,118 +111,6 @@ freebase.test_writes = function(token) {
     // freebase.add_alias("/wikipedia/en/John_f_kenedy", "jfk", console.log)
 }
 
-
-
-
-
-
-
-
-
-//accept a list of topics and ensure they meet demands
-freebase.filter = function(list, options, callback) {
-    list=list||[]
-    options = options || {}
-    options.filter = options.filter || {}
-    //build query
-    var i = 0
-    var letters = 'abcdefghijklmnopqrstuvwxyz'.split('')
-    var queries = list.map(function(l) {
-        var query = {
-            id: l.id,
-            name: null,
-            type: []
-        }
-        if (options.filter.type) {
-            query['must:type'] = options.filter.type
-        }
-        if (options.filter.types) {
-            options.filter.types.forEach(function(t) {
-                query[letters[i % 26] + ':type'] = t
-                i++
-            })
-        }
-        if (options.filter.not_type) {
-            query['musnt:type'] = {
-                "optional": "forbidden",
-                "id": options.filter.not_type
-            }
-        }
-        if (options.filter.not_types) {
-            options.filter.not_types.forEach(function(t) {
-                query[letters[i % 26] + ':type'] = {
-                    "optional": "forbidden",
-                    "id": t
-                }
-                i++
-            })
-        }
-        return query
-    })
-
-    var doit = function(query, cb) {
-        freebase.mqlread(query, options, function(r) {
-            cb(null, r.result)
-        })
-    }
-    async.mapLimit(queries, 5, doit, function(err, all) {
-        var goods = all.filter(function(r) {
-            return r
-        })
-        if (options.filter.name) {
-            goods = goods.filter(function(o) {
-                return o.name && o.name.match(options.filter.name)
-            })
-        }
-        if (options.filter.not_name) {
-            goods = goods.filter(function(o) {
-                return o.name && !o.name.match(options.filter.not_name)
-            })
-        }
-        if (options.filter.orphan) {
-            goods = goods.filter(function(t) {
-                for (var o in t.type) {
-                    if (!t.type[o].match(/topic/i)) {
-                        return false
-                    }
-                }
-                return true
-            })
-        }
-
-        function print_report(full, list) {
-            var stat = {}
-            stat.names = list.map(function(s) {
-                return s.name
-            }),
-            stat.filtered_out = full.length - list.length
-            stat.final_count = list.length,
-            stat.orphans = list.filter(function(t) {
-                for (var o in t.type) {
-                    if (!t.type[o].match(/topic/i)) {
-                        return false
-                    }
-                }
-                return true
-            }).length
-            stat.people = list.filter(function(t) {
-                return fns.isin('/people/person', t.type)
-            }).length
-            stat.events = list.filter(function(t) {
-                return fns.isin('/time/event', t.type)
-            }).length
-            stat.locations = list.filter(function(t) {
-                return fns.isin('/location/location', t.type)
-            }).length
-            console.log(JSON.stringify(stat, null, 2));
-        }
-        if (!options.silent) {
-            print_report(all, goods)
-        }
-        options.nodeCallback ? callback(null, goods) : callback(goods)
-    });
-
-}
 
 
 
