@@ -14,10 +14,6 @@ freebase.description('tom cruise', {})
 //"Tom Cruise, is an American film actor.."
 ```
 
-
-
-
-
 ## Showin' off
 All methods take the following form. The parameters are lazy.
 ```javascript
@@ -30,7 +26,7 @@ These methods return the same things:
 ```javascript
 freebase.image("/en/thom_yorke")
 freebase.image("http://www.myspace.com/thomyorkemusic", {}, console.log)
-freebase.image("thom yorke") //makes a 'safe guess'
+freebase.image("thom yorke") //makes a 'decidedly safe guess'
 freebase.image({"name":"thom yorke", "id":"/en/thom_yorke"}, console.log)
 ```
 it's a good idea to include your [api_key](https://code.google.com/apis/console/) in each method:
@@ -38,7 +34,7 @@ it's a good idea to include your [api_key](https://code.google.com/apis/console/
 freebase.sentence("meatloaf", {type:"/food/food", key:"MY_API_KEY"})
 ```
 
-[![Video Demo](http://i.vimeocdn.com/video/81314153_640.jpg)](https://vimeo.com/13992710)
+[![Video Demo](http://i.imgur.com/AA2AMTS.png)](https://vimeo.com/13992710)
 
 here are some options that you can ship in to any method:
 ````javascript
@@ -52,7 +48,7 @@ You can also ship in any [MQL parameters](https://developers.google.com/freebase
 
 
 ## In the friggin browser
-[Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  - freebase.min.js == 63kb
+[Demo](https://rawgit.com/spencermountain/Freebase.js/master/client_side/demo.html)  -  63kb
 ```javascript
 <script src="http://code.jquery.com/jquery-latest.js"></script>
 <script src="https://rawgit.com/spencermountain/Freebase.js/master/client_side/freebase.min.js"></script>
