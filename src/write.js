@@ -40,7 +40,6 @@ freebase.mqlwrite = function(query, options, callback) {
         console.log(obj)
     }
     request(obj, function(err, r, p) {
-        console.log(p)
         var result = JSON.parse(p).result || {}
         if (!options.nodeCallback && (err || !p || p.error)) {
             console.log(err)
