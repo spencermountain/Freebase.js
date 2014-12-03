@@ -40,18 +40,19 @@ freebase.mqlwrite = function(query, options, callback) {
         console.log(obj)
     }
     request(obj, function(err, r, p) {
-        if (!options.nodeCallback && err || !p || p.error) {
+        console.log(p)
+        var result = JSON.parse(p).result || {}
+        if (!options.nodeCallback && (err || !p || p.error)) {
             console.log(err)
             console.log(p)
         }
-        var result = JSON.parse(p).result || {}
         var error= err || result.error
         return options.nodeCallback ? callback(error, result) : callback(result, error)
     })
 
 }
 freebase.add_type = function(topic, options, callback) {
-    this.doc = "add a type to a freebase topic";
+    this.doc = "add a type to a freebase topic[s]";
     callback = callback || console.log;
     options = options || {};
     //just one id for a topic..
@@ -83,6 +84,14 @@ freebase.add_type = function(topic, options, callback) {
     return async.mapLimit(queries, 5, write_it, function(err, all) {
         options.nodeCallback ? callback(null, all) : callback(all)
     })
+}
+
+
+freebase.remove_type = function(topic, options, callback) {
+    this.doc = "remove a type to a freebase topic[s]";
+    options= options || {}
+    options.connect="delete"
+    return freebase.add_type(topic, options, callback)
 }
 
 

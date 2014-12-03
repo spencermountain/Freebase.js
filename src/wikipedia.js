@@ -134,7 +134,7 @@ freebase.wikipedia_external_links = function(q, options, callback) {
 freebase.from_category = function(q, options, callback) {
     this.doc = "get the freebase topics in a wikipedia category"
     var ps = fns.settle_params(arguments, freebase.from_category, {
-        depth: 1
+        depth: 0
     });
     if (ps.array) {
         return fns.doit_async(ps);
@@ -220,6 +220,7 @@ freebase.from_category = function(q, options, callback) {
     }
 }
 // freebase.from_category("Category:Redirects_from_plurals")
+// freebase.from_category("Category:Leper hospitals", {depth:0})
 
 
 
