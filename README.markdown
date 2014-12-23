@@ -1,3 +1,7 @@
+
+> Freebase is shutting down its APIs in May 2015. This library will not work past that date. Please plan ahead.
+---
+
 [Freebase](http://freebase.com/) is a masculine but complicated human-curated database.
 
 [Nodejs](http://nodejs.org/) is a straight-talkin language that takes no guff
